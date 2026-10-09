@@ -6,8 +6,9 @@ package main
 
 import (
 	"fmt"
-	"io"
 	"os"
+
+	"github.com/elephaant/shiplino/internal/shim"
 )
 
 var version = "0.0.0-dev"
@@ -16,7 +17,7 @@ func main() {
 	// The hook path runs first, before any other setup, so it stays fast.
 	// It must never print and must always exit 0 (docs/how-it-works.md).
 	if len(os.Args) > 1 && os.Args[1] == "hook" {
-		runHook()
+		shim.Run(os.Args[2:], os.Stdin)
 		os.Exit(0)
 	}
 
@@ -33,12 +34,6 @@ func main() {
 		fmt.Fprintf(os.Stderr, "shiplino: %q is not implemented yet (pre-alpha)\n", os.Args[1])
 		os.Exit(1)
 	}
-}
-
-// runHook is a placeholder for internal/shim: it drains stdin and does nothing else.
-func runHook() {
-	defer func() { _ = recover() }()
-	_, _ = io.Copy(io.Discard, io.LimitReader(os.Stdin, 8<<20))
 }
 
 func usage() {
