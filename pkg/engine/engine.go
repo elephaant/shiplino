@@ -155,6 +155,11 @@ func (e *Engine) Apply(ev model.Event) []*Session {
 		}
 	}
 
+	// An event from before the session ended (e.g. read late from another
+	// file) still counts, but doesn't reopen the session.
+	late := !s.EndedAt.IsZero() && !ev.TS.After(s.EndedAt)
+	prevStatus, prevNow := s.Status, s.NowDoing
+
 	switch ev.Kind {
 	case model.KindSessionStart:
 		s.Status = StatusRunning
@@ -299,6 +304,9 @@ func (e *Engine) Apply(ev model.Event) []*Session {
 		if s.Status == StatusRunning || s.Status == StatusWaiting || s.Status == StatusIdle {
 			s.Status = StatusDone
 		}
+	}
+	if late && ev.Kind != model.KindSessionEnd {
+		s.Status, s.NowDoing = prevStatus, prevNow
 	}
 	return changed
 }

@@ -120,7 +120,10 @@ func firstNonEmpty(s ...string) string {
 // contentKeys hold prompts, outputs and messages: dropped at minimal
 // capture level before the payload is written to disk.
 var contentKeys = []string{"prompt", "tool_response", "last_assistant_message", "custom_instructions",
-	"compact_summary", "message", "title", "error", "error_details", "session_title"}
+	"compact_summary", "message", "title", "error", "error_details", "session_title",
+	// Cursor
+	"tool_output", "output", "result_json", "text", "content", "edits", "attachments", "command",
+	"agent_message", "summary", "task", "description", "error_message", "user_email", "modified_files"}
 
 // keepInput are tool_input fields allowed at minimal (file paths only).
 var keepInput = map[string]bool{"file_path": true, "notebook_path": true, "path": true}

@@ -1,10 +1,11 @@
 // Copyright 2026 The Shiplino Authors
 // SPDX-License-Identifier: FSL-1.1-Apache-2.0
 
-// Package hookfile edits agent hook configs that share the common shape
-// {"hooks": {Event: [{matcher?, hooks: [handler…]}]}} (Claude Code
-// settings.json, Codex hooks.json): add, update and remove Shiplino's
-// handlers without touching anything else.
+// Package hookfile edits agent hook configs shaped {"hooks": {Event:
+// [...]}}: nested, where each entry is a group {matcher?, hooks:
+// [handler…]} (Claude Code settings.json, Codex hooks.json), or flat,
+// where each entry is a handler (Cursor hooks.json). It adds, updates and
+// removes Shiplino's handlers without touching anything else.
 package hookfile
 
 import (
@@ -12,6 +13,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -33,7 +35,7 @@ type Result struct {
 // Install replaces any earlier Shiplino handlers for agent with one group
 // per event built by handler, leaving everything else as it was.
 func Install(path, backupDir, agent string, events []string, handler func(event string) *configfile.Object) (Result, error) {
-	return edit(path, backupDir, func(hooks *configfile.Object) {
+	return edit(path, backupDir, func(_, hooks *configfile.Object) {
 		removeOurs(hooks, agent)
 		for _, ev := range events {
 			groups, _ := hooks.Get(ev)
@@ -44,9 +46,25 @@ func Install(path, backupDir, agent string, events []string, handler func(event 
 	}, events)
 }
 
+// InstallFlat is Install for flat configs: handlers sit directly in each
+// event's list. root, if set, adjusts top-level keys (e.g. a version).
+func InstallFlat(path, backupDir, agent string, events []string, handler func(event string) *configfile.Object, root func(*configfile.Object)) (Result, error) {
+	return edit(path, backupDir, func(r, hooks *configfile.Object) {
+		removeOurs(hooks, agent)
+		for _, ev := range events {
+			cur, _ := hooks.Get(ev)
+			list, _ := cur.([]any)
+			hooks.Set(ev, append(list, handler(ev)))
+		}
+		if root != nil {
+			root(r)
+		}
+	}, events)
+}
+
 // Uninstall removes only Shiplino's handlers for agent.
 func Uninstall(path, backupDir, agent string) (Result, error) {
-	return edit(path, backupDir, func(h *configfile.Object) { removeOurs(h, agent) }, nil)
+	return edit(path, backupDir, func(_, h *configfile.Object) { removeOurs(h, agent) }, nil)
 }
 
 // Installed reports whether the file has a Shiplino handler for agent,
@@ -70,6 +88,10 @@ func Installed(path, agent string) (bool, string, error) {
 	}
 	for _, m := range h.Members {
 		for _, g := range AsList(m.Value) {
+			if IsOurs(g, agent) { // flat layout
+				cmd, _ := Field(g, "command").(string)
+				return true, cmd, nil
+			}
 			for _, hk := range AsList(Field(g, "hooks")) {
 				if IsOurs(hk, agent) {
 					cmd, _ := Field(hk, "command").(string)
@@ -81,7 +103,7 @@ func Installed(path, agent string) (bool, string, error) {
 	return false, "", nil
 }
 
-func edit(path, backupDir string, change func(*configfile.Object), events []string) (Result, error) {
+func edit(path, backupDir string, change func(root, hooks *configfile.Object), events []string) (Result, error) {
 	res := Result{Path: path, Events: events}
 	orig, err := os.ReadFile(path)
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
@@ -101,7 +123,7 @@ func edit(path, backupDir string, change func(*configfile.Object), events []stri
 	if hooks == nil {
 		hooks = &configfile.Object{}
 	}
-	change(hooks)
+	change(root, hooks)
 	if len(hooks.Members) == 0 {
 		root.Delete("hooks")
 	} else {
@@ -151,6 +173,9 @@ func removeOurs(hooks *configfile.Object, agent string) {
 		}
 		var outGroups []any
 		for _, g := range groups {
+			if IsOurs(g, agent) {
+				continue // flat layout: the entry is our handler
+			}
 			gobj, ok := g.(*configfile.Object)
 			if !ok {
 				outGroups = append(outGroups, g)
@@ -217,4 +242,14 @@ func Field(v any, key string) any {
 func AsList(v any) []any {
 	l, _ := v.([]any)
 	return l
+}
+
+// ShellQuote quotes a binary path for configs whose command is run by a
+// shell: double quotes on Windows and for plain paths, single quotes when
+// the path has shell metacharacters.
+func ShellQuote(p string) string {
+	if !strings.ContainsAny(p, " \"'$`\\") || filepath.Separator == '\\' {
+		return `"` + p + `"`
+	}
+	return "'" + strings.ReplaceAll(p, "'", `'\''`) + "'"
 }

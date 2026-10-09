@@ -5,7 +5,7 @@ Every project, every session, every subagent, every command, every file, every d
 
 **One command to install. Zero tokens to run.**
 
-> ⚠️ **Status: alpha.** Claude Code and Codex (CLI and desktop app) are supported today; Cursor is next. Expect rough edges and report them in Issues.
+> ⚠️ **Status: alpha.** Claude Code, Codex (CLI and desktop app) and Cursor (IDE agent and CLI) are supported today. Expect rough edges and report them in Issues.
 
 ---
 
@@ -43,7 +43,7 @@ Read more: [How it works](docs/how-it-works.md).
 
 | Agent | How |
 |-------|-----|
-| Claude Code, OpenAI Codex, Cursor | hooks + transcripts |
+| Claude Code, OpenAI Codex, Cursor | hooks + transcripts (Cursor: hooks only, for now) |
 | Gemini CLI, GitHub Copilot CLI, Windsurf, Cline, OpenCode | hooks / plugins |
 | Aider, any CLI agent | logs, git, `shiplino wrap` |
 | Custom agents (Agent SDK, LangGraph, …) | HTTP, OTLP, SDKs |
