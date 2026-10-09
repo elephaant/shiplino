@@ -23,18 +23,27 @@ const flushEvery = 100 * time.Millisecond
 type Message struct {
 	T       string          `json:"t"`
 	Session *engine.Session `json:"session,omitempty"`
+	Project string          `json:"project,omitempty"`
 }
 
 // Hub fans session updates out to WebSocket clients.
 type Hub struct {
 	mu      sync.Mutex
-	pending map[string]*engine.Session
+	pending map[string]Message // coalesced by key: one message per key per flush
 	clients map[chan []byte]struct{}
 }
 
 // NewHub returns an empty hub. Call Run to start delivering.
 func NewHub() *Hub {
-	return &Hub{pending: map[string]*engine.Session{}, clients: map[chan []byte]struct{}{}}
+	return &Hub{pending: map[string]Message{}, clients: map[chan []byte]struct{}{}}
+}
+
+// Signal queues a message under key; a later signal with the same key
+// before the next flush replaces it.
+func (h *Hub) Signal(key string, m Message) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.pending[key] = m
 }
 
 // Publish queues session updates; later updates to the same session
@@ -46,7 +55,7 @@ func (h *Hub) Publish(list []*engine.Session) {
 	for _, s := range list {
 		c := *s
 		c.Files = append([]string(nil), s.Files...)
-		h.pending[s.ID] = &c
+		h.pending["session:"+s.ID] = Message{T: "session.update", Session: &c}
 	}
 }
 
@@ -70,8 +79,8 @@ func (h *Hub) flush() {
 	if len(h.pending) == 0 {
 		return
 	}
-	for _, s := range h.pending {
-		b, err := json.Marshal(Message{T: "session.update", Session: s})
+	for _, m := range h.pending {
+		b, err := json.Marshal(m)
 		if err != nil {
 			continue
 		}
