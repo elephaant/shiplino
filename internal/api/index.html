@@ -1,0 +1,137 @@
+<!doctype html>
+<!-- Copyright 2026 The Shiplino Authors. SPDX-License-Identifier: FSL-1.1-Apache-2.0 -->
+<!-- Placeholder page until the web app in web/apps/local is embedded. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shiplino</title>
+<style>
+  :root {
+    --background: oklch(0.975 0.004 75); --foreground: oklch(0.24 0.01 50);
+    --card: oklch(1 0 0); --muted-foreground: oklch(0.52 0.015 55); --border: oklch(0.91 0.006 70);
+    --primary: oklch(0.64 0.17 36.3);
+    --status-running: oklch(0.64 0.17 36.3); --status-waiting: oklch(0.78 0.15 85);
+    --status-review: oklch(0.58 0.14 265); --status-done: oklch(0.6 0.13 150); --status-failed: oklch(0.55 0.2 22);
+    color-scheme: light dark;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --background: oklch(0.19 0.008 55); --foreground: oklch(0.94 0.005 75);
+      --card: oklch(0.225 0.009 55); --muted-foreground: oklch(0.7 0.01 70); --border: oklch(0.31 0.01 55);
+      --primary: oklch(0.68 0.16 38);
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--background); color: var(--foreground);
+         font: 14px/1.45 ui-sans-serif, system-ui, sans-serif; }
+  header { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--border); }
+  header b { color: var(--primary); }
+  #conn { margin-left: auto; color: var(--muted-foreground); font-size: 12px; }
+  main { padding: 16px; max-width: 1100px; margin: 0 auto; }
+  table { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { font-size: 12px; color: var(--muted-foreground); font-weight: 500; }
+  td.num, .mono { font-family: ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  tr.sub td:first-child { padding-left: 28px; }
+  .doing { color: var(--muted-foreground); font-size: 12px; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; }
+  .pill::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--dot, var(--muted-foreground)); }
+  .running { --dot: var(--status-running); } .waiting { --dot: var(--status-waiting); }
+  .review { --dot: var(--status-review); } .done { --dot: var(--status-done); } .failed { --dot: var(--status-failed); }
+  .waiting::before { animation: pulse 1.2s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .3; } }
+  @media (prefers-reduced-motion: reduce) { .waiting::before { animation: none; } }
+  .empty { padding: 32px; text-align: center; color: var(--muted-foreground); }
+</style>
+</head>
+<body>
+<header><b>shiplino</b><span id="summary"></span><span id="conn">connecting…</span></header>
+<main>
+  <table>
+    <thead><tr><th>Session</th><th>Status</th><th>Agent</th><th>Tools</th><th>Files</th><th>Tokens in/out</th><th>Last activity</th></tr></thead>
+    <tbody id="rows"></tbody>
+  </table>
+  <div id="empty" class="empty">Start any agent. It'll appear here within a second.</div>
+</main>
+<script>
+"use strict";
+const sessions = new Map();
+const rows = document.getElementById("rows");
+
+function cell(tr, text, cls) {
+  const td = document.createElement("td");
+  td.textContent = text;
+  if (cls) td.className = cls;
+  tr.appendChild(td);
+  return td;
+}
+
+function ago(iso) {
+  const s = Math.max(0, (Date.now() - Date.parse(iso)) / 1000);
+  if (s < 60) return Math.floor(s) + "s ago";
+  if (s < 3600) return Math.floor(s / 60) + "m ago";
+  return Math.floor(s / 3600) + "h ago";
+}
+
+function render() {
+  const list = [...sessions.values()];
+  const roots = list.filter(s => !s.parent_id).sort((a, b) => b.last_event_at.localeCompare(a.last_event_at));
+  rows.replaceChildren();
+  for (const root of roots) {
+    addRow(root, false);
+    for (const c of list.filter(s => s.root_id === root.id && s.parent_id)) addRow(c, true);
+  }
+  document.getElementById("empty").hidden = list.length > 0;
+  const running = list.filter(s => s.status === "running").length;
+  const waiting = list.filter(s => s.status === "waiting").length;
+  document.getElementById("summary").textContent = `● ${running} running · ${waiting} waiting on you`;
+  document.title = waiting ? `(${waiting}) Shiplino` : "Shiplino";
+}
+
+function addRow(s, isSub) {
+  const tr = document.createElement("tr");
+  if (isSub) tr.className = "sub";
+  const name = cell(tr, isSub ? (s.actor_type || "subagent") : (s.title || "Session"));
+  if (s.now_doing) {
+    const d = document.createElement("div");
+    d.className = "doing";
+    d.textContent = s.now_doing;
+    name.appendChild(d);
+  }
+  const st = document.createElement("span");
+  st.className = "pill " + s.status;
+  st.textContent = s.status === "waiting" ? "waiting on you" : s.status;
+  const stCell = cell(tr, "");
+  stCell.appendChild(st);
+  cell(tr, s.agent);
+  cell(tr, String(s.tool_calls), "num");
+  cell(tr, `${(s.files || []).length}  +${s.lines_added} −${s.lines_removed}`, "num");
+  cell(tr, `${s.input_tokens} / ${s.output_tokens}`, "num");
+  cell(tr, ago(s.last_event_at), "num");
+  rows.appendChild(tr);
+}
+
+async function load() {
+  const r = await fetch("/api/v1/sessions?limit=200", { credentials: "same-origin" });
+  if (!r.ok) throw new Error(r.status);
+  for (const s of (await r.json()).sessions) sessions.set(s.id, s);
+  render();
+}
+
+function connect() {
+  const conn = document.getElementById("conn");
+  const ws = new WebSocket(`ws://${location.host}/api/v1/live`);
+  ws.onopen = () => { conn.textContent = "live"; load().catch(() => {}); };
+  ws.onmessage = (m) => {
+    const msg = JSON.parse(m.data);
+    if (msg.t === "session.update") { sessions.set(msg.session.id, msg.session); render(); }
+  };
+  ws.onclose = () => { conn.textContent = "reconnecting…"; setTimeout(connect, 2000); };
+}
+
+connect();
+setInterval(render, 10000); // keep "x ago" fresh
+</script>
+</body>
+</html>
