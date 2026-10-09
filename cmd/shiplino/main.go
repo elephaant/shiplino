@@ -5,9 +5,13 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"os/signal"
+	"syscall"
 
+	"github.com/elephaant/shiplino/internal/daemon"
 	"github.com/elephaant/shiplino/internal/shim"
 )
 
@@ -30,6 +34,13 @@ func main() {
 		fmt.Println("shiplino", version)
 	case "help", "--help", "-h":
 		usage()
+	case "daemon":
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer stop()
+		if err := daemon.Main(ctx); err != nil {
+			fmt.Fprintln(os.Stderr, "shiplino daemon:", err)
+			os.Exit(1)
+		}
 	default:
 		fmt.Fprintf(os.Stderr, "shiplino: %q is not implemented yet (pre-alpha)\n", os.Args[1])
 		os.Exit(1)
@@ -44,6 +55,7 @@ Usage:
 
 Commands (planned):
   setup       detect agents, register hooks, start the daemon
+  daemon      run the background service in the foreground
   doctor      check and fix every agent connection
   status      show running agents per project
   open        open the board in your browser

@@ -1,0 +1,157 @@
+// Copyright 2026 The Shiplino Authors
+// SPDX-License-Identifier: FSL-1.1-Apache-2.0
+
+package engine
+
+import (
+	"testing"
+	"time"
+
+	"github.com/elephaant/shiplino/pkg/model"
+)
+
+var t0 = time.Date(2026, 10, 9, 10, 0, 0, 0, time.UTC)
+
+const sid = "claude-code:s1"
+
+func ev(sec int, kind model.Kind, data map[string]any) model.Event {
+	return model.Event{
+		TS: t0.Add(time.Duration(sec) * time.Second), Kind: kind, Agent: model.Agent{Name: "claude-code"},
+		SessionID: sid, ActorID: sid, Project: &model.Project{CWD: "/work/demo"}, Data: data,
+	}
+}
+
+func TestSessionLifecycle(t *testing.T) {
+	e := New(nil)
+	steps := []struct {
+		ev         model.Event
+		wantStatus Status
+		wantDoing  string
+	}{
+		{ev(0, model.KindSessionStart, map[string]any{"model": "claude-sonnet-5-5"}), StatusRunning, ""},
+		{ev(1, model.KindTurnStart, map[string]any{"prompt": "Fix the login bug. Then add a test.\nMore detail"}), StatusRunning, "Thinking…"},
+		{ev(2, model.KindToolStart, map[string]any{"tool": "edit", "tool_raw": "Edit", "input_summary": "/work/demo/src/auth.ts"}), StatusRunning, "Editing auth.ts"},
+		{ev(3, model.KindToolEnd, map[string]any{"ok": true}), StatusRunning, "Editing auth.ts"},
+		{ev(3, model.KindFileEdit, map[string]any{"path": "/work/demo/src/auth.ts", "lines_added": 12.0, "lines_removed": 3.0}), StatusRunning, "Editing auth.ts"},
+		{ev(4, model.KindWaitingStart, map[string]any{"message": "Approve: npm test"}), StatusWaiting, "Approve: npm test"},
+		{ev(10, model.KindToolStart, map[string]any{"tool": "shell", "input_summary": "npm test"}), StatusRunning, "Running npm test"},
+		{ev(12, model.KindToolEnd, map[string]any{"ok": false}), StatusRunning, "Running npm test"},
+		{ev(13, model.KindTurnEnd, map[string]any{"status": "ok"}), StatusReview, ""},
+		{ev(20, model.KindSessionEnd, map[string]any{"reason": "exit"}), StatusReview, ""},
+	}
+	for i, st := range steps {
+		e.Apply(st.ev)
+		s := e.Get(sid)
+		if s.Status != st.wantStatus || s.NowDoing != st.wantDoing {
+			t.Fatalf("step %d (%s): status=%s doing=%q, want %s %q", i, st.ev.Kind, s.Status, s.NowDoing, st.wantStatus, st.wantDoing)
+		}
+	}
+	s := e.Get(sid)
+	if s.Title != "Fix the login bug." {
+		t.Errorf("title = %q", s.Title)
+	}
+	if s.Model != "claude-sonnet-5-5" || s.Turns != 1 || s.ToolCalls != 2 || s.ToolErrors != 1 {
+		t.Errorf("counters: %+v", s)
+	}
+	if s.FilesChanged() != 1 || s.LinesAdded != 12 || s.LinesRemoved != 3 {
+		t.Errorf("files: %v +%d -%d", s.Files, s.LinesAdded, s.LinesRemoved)
+	}
+	if s.WaitingMS != 6000 {
+		t.Errorf("waiting_ms = %d, want 6000", s.WaitingMS)
+	}
+	if !s.EndedAt.Equal(t0.Add(20 * time.Second)) {
+		t.Errorf("ended_at = %v", s.EndedAt)
+	}
+}
+
+func TestTurnEndWithoutEditsIsDone(t *testing.T) {
+	e := New(nil)
+	e.Apply(ev(0, model.KindTurnStart, map[string]any{"prompt": "what does this repo do?"}))
+	e.Apply(ev(1, model.KindTurnEnd, map[string]any{"status": "ok"}))
+	if s := e.Get(sid); s.Status != StatusDone {
+		t.Fatalf("status = %s", s.Status)
+	}
+}
+
+func TestTurnEndErrorFails(t *testing.T) {
+	e := New(nil)
+	e.Apply(ev(0, model.KindTurnStart, nil))
+	e.Apply(ev(1, model.KindTurnEnd, map[string]any{"status": "error", "error": "rate_limit"}))
+	if s := e.Get(sid); s.Status != StatusFailed || s.NowDoing != "rate_limit" {
+		t.Fatalf("status = %s doing = %q", s.Status, s.NowDoing)
+	}
+	// A later tool end must not resurrect a failed session.
+	e.Apply(ev(2, model.KindToolEnd, map[string]any{"ok": true}))
+	if s := e.Get(sid); s.Status != StatusFailed {
+		t.Fatalf("status after tool.end = %s", s.Status)
+	}
+}
+
+func TestSubagents(t *testing.T) {
+	e := New(nil)
+	child := sid + "/sub:a1"
+	changed := e.Apply(ev(0, model.KindSubagentStart, map[string]any{"child_session_id": child, "agent_type": "reviewer"}))
+	if len(changed) != 2 {
+		t.Fatalf("changed = %d, want parent + child", len(changed))
+	}
+	sub := ev(1, model.KindToolStart, map[string]any{"tool": "read", "input_summary": "/work/demo/a.go"})
+	sub.ActorID, sub.ParentActor, sub.ActorType = child, sid, "reviewer"
+	e.Apply(sub)
+
+	c := e.Get(child)
+	if c.ParentID != sid || c.RootID != sid || c.Depth != 1 || c.ActorType != "reviewer" {
+		t.Fatalf("child: %+v", c)
+	}
+	if c.NowDoing != "Reading a.go" || c.ToolCalls != 1 {
+		t.Fatalf("child activity: %+v", c)
+	}
+	if p := e.Get(sid); p.ToolCalls != 0 {
+		t.Fatalf("parent counted the child's tool call: %d", p.ToolCalls)
+	}
+	e.Apply(ev(5, model.KindSubagentEnd, map[string]any{"child_session_id": child, "status": "done"}))
+	if c := e.Get(child); c.Status != StatusDone || c.EndedAt.IsZero() {
+		t.Fatalf("child after end: %+v", c)
+	}
+}
+
+func TestUsageAccumulates(t *testing.T) {
+	e := New(nil)
+	e.Apply(ev(0, model.KindUsage, map[string]any{"model": "m", "input_tokens": 100.0, "output_tokens": 20.0, "cache_read_tokens": 1000.0, "cost_usd": 0.01}))
+	e.Apply(ev(1, model.KindUsage, map[string]any{"input_tokens": int64(50), "output_tokens": 5, "cost_usd": 0.005}))
+	s := e.Get(sid)
+	if s.InputTokens != 150 || s.OutputTokens != 25 || s.CacheReadTokens != 1000 || s.CostUSD < 0.0149 || s.CostUSD > 0.0151 {
+		t.Fatalf("usage: %+v", s)
+	}
+}
+
+func TestPrimedEngineContinues(t *testing.T) {
+	prev := &Session{ID: sid, Agent: "claude-code", RootID: sid, Status: StatusWaiting, WaitingSince: t0, Turns: 3}
+	e := New([]*Session{prev})
+	e.Apply(ev(4, model.KindToolEnd, map[string]any{"ok": true}))
+	if s := e.Get(sid); s.Status != StatusRunning || s.WaitingMS != 4000 || s.Turns != 3 {
+		t.Fatalf("resumed: %+v", s)
+	}
+}
+
+func TestTitleFromPrompt(t *testing.T) {
+	cases := map[string]string{
+		"  fix   the bug  ":                "fix the bug",
+		"Why is CI red? Check logs.":       "Why is CI red?",
+		"line one\nline two":               "line one",
+		string(make([]rune, 0)):            "",
+		"a very long prompt " + repeat(80): "a very long prompt " + repeat(80)[:60] + "…",
+	}
+	for in, want := range cases {
+		if got := TitleFromPrompt(in); got != want {
+			t.Errorf("TitleFromPrompt(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+func repeat(n int) string {
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = 'x'
+	}
+	return string(b)
+}
