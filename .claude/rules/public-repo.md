@@ -14,8 +14,8 @@ Everything committed here is published under FSL-1.1-Apache-2.0 (see `LICENSE`),
 - Roadmap dates, milestones with estimates, internal priorities or launch plans
 - Pricing, paid tiers, revenue, business strategy, competitor analysis
 - Details of the hosted service beyond the public sync protocol. The sync **client** (`internal/sync`) and its protocol are public on purpose. The server side isn't documented here.
-- References to private repositories, private docs, internal hostnames, or the private design references we build from
-- Customer, company or personal names (other than authors in git metadata), emails, private links
+- References to private repositories, private docs or internal hostnames. (The UI inspiration is credited openly in README "Acknowledgments" and `NOTICE`; keep that credit, and keep our UI code our own.)
+- Customer, company or personal names (other than authors in git metadata and credited upstream authors), emails, private links
 - Secrets of any kind (CI runs gitleaks). Hook payload fixtures must be redacted: no real prompts, paths with real usernames, or tokens.
 - Committed Claude Code settings that enable data-sharing plugins (e.g. Supermemory). Personal choices go in `.claude/settings.local.json`.
 

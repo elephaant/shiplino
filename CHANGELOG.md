@@ -12,6 +12,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `doctor` and `uninstall` cover every connected agent.
 
 ### Changed
+- The web app's layout and default theme credit their inspiration, next-shadcn-admin-dashboard by Mohammed Arham Khan, in the README and `NOTICE`.
 - A session's model is the one that answered its latest response (sessions can switch models).
 - An event from before a session ended, read late (e.g. a subagent's own hook file), still counts but no longer reopens the session.
 
