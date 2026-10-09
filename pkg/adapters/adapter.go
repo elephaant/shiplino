@@ -38,6 +38,21 @@ type Adapter interface {
 	ParseHook(payload []byte, meta HookMeta) ([]model.Event, error)
 }
 
+// TranscriptMeta describes where a transcript line came from.
+type TranscriptMeta struct {
+	ReceivedAt time.Time // fallback timestamp when the line has none
+	User       string
+	Ref        string // e.g. "transcript:/path/to/file.jsonl#1234"
+}
+
+// TranscriptParser is implemented by adapters that read the agent's own
+// session files for data hooks don't carry (tokens, model, version).
+type TranscriptParser interface {
+	// ParseTranscriptLine converts one transcript line into zero or more
+	// events. Lines that carry nothing of interest return (nil, nil).
+	ParseTranscriptLine(line []byte, meta TranscriptMeta) ([]model.Event, error)
+}
+
 var registry = struct {
 	sync.RWMutex
 	m map[string]Adapter

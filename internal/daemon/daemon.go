@@ -15,6 +15,7 @@ import (
 	"os/user"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -32,14 +33,19 @@ import (
 const (
 	// maxBatch caps the events committed in one transaction.
 	maxBatch = 500
-	// maxRead caps the bytes read from one spool file per pass.
-	maxRead = 4 << 20
 	// defaultReapAfter is how long a fully processed spool file must be
 	// idle before it is deleted (raw payloads shouldn't linger on disk).
 	defaultReapAfter = 10 * time.Minute
 	// rescanEvery is the safety-net rescan when no file events arrive.
 	rescanEvery = 2 * time.Second
+	// transcriptRecent bounds which stored sessions' transcripts are
+	// re-tailed after a restart.
+	transcriptRecent = 24 * time.Hour
 )
+
+// maxRead caps the bytes read from one file per pass, and so the longest
+// line that is parsed rather than skipped. A variable so tests can shrink it.
+var maxRead int64 = 4 << 20
 
 // Stats counts what the daemon could not turn into events.
 type Stats struct {
@@ -48,6 +54,10 @@ type Stats struct {
 	Unknown int64 // unknown agents or native events (kept on disk as raw until reaped)
 	Bad     int64 // lines or payloads that failed to decode
 }
+
+// lineParser turns one line into events. blob, if set, is a spool blob to
+// delete once the events are committed.
+type lineParser func(line []byte, ref string) (events []model.Event, blob string)
 
 // Daemon turns spool lines into stored events and session state.
 type Daemon struct {
@@ -58,10 +68,11 @@ type Daemon struct {
 	user      string
 	reapAfter time.Duration
 
-	mu      sync.Mutex // guards eng, offsets, stats, onChange during a pass
-	eng     *engine.Engine
-	offsets map[string]int64
-	stats   Stats
+	mu          sync.Mutex // guards eng, offsets, stats, onChange during a pass
+	eng         *engine.Engine
+	offsets     map[string]int64
+	stats       Stats
+	transcripts map[string]string // transcript path → agent name
 
 	// OnChange, if set, is called after each commit with the sessions that changed.
 	OnChange func([]*engine.Session)
@@ -94,6 +105,13 @@ func (d *Daemon) reload(ctx context.Context) error {
 	}
 	d.eng = engine.New(sessions)
 	d.offsets = offsets
+	d.transcripts = map[string]string{}
+	recent := time.Now().Add(-transcriptRecent)
+	for _, s := range sessions {
+		if s.TranscriptPath != "" && s.LastEventAt.After(recent) {
+			d.addTranscript(s.TranscriptPath, s.Agent)
+		}
+	}
 	return nil
 }
 
@@ -191,7 +209,7 @@ func (d *Daemon) Poll(ctx context.Context) error {
 		}
 		rel, _ := filepath.Rel(d.spoolRoot, path)
 		src := "spool/" + filepath.ToSlash(rel)
-		if err := d.processFile(ctx, path, src); err != nil {
+		if err := d.processFile(ctx, path, src, d.parseLine); err != nil {
 			errs = append(errs, fmt.Errorf("%s: %w", src, err))
 			continue
 		}
@@ -199,11 +217,71 @@ func (d *Daemon) Poll(ctx context.Context) error {
 			errs = append(errs, fmt.Errorf("reap %s: %w", src, err))
 		}
 	}
+	// Transcripts are read-only: tailed from the saved offset, never deleted.
+	for path, agent := range d.transcripts {
+		files := []string{path}
+		subs, _ := filepath.Glob(filepath.Join(strings.TrimSuffix(path, ".jsonl"), "subagents", "*.jsonl"))
+		files = append(files, subs...)
+		for _, f := range files {
+			if ctx.Err() != nil {
+				return ctx.Err()
+			}
+			err := d.processFile(ctx, f, "transcript:"+f, d.transcriptParser(agent))
+			if errors.Is(err, os.ErrNotExist) && f == path {
+				delete(d.transcripts, path)
+				break
+			}
+			if err != nil && !errors.Is(err, os.ErrNotExist) {
+				errs = append(errs, fmt.Errorf("transcript %s: %w", f, err))
+			}
+		}
+	}
 	return errors.Join(errs...)
 }
 
+// addTranscript starts tailing an agent's transcript. The path comes from
+// a hook payload, so only .jsonl files under the user's home directory are
+// accepted.
+func (d *Daemon) addTranscript(path, agent string) {
+	if _, ok := d.transcripts[path]; ok || !filepath.IsAbs(path) || filepath.Ext(path) != ".jsonl" {
+		return
+	}
+	a, ok := adapters.Get(agent)
+	if !ok {
+		return
+	}
+	if _, ok := a.(adapters.TranscriptParser); !ok {
+		return
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return
+	}
+	rel, err := filepath.Rel(filepath.Clean(home), filepath.Clean(path))
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return
+	}
+	d.transcripts[path] = agent
+}
+
+func (d *Daemon) transcriptParser(agent string) lineParser {
+	return func(line []byte, ref string) ([]model.Event, string) {
+		d.stats.Lines++
+		a, _ := adapters.Get(agent)
+		tp, ok := a.(adapters.TranscriptParser)
+		if !ok {
+			return nil, ""
+		}
+		evs, err := tp.ParseTranscriptLine(line, adapters.TranscriptMeta{ReceivedAt: time.Now(), User: d.user, Ref: ref})
+		if err != nil {
+			d.stats.Bad++
+		}
+		return evs, ""
+	}
+}
+
 // processFile consumes complete lines from the stored offset to EOF.
-func (d *Daemon) processFile(ctx context.Context, path, src string) error {
+func (d *Daemon) processFile(ctx context.Context, path, src string, parse lineParser) error {
 	for {
 		fi, err := os.Stat(path)
 		if err != nil {
@@ -222,16 +300,50 @@ func (d *Daemon) processFile(ctx context.Context, path, src string) error {
 		}
 		end := bytes.LastIndexByte(chunk, '\n')
 		if end < 0 {
-			if len(chunk) == maxRead {
-				return fmt.Errorf("line at offset %d exceeds %d bytes", off, maxRead)
+			if int64(len(chunk)) == maxRead {
+				// One line longer than maxRead: skip it rather than stall.
+				if err := d.skipLine(ctx, path, src, off); errors.Is(err, io.EOF) {
+					return nil // the giant line isn't complete yet
+				} else if err != nil {
+					return err
+				}
+				continue
 			}
 			return nil // partial line: wait for the rest
 		}
-		if err := d.processLines(ctx, chunk[:end+1], off, src); err != nil {
+		if err := d.processLines(ctx, chunk[:end+1], off, src, parse); err != nil {
 			return err
 		}
 		if int64(len(chunk)) < maxRead {
 			return nil
+		}
+	}
+}
+
+// skipLine advances the cursor past the line starting at off, if it is
+// complete; an incomplete giant line is left until more data arrives.
+func (d *Daemon) skipLine(ctx context.Context, path, src string, off int64) error {
+	f, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	buf := make([]byte, 64<<10)
+	pos := off
+	for {
+		n, err := f.ReadAt(buf, pos)
+		if i := bytes.IndexByte(buf[:n], '\n'); i >= 0 {
+			d.stats.Lines++
+			d.stats.Bad++
+			d.log.Printf("%s#%d: skipped line longer than %d bytes", src, off, maxRead)
+			return d.commit(ctx, nil, store.Cursor{Source: src, Offset: pos + int64(i) + 1})
+		}
+		pos += int64(n)
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				return io.EOF // wait for the rest of the line
+			}
+			return err
 		}
 	}
 }
@@ -252,7 +364,7 @@ func readAt(path string, off, n int64) ([]byte, error) {
 
 // processLines handles complete lines starting at file offset base,
 // committing in batches together with the advanced cursor.
-func (d *Daemon) processLines(ctx context.Context, data []byte, base int64, src string) error {
+func (d *Daemon) processLines(ctx context.Context, data []byte, base int64, src string, parse lineParser) error {
 	var (
 		pending []model.Event
 		blobs   []string
@@ -272,7 +384,7 @@ func (d *Daemon) processLines(ctx context.Context, data []byte, base int64, src 
 		i := bytes.IndexByte(data, '\n')
 		line := data[:i]
 		ref := src + "#" + strconv.FormatInt(base+pos, 10)
-		evs, blob := d.parseLine(line, ref)
+		evs, blob := parse(line, ref)
 		pending = append(pending, evs...)
 		if blob != "" {
 			blobs = append(blobs, blob)
@@ -356,6 +468,9 @@ func (d *Daemon) commit(ctx context.Context, events []model.Event, cur store.Cur
 			continue
 		}
 		stored++
+		if p, ok := e.Data["transcript_path"].(string); ok && p != "" {
+			d.addTranscript(p, e.Agent.Name)
+		}
 		for _, s := range d.eng.Apply(e) {
 			changed[s.ID] = s
 		}
@@ -401,7 +516,7 @@ func (d *Daemon) maybeReap(ctx context.Context, path, src string) error {
 }
 
 func (d *Daemon) finishReap(ctx context.Context, done, src string) error {
-	if err := d.processFile(ctx, done, src); err != nil {
+	if err := d.processFile(ctx, done, src, d.parseLine); err != nil {
 		return err
 	}
 	tx, err := d.st.Begin(ctx)

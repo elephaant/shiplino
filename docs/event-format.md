@@ -31,7 +31,7 @@ Every adapter converts its agent's native hooks and transcripts into this format
 | `mcp.call` | `server`, `tool`, `ok` |
 | `waiting.start` / `waiting.end` | `reason` / `resolution` |
 | `subagent.start` / `subagent.end` | `child_session_id`, `agent_type`, `status` |
-| `usage` | `model`, `input_tokens`, `output_tokens`, `cache_read_tokens`, `cache_write_tokens`, `cost_usd` |
+| `usage` | `model`, `message_id`, `input_tokens`, `output_tokens`, `cache_read_tokens`, `cache_write_tokens`, `cost_usd`, `cost_source` (`computed` or `unpriced`) |
 | `compact` | `phase`, `trigger` |
 | `git.commit` / `git.branch` | `sha`, `message`, `files` / `from`, `to` |
 | `error`, `note` | `message` |
@@ -40,4 +40,5 @@ Every adapter converts its agent's native hooks and transcripts into this format
 
 - Pair `tool.start`/`tool.end` by `tool_call_id`, never by order (agents run tools in parallel).
 - Use `dedup_key` so the same event from a hook and a transcript merges into one.
+- Count usage once per model response: some agents write one response across several transcript lines that repeat the same usage (key usage events by the response id).
 - Unknown native fields are ignored. Unknown native events are kept as raw, never treated as errors.
