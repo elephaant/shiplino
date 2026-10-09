@@ -212,6 +212,7 @@ type SprintReport struct {
 	CostByAgent  map[string]float64 `json:"cost_by_agent"`
 	CostByModel  map[string]float64 `json:"cost_by_model"`
 	PullRequests int                `json:"pull_requests"`
+	Commits      int                `json:"commits"`
 	LinesAdded   int                `json:"lines_added"`
 	LinesRemoved int                `json:"lines_removed"`
 	TopFiles     []FileCount        `json:"top_files"`
@@ -277,8 +278,11 @@ func (s *Server) sprintReport(w http.ResponseWriter, r *http.Request) {
 		rep.LinesAdded += c.LinesAdded
 		rep.LinesRemoved += c.LinesRemoved
 		for _, l := range c.Links {
-			if l.Kind == "pr" {
+			switch l.Kind {
+			case "pr":
 				rep.PullRequests++
+			case "commit":
+				rep.Commits++
 			}
 		}
 		if se := byID[c.ID]; se != nil {

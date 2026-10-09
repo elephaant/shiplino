@@ -18,7 +18,8 @@ type Exec struct {
 	Timeout time.Duration // per command; default 2s
 }
 
-func (g Exec) run(dir string, args ...string) string {
+// exec runs one read-only git command with a timeout.
+func (g Exec) exec(dir string, args ...string) (string, error) {
 	t := g.Timeout
 	if t == 0 {
 		t = 2 * time.Second
@@ -28,10 +29,22 @@ func (g Exec) run(dir string, args ...string) string {
 	cmd := exec.CommandContext(ctx, "git", append([]string{"--no-optional-locks", "-C", dir}, args...)...)
 	cmd.Env = append(cmd.Environ(), "GIT_TERMINAL_PROMPT=0", "GIT_OPTIONAL_LOCKS=0")
 	out, err := cmd.Output()
+	return strings.TrimSpace(string(out)), err
+}
+
+// run returns git's trimmed output, or "" on any failure.
+func (g Exec) run(dir string, args ...string) string {
+	out, err := g.exec(dir, args...)
 	if err != nil {
 		return ""
 	}
-	return strings.TrimSpace(string(out))
+	return out
+}
+
+// ok reports whether git exited 0.
+func (g Exec) ok(dir string, args ...string) bool {
+	_, err := g.exec(dir, args...)
+	return err == nil
 }
 
 // CommonDir implements projects.Git.

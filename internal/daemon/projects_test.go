@@ -56,3 +56,52 @@ func TestSessionsLandInTheirProject(t *testing.T) {
 		t.Fatalf("projects: %+v %v", list, err)
 	}
 }
+
+func TestCommitLinksSessionAndMovesCardToDone(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git not installed")
+	}
+	withHome(t)
+	e := newEnv(t)
+	repo := filepath.Join(t.TempDir(), "api")
+	os.MkdirAll(filepath.Join(repo, "src"), 0o755)
+	gitIn(t, repo, "init", "-q", "-b", "main")
+	os.WriteFile(filepath.Join(repo, "README.md"), []byte("x\n"), 0o644)
+	gitIn(t, repo, "add", ".")
+	gitIn(t, repo, "commit", "-q", "-m", "init")
+
+	file := filepath.Join(repo, "src", "auth.ts")
+	hooks := []map[string]any{
+		{"session_id": "c1", "hook_event_name": "UserPromptSubmit", "prompt": "fix auth", "cwd": repo},
+		{"session_id": "c1", "hook_event_name": "PostToolUse", "tool_name": "Write", "tool_input": map[string]any{"file_path": file, "content": "a\nb\n"},
+			"tool_response": map[string]any{"type": "create"}, "tool_use_id": "t1", "cwd": repo},
+		{"session_id": "c1", "hook_event_name": "Stop", "cwd": repo},
+	}
+	for _, h := range hooks {
+		b, _ := json.Marshal(h)
+		e.hook(string(b))
+	}
+	e.poll()
+	if s := e.session("claude-code:c1"); s.Status != "review" {
+		t.Fatalf("before commit: %s", s.Status)
+	}
+
+	// The user commits the agent's work.
+	os.WriteFile(file, []byte("a\nb\n"), 0o644)
+	gitIn(t, repo, "add", ".")
+	gitIn(t, repo, "commit", "-q", "-m", "fix: auth redirect")
+	e.poll()
+
+	s := e.session("claude-code:c1")
+	if s.Status != "done" {
+		t.Fatalf("after commit: %s", s.Status)
+	}
+	if len(s.Links) != 1 || s.Links[0].Kind != "commit" || s.Links[0].Message != "fix: auth redirect" || s.Links[0].Action != "likely" {
+		t.Fatalf("links: %+v", s.Links)
+	}
+	// Polling again doesn't add the commit twice.
+	e.poll()
+	if s := e.session("claude-code:c1"); len(s.Links) != 1 {
+		t.Fatalf("duplicate link: %+v", s.Links)
+	}
+}

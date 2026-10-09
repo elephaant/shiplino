@@ -9,7 +9,8 @@ export const API_BASE = process.env.NEXT_PUBLIC_SHIPLINO_API ?? "";
 export type Status = "running" | "waiting" | "idle" | "review" | "done" | "failed";
 
 export interface Link {
-  kind: "pr" | "push";
+  kind: "pr" | "push" | "commit";
+  message?: string;
   url?: string;
   number?: number;
   ref?: string;
