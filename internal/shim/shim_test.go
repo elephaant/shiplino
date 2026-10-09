@@ -13,15 +13,15 @@ import (
 	"github.com/elephaant/shiplino/internal/spool"
 )
 
-func readLines(t *testing.T, path string) []Envelope {
+func readLines(t *testing.T, path string) []spool.Envelope {
 	t.Helper()
 	b, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	var out []Envelope
+	var out []spool.Envelope
 	for _, l := range strings.Split(strings.TrimSpace(string(b)), "\n") {
-		var e Envelope
+		var e spool.Envelope
 		if err := json.Unmarshal([]byte(l), &e); err != nil {
 			t.Fatalf("bad line %q: %v", l, err)
 		}

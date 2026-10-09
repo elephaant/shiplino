@@ -18,20 +18,6 @@ import (
 // MaxPayload caps how much of stdin the shim reads.
 const MaxPayload = 8 << 20
 
-// Envelope is one spool line: the raw hook payload plus what the shim knows.
-// Exactly one of P (inline JSON payload), S (non-JSON payload as text) or
-// B (path of a blob file, relative to the spool root) is set.
-type Envelope struct {
-	ID    string          `json:"id"`
-	Agent string          `json:"a"`
-	Event string          `json:"e,omitempty"`
-	TS    int64           `json:"t"` // Unix nanoseconds when the hook ran
-	PID   int             `json:"pid"`
-	P     json.RawMessage `json:"p,omitempty"`
-	S     string          `json:"s,omitempty"`
-	B     string          `json:"b,omitempty"`
-}
-
 // Run is the whole hook fast path. It must never write to stdout or stderr,
 // never block the agent and never fail visibly: every error is swallowed.
 func Run(args []string, stdin io.Reader) {
@@ -51,7 +37,7 @@ func Run(args []string, stdin io.Reader) {
 
 	in, _ := io.ReadAll(io.LimitReader(stdin, MaxPayload))
 	now := time.Now()
-	env := Envelope{ID: model.NewULID(now), Agent: agent, Event: event, TS: now.UnixNano(), PID: os.Getpid()}
+	env := spool.Envelope{ID: model.NewULID(now), Agent: agent, Event: event, TS: now.UnixNano(), PID: os.Getpid()}
 
 	session := ""
 	if json.Valid(in) {
@@ -88,7 +74,7 @@ func Run(args []string, stdin io.Reader) {
 	_ = spool.AppendLine(root, agent, session, line)
 }
 
-func marshalLine(env Envelope) ([]byte, error) {
+func marshalLine(env spool.Envelope) ([]byte, error) {
 	b, err := json.Marshal(env)
 	if err != nil {
 		return nil, err

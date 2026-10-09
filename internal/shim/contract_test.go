@@ -170,7 +170,7 @@ func TestContractConcurrentProcesses(t *testing.T) {
 	sc.Buffer(make([]byte, spool.MaxLine*2), spool.MaxLine*2)
 	seen := map[float64]bool{}
 	for sc.Scan() {
-		var e Envelope
+		var e spool.Envelope
 		if err := json.Unmarshal(sc.Bytes(), &e); err != nil {
 			t.Fatalf("corrupt line: %v", err)
 		}

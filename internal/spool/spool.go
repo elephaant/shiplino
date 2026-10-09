@@ -4,11 +4,26 @@
 package spool
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 )
+
+// Envelope is one spool line: the raw hook payload plus what the shim knows.
+// Exactly one of P (inline JSON payload), S (non-JSON payload as text) or
+// B (path of a blob file, relative to the spool root) is set.
+type Envelope struct {
+	ID    string          `json:"id"`
+	Agent string          `json:"a"`
+	Event string          `json:"e,omitempty"`
+	TS    int64           `json:"t"` // Unix nanoseconds when the hook ran
+	PID   int             `json:"pid"`
+	P     json.RawMessage `json:"p,omitempty"`
+	S     string          `json:"s,omitempty"`
+	B     string          `json:"b,omitempty"`
+}
 
 // MaxLine is the largest line written to a session file. Larger payloads go
 // to a blob file so a single write() stays small enough not to interleave
