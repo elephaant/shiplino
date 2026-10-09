@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // Envelope is one spool line: the raw hook payload plus what the shim knows.
@@ -46,6 +47,24 @@ func Home() string {
 		return ""
 	}
 	return filepath.Join(home, ".shiplino")
+}
+
+// Paused reports whether recording is paused: home/paused exists and,
+// if it holds a Unix timestamp, that time hasn't passed yet.
+func Paused(home string, now time.Time) bool {
+	b, err := os.ReadFile(filepath.Join(home, "paused"))
+	if err != nil {
+		return false
+	}
+	s := strings.TrimSpace(string(b))
+	if s == "" {
+		return true // paused until resumed
+	}
+	until, err := strconv.ParseInt(s, 10, 64)
+	if err != nil {
+		return true
+	}
+	return now.Unix() < until
 }
 
 // Dir returns the spool directory under a Shiplino home.

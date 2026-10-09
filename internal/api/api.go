@@ -41,6 +41,9 @@ type Server struct {
 	hub     *Hub
 	log     *log.Logger
 	version string
+
+	// Status, if set, reports daemon health for /api/v1/status.
+	Status func() any
 }
 
 // New returns a server reading from st and pushing hub updates.
@@ -60,6 +63,7 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("GET /api/v1/sessions/{id}", s.auth(s.getSession))
 	mux.Handle("GET /api/v1/sessions/{id}/events", s.auth(s.listEvents))
 	mux.Handle("GET /api/v1/live", s.auth(s.live))
+	mux.Handle("GET /api/v1/status", s.auth(s.status))
 	return securityHeaders(localHostOnly(mux))
 }
 
@@ -124,6 +128,14 @@ func (s *Server) index(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) health(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "version": s.version})
+}
+
+func (s *Server) status(w http.ResponseWriter, r *http.Request) {
+	out := map[string]any{"version": s.version}
+	if s.Status != nil {
+		out["daemon"] = s.Status()
+	}
+	writeJSON(w, http.StatusOK, out)
 }
 
 func (s *Server) listSessions(w http.ResponseWriter, r *http.Request) {

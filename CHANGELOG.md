@@ -6,6 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Added
+- `shiplino status`, `ls`, `open`, `doctor [--fix]`, `pause [--for 30m]` and `resume`. `doctor` checks the binary, agent hooks, daemon, backlog, parse errors and the last event per agent, and can repair hooks and the service.
 - The daemon runs at login and restarts on crash: systemd user service (XDG autostart fallback) on Linux, LaunchAgent on macOS, Task Scheduler on Windows. `setup` waits until it answers; `uninstall` removes it.
 - `shiplino setup` / `shiplino uninstall`: installs the binary to `~/.shiplino/bin`, connects Claude Code by adding hooks to its user settings (backed up first, order-preserving, idempotent, never touches a file it can't parse exactly), and self-tests the hook.
 - `shiplino hook`: records each agent hook event to an on-disk spool. It prints nothing and always exits 0, so it adds no tokens.
