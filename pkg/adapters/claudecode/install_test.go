@@ -7,13 +7,22 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
 	"github.com/elephaant/shiplino/pkg/adapters/internal/configfile"
 )
 
-const bin = "/home/dev/.shiplino/bin/shiplino"
+// absPath gives a platform-appropriate absolute path for test binaries.
+func absPath(unix string) string {
+	if runtime.GOOS == "windows" {
+		return `C:\Users\dev` + strings.ReplaceAll(unix, "/", `\`) + ".exe"
+	}
+	return unix
+}
+
+var bin = absPath("/home/dev/.shiplino/bin/shiplino")
 
 // userSettings has the user's own hooks and other keys in a deliberate order.
 const userSettings = `{
@@ -98,7 +107,8 @@ func TestInstallIsIdempotentAndUpdatesInPlace(t *testing.T) {
 		t.Fatalf("second install changed the file: %+v %v", res, err)
 	}
 	// A new binary location replaces the old entries instead of adding more.
-	res, _ = Install(path, "/opt/shiplino/shiplino", "2.1.295", backups)
+	other := absPath("/opt/shiplino/shiplino")
+	res, _ = Install(path, other, "2.1.295", backups)
 	if !res.Changed {
 		t.Fatal("binary path change not applied")
 	}
@@ -107,7 +117,7 @@ func TestInstallIsIdempotentAndUpdatesInPlace(t *testing.T) {
 			t.Fatalf("%s has %d entries after reinstall", ev, n)
 		}
 	}
-	if ok, cmd, _ := Installed(path); !ok || cmd != "/opt/shiplino/shiplino" {
+	if ok, cmd, _ := Installed(path); !ok || cmd != other {
 		t.Fatalf("Installed() = %v %q", ok, cmd)
 	}
 }
