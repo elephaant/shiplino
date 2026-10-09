@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.1.0-alpha.1] - 2026-10-10
+
+First alpha: Claude Code support end to end.
+
 ### Added
 - Releases for macOS, Linux and Windows (amd64, arm64) built by GoReleaser with the web app embedded; checksums signed keylessly with Sigstore. One-line installers (`install.sh`, `install.ps1`) verify the checksum (and the signature when cosign is available) before installing.
 - Commits are linked to the agent sessions that produced them (exact when the agent ran `git commit` itself, likely when it edited the committed files, shared when several did), and a card in Review moves to Done when its work is committed. Repos are only checked when their reflog changes.
@@ -24,3 +28,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Local API on `127.0.0.1:4777` with live WebSocket updates and a placeholder session page.
 - User and contributor docs in `docs/`.
 - Repository skeleton: Go module, package layout, web/SDK/plugin folders, event JSON Schema, CI and community files.
+
+[Unreleased]: https://github.com/elephaant/shiplino/compare/v0.1.0-alpha.1...HEAD
+[0.1.0-alpha.1]: https://github.com/elephaant/shiplino/releases/tag/v0.1.0-alpha.1
