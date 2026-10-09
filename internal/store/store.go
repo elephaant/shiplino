@@ -292,6 +292,33 @@ func (s *Store) Events(ctx context.Context, sessionID, after string, limit int) 
 	return out, rows.Err()
 }
 
+// ProcessTotals returns, per agent process, the highest running cost total
+// the agent has reported (cost-report usage events), so the engine can keep
+// splitting process totals between sessions after a restart.
+func (s *Store) ProcessTotals(ctx context.Context) (map[string]float64, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT json_extract(body, '$.data.process'), MAX(json_extract(body, '$.data.total_cost_usd'))
+		FROM events
+		WHERE kind = 'usage' AND json_extract(body, '$.data.report') = 1
+		GROUP BY 1`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[string]float64{}
+	for rows.Next() {
+		var proc sql.NullString
+		var total sql.NullFloat64
+		if err := rows.Scan(&proc, &total); err != nil {
+			return nil, err
+		}
+		if proc.Valid && total.Valid {
+			out[proc.String] = total.Float64
+		}
+	}
+	return out, rows.Err()
+}
+
 func nullable(s string) any {
 	if s == "" {
 		return nil

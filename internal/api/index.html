@@ -49,7 +49,7 @@
 <header><b>shiplino</b><span id="summary"></span><span id="conn">connecting…</span></header>
 <main>
   <table>
-    <thead><tr><th>Session</th><th>Status</th><th>Agent</th><th>Tools</th><th>Files</th><th>Tokens in/out</th><th>Last activity</th></tr></thead>
+    <thead><tr><th>Session</th><th>Status</th><th>Agent</th><th>Tools</th><th>Files</th><th>Tokens in/out</th><th>Cost</th><th>Last activity</th></tr></thead>
     <tbody id="rows"></tbody>
   </table>
   <div id="empty" class="empty">Start any agent. It'll appear here within a second.</div>
@@ -108,6 +108,9 @@ function addRow(s, isSub) {
   cell(tr, String(s.tool_calls), "num");
   cell(tr, `${(s.files || []).length}  +${s.lines_added} −${s.lines_removed}`, "num");
   cell(tr, `${s.input_tokens} / ${s.output_tokens}`, "num");
+  const cost = isSub ? s.tree_cost_usd : s.best_cost_usd;
+  const c = cell(tr, cost ? "$" + cost.toFixed(2) : "—", "num");
+  if (!isSub && s.cost_source) c.title = s.cost_source === "reported" ? "Reported by the agent (includes background calls)" : "Computed from transcript tokens × list prices";
   cell(tr, ago(s.last_event_at), "num");
   rows.appendChild(tr);
 }

@@ -70,11 +70,16 @@ func TestTranscriptTokensAndCost(t *testing.T) {
 
 	s := e.session(sid)
 	// msg_A appears on two lines but must count once; msg_X is unpriced.
-	if s.InputTokens != 2+5+10 || s.OutputTokens != 191+420+10 || s.CacheReadTokens != 23147+41579 || s.CacheWriteTokens != 18432+3000 {
+	if s.InputTokens != 2+5+10+1000 || s.OutputTokens != 191+420+10+100 || s.CacheReadTokens != 23147+41579 || s.CacheWriteTokens != 18432+3000 {
 		t.Fatalf("tokens: in=%d out=%d read=%d write=%d", s.InputTokens, s.OutputTokens, s.CacheReadTokens, s.CacheWriteTokens)
 	}
-	if math.Abs(s.CostUSD-(0.1006174+0.037735800)) > 1e-9 {
+	if math.Abs(s.CostUSD-(0.1006174+0.0377358+0.0432)) > 1e-9 {
 		t.Fatalf("cost = %.9f", s.CostUSD)
+	}
+	// Claude Code reported $0.25 for the process (it includes a background
+	// call the transcript never shows): that is the figure to display.
+	if s.ReportedCostUSD != 0.25 || s.BestCostUSD != 0.25 || s.CostSource != "reported" {
+		t.Fatalf("reported=%v best=%v source=%q tree=%v", s.ReportedCostUSD, s.BestCostUSD, s.CostSource, s.TreeCostUSD)
 	}
 	if s.AgentVersion != "2.1.290" || s.Model != "claude-opus-5-5" {
 		t.Fatalf("version/model: %q %q", s.AgentVersion, s.Model)
@@ -91,7 +96,7 @@ func TestTranscriptTokensAndCost(t *testing.T) {
 	e.poll()
 	e.restart()
 	e.poll()
-	if s := e.session(sid); s.InputTokens != 117 || s.OutputTokens != 671 {
+	if s := e.session(sid); s.InputTokens != 1117 || s.OutputTokens != 771 || s.ReportedCostUSD != 0.25 {
 		t.Fatalf("after append+restart: in=%d out=%d", s.InputTokens, s.OutputTokens)
 	}
 }

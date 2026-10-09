@@ -54,7 +54,17 @@ type Session struct {
 	OutputTokens     int64   `json:"output_tokens"`
 	CacheReadTokens  int64   `json:"cache_read_tokens"`
 	CacheWriteTokens int64   `json:"cache_write_tokens"`
-	CostUSD          float64 `json:"cost_usd"`
+	CostUSD          float64 `json:"cost_usd"` // computed from this actor's own responses
+
+	// TreeCostUSD is CostUSD plus every descendant subagent's CostUSD.
+	TreeCostUSD float64 `json:"tree_cost_usd"`
+	// ReportedCostUSD is the agent's own cost accounting attributed to this
+	// session (root sessions only). It includes calls the transcript never
+	// shows, so when present it is the better figure.
+	ReportedCostUSD float64 `json:"reported_cost_usd,omitempty"`
+	// BestCostUSD and CostSource are what to display: "reported" or "computed".
+	BestCostUSD float64 `json:"best_cost_usd"`
+	CostSource  string  `json:"cost_source,omitempty"`
 
 	WaitingMS      int64     `json:"waiting_ms"`
 	WaitingSince   time.Time `json:"waiting_since,omitzero"`
@@ -68,13 +78,20 @@ func (s *Session) FilesChanged() int { return len(s.Files) }
 // the daemon feeds it from a single goroutine.
 type Engine struct {
 	sessions map[string]*Session
+	// processTotals is the last running total seen per agent process, so a
+	// process that spans several sessions is split between them.
+	processTotals map[string]float64
 }
 
-// New returns an engine primed with previously stored sessions.
-func New(existing []*Session) *Engine {
-	e := &Engine{sessions: make(map[string]*Session, len(existing))}
+// New returns an engine primed with previously stored sessions and the
+// last reported total per agent process (nil if none).
+func New(existing []*Session, processTotals map[string]float64) *Engine {
+	e := &Engine{sessions: make(map[string]*Session, len(existing)), processTotals: map[string]float64{}}
 	for _, s := range existing {
 		e.sessions[s.ID] = s
+	}
+	for k, v := range processTotals {
+		e.processTotals[k] = v
 	}
 	return e
 }
@@ -175,12 +192,33 @@ func (e *Engine) Apply(ev model.Event) []*Session {
 		changed = append(changed, child)
 
 	case model.KindUsage:
+		if report, _ := ev.Data["report"].(bool); report {
+			proc := str(ev.Data, "process")
+			total, _ := ev.Data["total_cost_usd"].(float64)
+			if d := total - e.processTotals[proc]; d > 0 {
+				s.ReportedCostUSD += d
+				e.processTotals[proc] = total
+			}
+			s.updateBestCost()
+			break
+		}
 		s.InputTokens += int64(num(ev.Data, "input_tokens"))
 		s.OutputTokens += int64(num(ev.Data, "output_tokens"))
 		s.CacheReadTokens += int64(num(ev.Data, "cache_read_tokens"))
 		s.CacheWriteTokens += int64(num(ev.Data, "cache_write_tokens"))
-		if c, ok := ev.Data["cost_usd"].(float64); ok {
+		if c, ok := ev.Data["cost_usd"].(float64); ok && c > 0 {
 			s.CostUSD += c
+			// Roll the cost up the actor tree.
+			for a := s; a != nil; a = e.sessions[a.ParentID] {
+				a.TreeCostUSD += c
+				a.updateBestCost()
+				if a != s {
+					changed = append(changed, a)
+				}
+				if a.ParentID == "" {
+					break
+				}
+			}
 		}
 		setIfEmpty(&s.Model, str(ev.Data, "model"))
 
@@ -246,6 +284,26 @@ func (e *Engine) endWaiting(s *Session, at time.Time) {
 		s.WaitingMS += d.Milliseconds()
 	}
 	s.WaitingSince = time.Time{}
+}
+
+// updateBestCost picks the figure to display. The agent's own report
+// covers background calls the transcript lacks, so it wins when larger.
+func (s *Session) updateBestCost() {
+	switch {
+	case s.ReportedCostUSD > 0 && s.ReportedCostUSD >= s.TreeCostUSD:
+		s.BestCostUSD, s.CostSource = s.ReportedCostUSD, "reported"
+	case s.TreeCostUSD > 0:
+		s.BestCostUSD, s.CostSource = s.TreeCostUSD, "computed"
+	}
+}
+
+// ProcessTotals returns the last reported total per agent process.
+func (e *Engine) ProcessTotals() map[string]float64 {
+	out := make(map[string]float64, len(e.processTotals))
+	for k, v := range e.processTotals {
+		out[k] = v
+	}
+	return out
 }
 
 // TitleFromPrompt makes a card title from a prompt without an LLM: the
