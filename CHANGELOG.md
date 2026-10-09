@@ -7,10 +7,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 - OpenAI Codex support. `shiplino setup` adds hooks to `~/.codex/hooks.json` for all 12 Codex hook events (backed up, idempotent, your own hooks kept); Codex asks once to trust them under `/hooks`. Sessions from the Codex desktop app, which run without hooks, are found in `~/.codex/sessions` and read from their rollout files: prompts, turns, commands with exit codes, file changes with Codex's own line counts, MCP calls, model changes and per-response token usage (Codex's `token_usage_record`). When a session has hooks, its activity comes from the hooks and its rollout only adds usage, so nothing is counted twice.
+- Cursor support (IDE agent and `cursor-agent`). `shiplino setup` adds observe-only hooks to `~/.cursor/hooks.json`: never permission hooks, never `failClosed`. It records prompts, turns, tool calls with durations, shell commands with exit codes, file edits, MCP calls, subagents (nested under their parent) and compaction. Token usage is recorded when Cursor includes it in `afterAgentResponse`.
+- Cursor also runs Claude Code and Codex hooks. Those copies are recognized and skipped, so a Cursor session is never recorded twice.
 - `doctor` and `uninstall` cover every connected agent.
 
 ### Changed
 - A session's model is the one that answered its latest response (sessions can switch models).
+- An event from before a session ended, read late (e.g. a subagent's own hook file), still counts but no longer reopens the session.
 
 ## [0.1.0-alpha.1] - 2026-10-10
 

@@ -162,3 +162,13 @@ func TestRegistered(t *testing.T) {
 		t.Fatal("claude-code adapter not registered")
 	}
 }
+
+// Cursor runs Claude Code hooks with its own payloads; its native hooks
+// record those sessions, so these are skipped.
+func TestCursorRunPayloadIsSkipped(t *testing.T) {
+	raw := `{"session_id":"c1","conversation_id":"c1","hook_event_name":"PostToolUse","tool_name":"Shell","cursor_version":"2026.09.02"}`
+	evs, err := Adapter{}.ParseHook([]byte(raw), adapters.HookMeta{EnvelopeID: "e", ReceivedAt: time.Now()})
+	if err != nil || len(evs) != 0 {
+		t.Fatalf("got %v %v", evs, err)
+	}
+}

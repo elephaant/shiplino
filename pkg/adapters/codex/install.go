@@ -11,7 +11,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
-	"strings"
 	"time"
 
 	"github.com/elephaant/shiplino/pkg/adapters/internal/configfile"
@@ -65,7 +64,7 @@ func Install(hooksPath, binPath, backupDir string) (hookfile.Result, error) {
 	if !filepath.IsAbs(binPath) {
 		return hookfile.Result{}, fmt.Errorf("binary path must be absolute: %s", binPath)
 	}
-	cmd := fmt.Sprintf("%s hook --agent %s", shellQuote(binPath), Name)
+	cmd := fmt.Sprintf("%s hook --agent %s", hookfile.ShellQuote(binPath), Name)
 	return hookfile.Install(hooksPath, backupDir, Name, Events, func(event string) *configfile.Object {
 		h := &configfile.Object{Members: []configfile.Member{
 			{Key: "type", Value: "command"},
@@ -94,11 +93,3 @@ func Installed(hooksPath string) (bool, string, error) {
 // TrustNote is shown after installing: Codex asks once before running
 // new non-managed hooks.
 const TrustNote = "Codex asks once before running new hooks: open Codex, run /hooks and trust the Shiplino hook"
-
-// shellQuote quotes a path for the shell Codex runs hooks with.
-func shellQuote(p string) string {
-	if !strings.ContainsAny(p, " \"'$`\\") || filepath.Separator == '\\' {
-		return `"` + p + `"`
-	}
-	return "'" + strings.ReplaceAll(p, "'", `'\''`) + "'"
-}

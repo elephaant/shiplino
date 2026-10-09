@@ -41,6 +41,7 @@ type Adapter struct{}
 func (Adapter) Name() string { return Name }
 
 type payload struct {
+	CursorVersion   string          `json:"cursor_version"`
 	SessionID       string          `json:"session_id"`
 	TurnID          string          `json:"turn_id"`
 	TranscriptPath  string          `json:"transcript_path"`
@@ -67,6 +68,11 @@ func (Adapter) ParseHook(raw []byte, meta adapters.HookMeta) ([]model.Event, err
 	var p payload
 	if err := json.Unmarshal(raw, &p); err != nil {
 		return nil, fmt.Errorf("codex: decode hook payload: %w", err)
+	}
+	// Cursor also runs Claude Code and Codex hooks, with its own payloads.
+	// Cursor's native hooks record those sessions, so skip them here.
+	if p.CursorVersion != "" {
+		return nil, nil
 	}
 	if p.SessionID == "" {
 		return nil, fmt.Errorf("codex: hook payload has no session_id")

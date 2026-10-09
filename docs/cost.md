@@ -58,6 +58,10 @@ For billing, the source of truth is your provider's console or usage and cost AP
 - Summed this way, the totals match Codex's own running `thread_token_usage` for the thread. The exception is a thread you rewound: Codex's total then drops the abandoned branch, but those calls were made, so Shiplino keeps them.
 - **Cost:** the bundled price table has no OpenAI models yet, so Codex sessions show tokens with no dollar figure (`cost_source: unpriced`). On a ChatGPT plan, Codex isn't billed per token anyway.
 
+## Cursor
+
+Cursor's hooks carry no documented token counts. When its `afterAgentResponse` hook includes them (interactive sessions), Shiplino records them and prices them from the bundled table. Otherwise a Cursor session shows activity but no tokens or cost. Cursor's own usage dashboard is the source for what you were charged.
+
 ## How others do it
 
 - **Transcript-only tools** sum transcript usage × a price table. They're simple and per-response, but they miss background calls and fees, as measured above.

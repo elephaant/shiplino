@@ -18,6 +18,7 @@ import (
 
 	"github.com/elephaant/shiplino/pkg/adapters/claudecode"
 	"github.com/elephaant/shiplino/pkg/adapters/codex"
+	"github.com/elephaant/shiplino/pkg/adapters/cursor"
 )
 
 // builtBinary compiles the real shiplino binary once per test run.
@@ -192,5 +193,21 @@ func TestSetupCodex(t *testing.T) {
 	uninstall(context.Background(), e, nil)
 	if ok, _, _ := codex.Installed(hooks); ok {
 		t.Fatalf("codex hooks still present:\n%s", out)
+	}
+}
+
+func TestSetupCursor(t *testing.T) {
+	e, out := testEnv(t)
+	os.MkdirAll(filepath.Join(e.userHome, ".cursor"), 0o700)
+	if code := setup(context.Background(), e, []string{"--no-service"}); code != 0 {
+		t.Fatalf("setup exit %d:\n%s", code, out)
+	}
+	hooks := filepath.Join(e.userHome, ".cursor", "hooks.json")
+	if ok, cmd, _ := cursor.Installed(hooks); !ok || !strings.Contains(cmd, e.binPath()) {
+		t.Fatalf("installed=%v cmd=%q\n%s", ok, cmd, out)
+	}
+	uninstall(context.Background(), e, nil)
+	if ok, _, _ := cursor.Installed(hooks); ok {
+		t.Fatal("cursor hooks still present")
 	}
 }

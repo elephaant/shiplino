@@ -198,22 +198,6 @@ func TestInstall(t *testing.T) {
 	}
 }
 
-func TestShellQuote(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("unix quoting")
-	}
-	cases := map[string]string{
-		"/home/u/.shiplino/bin/shiplino": `"/home/u/.shiplino/bin/shiplino"`,
-		"/home/a b/shiplino":             `'/home/a b/shiplino'`,
-		"/home/o'neil/shiplino":          `'/home/o'\''neil/shiplino'`,
-	}
-	for in, want := range cases {
-		if got := shellQuote(in); got != want {
-			t.Errorf("shellQuote(%q) = %s, want %s", in, got, want)
-		}
-	}
-}
-
 func TestRegistered(t *testing.T) {
 	a, ok := adapters.Get(Name)
 	if !ok {

@@ -9,6 +9,7 @@ import (
 
 	"github.com/elephaant/shiplino/pkg/adapters/claudecode"
 	"github.com/elephaant/shiplino/pkg/adapters/codex"
+	"github.com/elephaant/shiplino/pkg/adapters/cursor"
 )
 
 // agentHooks is one agent `setup`, `uninstall` and `doctor` manage.
@@ -59,6 +60,22 @@ var agents = []agentHooks{
 		},
 		installed: codex.Installed,
 		note:      codex.TrustNote,
+	},
+	{
+		name: "Cursor", id: cursor.Name,
+		detect: func(ctx context.Context, home string) (bool, string, string) {
+			d := cursor.Detect(ctx, home)
+			return d.Installed, d.Version, d.HooksPath
+		},
+		install: func(path, bin, _, backup string) (bool, int, error) {
+			r, err := cursor.Install(path, bin, backup)
+			return r.Changed, len(r.Events), err
+		},
+		uninstall: func(path, backup string) (bool, error) {
+			r, err := cursor.Uninstall(path, backup)
+			return r.Changed, err
+		},
+		installed: cursor.Installed,
 	},
 }
 
