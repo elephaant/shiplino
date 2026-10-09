@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"sync"
 )
 
 //go:embed prices.json
@@ -68,8 +69,9 @@ type Usage struct {
 // Prompt is every input token of the request.
 func (u Usage) Prompt() int64 { return u.Input + u.CacheRead + u.CacheWrite5m + u.CacheWrite1h }
 
-// Default is the table bundled with this release.
-var Default = mustParse(bundled)
+// Default returns the table bundled with this release, parsed on first
+// use (the hook binary never pays for it).
+var Default = sync.OnceValue(func() *Table { return mustParse(bundled) })
 
 func mustParse(b []byte) *Table {
 	t, err := Parse(b)

@@ -26,6 +26,7 @@ import (
 	"github.com/elephaant/shiplino/pkg/adapters"
 	"github.com/elephaant/shiplino/pkg/engine"
 	"github.com/elephaant/shiplino/pkg/model"
+	"github.com/elephaant/shiplino/pkg/redact"
 
 	_ "github.com/elephaant/shiplino/pkg/adapters/claudecode" // registers the adapter
 )
@@ -74,6 +75,8 @@ type Daemon struct {
 	stats       Stats
 	transcripts map[string]string // transcript path → agent name
 	projects    *resolver
+	redactor    *redact.Redactor
+	level       redact.Level
 
 	// OnChange, if set, is called after each commit with the sessions that changed.
 	OnChange func([]*engine.Session)
@@ -84,7 +87,8 @@ func New(ctx context.Context, home string, st *store.Store, logger *log.Logger) 
 	if logger == nil {
 		logger = log.New(io.Discard, "", 0)
 	}
-	d := &Daemon{home: home, spoolRoot: spool.Dir(home), st: st, log: logger, reapAfter: defaultReapAfter, projects: newResolver()}
+	d := &Daemon{home: home, spoolRoot: spool.Dir(home), st: st, log: logger, reapAfter: defaultReapAfter, projects: newResolver(),
+		redactor: redact.Default, level: redact.Standard}
 	if u, err := user.Current(); err == nil {
 		d.user = u.Username
 	}
@@ -92,6 +96,14 @@ func New(ctx context.Context, home string, st *store.Store, logger *log.Logger) 
 		return nil, err
 	}
 	return d, nil
+}
+
+// SetPrivacy sets the capture level and redactor applied to every event
+// before it is stored.
+func (d *Daemon) SetPrivacy(level redact.Level, r *redact.Redactor) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.level, d.redactor = level, r
 }
 
 // reload resets in-memory state from the database.
@@ -492,6 +504,7 @@ func (d *Daemon) commit(ctx context.Context, events []model.Event, cur store.Cur
 	changed := map[string]*engine.Session{}
 	var stored int64
 	for _, e := range events {
+		d.redactor.Event(&e, d.level) // before anything touches disk
 		d.projects.annotate(&e)
 		isNew, err := tx.InsertEvent(ctx, e)
 		if err != nil {

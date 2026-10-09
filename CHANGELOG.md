@@ -6,6 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Added
+- Privacy: secrets are redacted before anything is stored (cloud and VCS tokens, private keys, JWTs, bearer headers, URL passwords, secret `KEY=value` pairs and flags, high-entropy strings in commands, custom patterns). Capture levels `minimal` / `standard` / `full` in `~/.shiplino/config.toml`; at `minimal` the hook strips content before it reaches disk.
 - Project board in the web app: kanban with drag to pin (agent-driven cards can't be dropped into Running or Waiting), nested subagents, live now-doing lines, PR badges, sprint selector, filters, new backlog cards, and a quick-look drawer.
 - Session page: stats, a timeline of every prompt, tool call, file edit, command and subagent (in-progress calls included), files, commands with exit codes, and per-response token usage; copy the resume command.
 - Web app (Next.js static export, embedded in the binary): app shell with project switcher and live running/waiting strip, light/dark/system theme, and the all-projects overview with a Needs-you queue. `make ui` builds it; without Node the daemon serves a fallback page.

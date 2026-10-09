@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -49,6 +50,9 @@ func Run(args []string, stdin io.Reader) {
 		session = firstNonEmpty(probe.SessionID, probe.ConversationID)
 		if env.Event == "" {
 			env.Event = probe.HookEventName
+		}
+		if _, err := os.Stat(filepath.Join(home, spool.MinimalMarker)); err == nil {
+			in = stripContent(in)
 		}
 		env.P = in
 	} else if len(in) > 0 {
@@ -111,4 +115,43 @@ func firstNonEmpty(s ...string) string {
 		}
 	}
 	return ""
+}
+
+// contentKeys hold prompts, outputs and messages: dropped at minimal
+// capture level before the payload is written to disk.
+var contentKeys = []string{"prompt", "tool_response", "last_assistant_message", "custom_instructions",
+	"compact_summary", "message", "title", "error", "error_details", "session_title"}
+
+// keepInput are tool_input fields allowed at minimal (file paths only).
+var keepInput = map[string]bool{"file_path": true, "notebook_path": true, "path": true}
+
+// stripContent removes content fields from a JSON object payload. On any
+// parse problem it returns {} rather than risk writing content.
+func stripContent(in []byte) []byte {
+	var m map[string]json.RawMessage
+	if json.Unmarshal(in, &m) != nil {
+		return []byte("{}")
+	}
+	for _, k := range contentKeys {
+		delete(m, k)
+	}
+	if raw, ok := m["tool_input"]; ok {
+		var ti map[string]json.RawMessage
+		if json.Unmarshal(raw, &ti) == nil {
+			for k := range ti {
+				if !keepInput[k] {
+					delete(ti, k)
+				}
+			}
+			b, _ := json.Marshal(ti)
+			m["tool_input"] = b
+		} else {
+			delete(m, "tool_input")
+		}
+	}
+	out, err := json.Marshal(m)
+	if err != nil {
+		return []byte("{}")
+	}
+	return out
 }

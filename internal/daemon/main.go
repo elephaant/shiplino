@@ -12,8 +12,10 @@ import (
 	"path/filepath"
 
 	"github.com/elephaant/shiplino/internal/api"
+	"github.com/elephaant/shiplino/internal/config"
 	"github.com/elephaant/shiplino/internal/spool"
 	"github.com/elephaant/shiplino/internal/store"
+	"github.com/elephaant/shiplino/pkg/redact"
 )
 
 // Main runs the daemon in the foreground until ctx is cancelled.
@@ -40,6 +42,19 @@ func Main(ctx context.Context, version string) error {
 	if err != nil {
 		return err
 	}
+	cfg, err := config.Load(home)
+	if err != nil {
+		return err
+	}
+	d.SetPrivacy(cfg.Level(), cfg.Redactor())
+	// The hook strips content itself at minimal, so prompts never reach
+	// the spool on disk; it checks for this marker (no config parsing).
+	marker := filepath.Join(home, spool.MinimalMarker)
+	if cfg.Level() == redact.Minimal {
+		_ = os.WriteFile(marker, nil, 0o600)
+	} else {
+		_ = os.Remove(marker)
+	}
 	token, err := api.LoadToken(home)
 	if err != nil {
 		return err
@@ -63,7 +78,7 @@ func Main(ctx context.Context, version string) error {
 		cancel() // if the API dies, stop the daemon too
 	}()
 
-	logger.Printf("daemon started: http://localhost:%d (home %s)", ln.Addr().(*net.TCPAddr).Port, home)
+	logger.Printf("daemon started: http://localhost:%d (home %s, capture level %s)", ln.Addr().(*net.TCPAddr).Port, home, cfg.Level())
 	err = errors.Join(d.Run(ctx), <-apiErr)
 	s := d.Stats()
 	logger.Printf("daemon stopped: %d lines, %d events, %d unknown, %d bad", s.Lines, s.Events, s.Unknown, s.Bad)
