@@ -5,13 +5,9 @@
 package main
 
 import (
-	"context"
-	"fmt"
 	"os"
-	"os/signal"
-	"syscall"
 
-	"github.com/elephaant/shiplino/internal/daemon"
+	"github.com/elephaant/shiplino/internal/cli"
 	"github.com/elephaant/shiplino/internal/shim"
 )
 
@@ -24,44 +20,5 @@ func main() {
 		shim.Run(os.Args[2:], os.Stdin)
 		os.Exit(0)
 	}
-
-	if len(os.Args) < 2 {
-		usage()
-		return
-	}
-	switch os.Args[1] {
-	case "version", "--version", "-v":
-		fmt.Println("shiplino", version)
-	case "help", "--help", "-h":
-		usage()
-	case "daemon":
-		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-		defer stop()
-		if err := daemon.Main(ctx, version); err != nil {
-			fmt.Fprintln(os.Stderr, "shiplino daemon:", err)
-			os.Exit(1)
-		}
-	default:
-		fmt.Fprintf(os.Stderr, "shiplino: %q is not implemented yet (pre-alpha)\n", os.Args[1])
-		os.Exit(1)
-	}
-}
-
-func usage() {
-	fmt.Print(`shiplino: flight recorder and kanban board for AI coding agents (pre-alpha)
-
-Usage:
-  shiplino <command>
-
-Commands (planned):
-  setup       detect agents, register hooks, start the daemon
-  daemon      run the background service in the foreground
-  doctor      check and fix every agent connection
-  status      show running agents per project
-  open        open the board in your browser
-  projects    list projects
-  sprint      show the current sprint
-  uninstall   remove Shiplino and its hooks
-  version     print the version
-`)
+	os.Exit(cli.Run(os.Args[1:], os.Stdout, os.Stderr, version))
 }
