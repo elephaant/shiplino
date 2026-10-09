@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -76,5 +77,22 @@ func TestWatchIgnoresNonRepos(t *testing.T) {
 	w.Watch(t.TempDir())
 	if w.Watching() != 0 {
 		t.Fatal("non-repo tracked")
+	}
+}
+
+func TestAgentRootThroughSymlink(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlinks need privileges on Windows")
+	}
+	real := t.TempDir()
+	os.MkdirAll(filepath.Join(real, "repo", "sub"), 0o755)
+	link := filepath.Join(t.TempDir(), "alias")
+	if err := os.Symlink(real, link); err != nil {
+		t.Skip(err)
+	}
+	// Git would report the real path; the agent works under the alias.
+	got := agentRoot(filepath.Join(link, "repo", "sub"), filepath.Join(real, "repo"))
+	if want := filepath.Join(link, "repo"); got != want {
+		t.Fatalf("agentRoot = %s, want %s", got, want)
 	}
 }

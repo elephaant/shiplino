@@ -45,11 +45,11 @@ func NewWatcher() *Watcher { return &Watcher{worktrees: map[string]*worktree{}} 
 // Watch starts tracking the worktree that contains dir (no-op if dir
 // isn't in a repo or is already tracked).
 func (w *Watcher) Watch(dir string) {
-	root := w.Git.run(dir, "rev-parse", "--show-toplevel")
-	if root == "" {
+	top := w.Git.run(dir, "rev-parse", "--show-toplevel")
+	if top == "" {
 		return
 	}
-	root = filepath.Clean(root)
+	root := agentRoot(dir, filepath.FromSlash(top))
 	if _, ok := w.worktrees[root]; ok {
 		return
 	}
@@ -133,4 +133,29 @@ func (w *Watcher) commits(root, from, to string, since time.Time) []Commit {
 		out[i], out[j] = out[j], out[i]
 	}
 	return out
+}
+
+// agentRoot expresses git's worktree root in the same form as the path
+// the agent used (dir). Git reports canonical paths (symlinks resolved,
+// e.g. /private/var on macOS; forward slashes and long names on
+// Windows), while agents report the paths they work with. Committed
+// files are joined to this root, so they match the session's own paths.
+func agentRoot(dir, top string) string {
+	dir = filepath.Clean(dir)
+	canonDir, err1 := filepath.EvalSymlinks(dir)
+	canonTop, err2 := filepath.EvalSymlinks(top)
+	if err1 != nil || err2 != nil {
+		return filepath.Clean(top)
+	}
+	rel, err := filepath.Rel(canonTop, canonDir)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return filepath.Clean(top)
+	}
+	if rel == "." {
+		return dir
+	}
+	if r := strings.TrimSuffix(dir, string(filepath.Separator)+rel); r != dir {
+		return r
+	}
+	return filepath.Clean(top)
 }
