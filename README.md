@@ -76,7 +76,7 @@ docs/               user and contributor docs
 
 ## Development
 
-Requirements: Go 1.21+ (Node 20+ once the web app lands).
+Requirements: Go 1.24+ (Node 20+ once the web app lands).
 
 ```bash
 make build     # builds ./bin/shiplino
