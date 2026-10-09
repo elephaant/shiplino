@@ -22,7 +22,7 @@ func ev(sec int, kind model.Kind, data map[string]any) model.Event {
 }
 
 func TestSessionLifecycle(t *testing.T) {
-	e := New(nil)
+	e := New(nil, nil)
 	steps := []struct {
 		ev         model.Event
 		wantStatus Status
@@ -65,7 +65,7 @@ func TestSessionLifecycle(t *testing.T) {
 }
 
 func TestTurnEndWithoutEditsIsDone(t *testing.T) {
-	e := New(nil)
+	e := New(nil, nil)
 	e.Apply(ev(0, model.KindTurnStart, map[string]any{"prompt": "what does this repo do?"}))
 	e.Apply(ev(1, model.KindTurnEnd, map[string]any{"status": "ok"}))
 	if s := e.Get(sid); s.Status != StatusDone {
@@ -74,7 +74,7 @@ func TestTurnEndWithoutEditsIsDone(t *testing.T) {
 }
 
 func TestTurnEndErrorFails(t *testing.T) {
-	e := New(nil)
+	e := New(nil, nil)
 	e.Apply(ev(0, model.KindTurnStart, nil))
 	e.Apply(ev(1, model.KindTurnEnd, map[string]any{"status": "error", "error": "rate_limit"}))
 	if s := e.Get(sid); s.Status != StatusFailed || s.NowDoing != "rate_limit" {
@@ -88,7 +88,7 @@ func TestTurnEndErrorFails(t *testing.T) {
 }
 
 func TestSubagents(t *testing.T) {
-	e := New(nil)
+	e := New(nil, nil)
 	child := sid + "/sub:a1"
 	changed := e.Apply(ev(0, model.KindSubagentStart, map[string]any{"child_session_id": child, "agent_type": "reviewer"}))
 	if len(changed) != 2 {
@@ -115,7 +115,7 @@ func TestSubagents(t *testing.T) {
 }
 
 func TestUsageAccumulates(t *testing.T) {
-	e := New(nil)
+	e := New(nil, nil)
 	e.Apply(ev(0, model.KindUsage, map[string]any{"model": "m", "input_tokens": 100.0, "output_tokens": 20.0, "cache_read_tokens": 1000.0, "cost_usd": 0.01}))
 	e.Apply(ev(1, model.KindUsage, map[string]any{"input_tokens": int64(50), "output_tokens": 5, "cost_usd": 0.005}))
 	s := e.Get(sid)
@@ -126,7 +126,7 @@ func TestUsageAccumulates(t *testing.T) {
 
 func TestPrimedEngineContinues(t *testing.T) {
 	prev := &Session{ID: sid, Agent: "claude-code", RootID: sid, Status: StatusWaiting, WaitingSince: t0, Turns: 3}
-	e := New([]*Session{prev})
+	e := New([]*Session{prev}, nil)
 	e.Apply(ev(4, model.KindToolEnd, map[string]any{"ok": true}))
 	if s := e.Get(sid); s.Status != StatusRunning || s.WaitingMS != 4000 || s.Turns != 3 {
 		t.Fatalf("resumed: %+v", s)
@@ -154,4 +154,48 @@ func repeat(n int) string {
 		b[i] = 'x'
 	}
 	return string(b)
+}
+
+func TestCostRollupAndReports(t *testing.T) {
+	e := New(nil, nil)
+	child := sid + "/sub:a1"
+	e.Apply(ev(0, model.KindSubagentStart, map[string]any{"child_session_id": child}))
+	e.Apply(ev(1, model.KindUsage, map[string]any{"cost_usd": 1.0}))
+	sub := ev(2, model.KindUsage, map[string]any{"cost_usd": 0.5})
+	sub.ActorID, sub.ParentActor = child, sid
+	changed := e.Apply(sub)
+	if len(changed) != 2 {
+		t.Fatalf("subagent cost should also change the parent, got %d", len(changed))
+	}
+	root := e.Get(sid)
+	if root.CostUSD != 1.0 || root.TreeCostUSD != 1.5 || root.BestCostUSD != 1.5 || root.CostSource != "computed" {
+		t.Fatalf("root: own=%v tree=%v best=%v (%s)", root.CostUSD, root.TreeCostUSD, root.BestCostUSD, root.CostSource)
+	}
+
+	report := func(sec int, session, proc string, total float64) {
+		r := ev(sec, model.KindUsage, map[string]any{"report": true, "process": proc, "total_cost_usd": total})
+		r.SessionID, r.ActorID = session, session
+		e.Apply(r)
+	}
+	report(3, sid, "p1", 1.8) // the agent saw more than the transcript: 1.8 > 1.5
+	if root.ReportedCostUSD != 1.8 || root.BestCostUSD != 1.8 || root.CostSource != "reported" {
+		t.Fatalf("after report: %+v", root)
+	}
+	report(4, sid, "p1", 1.8) // a repeated total adds nothing
+	// The same process moves on to another session (e.g. after /clear):
+	// only the increase belongs to it.
+	report(5, "claude-code:s2", "p1", 2.5)
+	if s2 := e.Get("claude-code:s2"); s2.ReportedCostUSD < 0.699 || s2.ReportedCostUSD > 0.701 {
+		t.Fatalf("second session got %v, want 0.7", s2.ReportedCostUSD)
+	}
+	if root.ReportedCostUSD != 1.8 {
+		t.Fatalf("first session changed: %v", root.ReportedCostUSD)
+	}
+	// Totals survive a restart through ProcessTotals.
+	e2 := New(nil, e.ProcessTotals())
+	r := ev(6, model.KindUsage, map[string]any{"report": true, "process": "p1", "total_cost_usd": 2.5})
+	e2.Apply(r)
+	if got := e2.Get(sid).ReportedCostUSD; got != 0 {
+		t.Fatalf("replayed total re-counted after restart: %v", got)
+	}
 }

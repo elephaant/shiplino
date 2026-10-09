@@ -34,12 +34,22 @@ type Model struct {
 	ID string `json:"id"`
 	Rates
 	LongContext *LongContext `json:"long_context,omitempty"`
+	// FastMultiplier scales every rate in fast mode (0 = no fast mode).
+	FastMultiplier float64 `json:"fast_multiplier,omitempty"`
+	// USGeoMultiplier scales every rate for US-only inference (0 = n/a).
+	USGeoMultiplier float64 `json:"us_geo_multiplier,omitempty"`
+}
+
+// Fees are per-use charges on top of tokens.
+type Fees struct {
+	WebSearchPer1K float64 `json:"web_search_per_1k"`
 }
 
 // Table is a price table.
 type Table struct {
 	Checked string  `json:"checked"`
 	Source  string  `json:"source"`
+	Fees    Fees    `json:"fees"`
 	Models  []Model `json:"models"`
 }
 
@@ -50,6 +60,9 @@ type Usage struct {
 	CacheRead    int64
 	CacheWrite5m int64
 	CacheWrite1h int64
+	WebSearches  int64  // server-side web searches ($ per 1,000)
+	Speed        string // "fast" for fast mode; anything else is standard
+	InferenceGeo string // "us" for US-only inference; anything else is global
 }
 
 // Prompt is every input token of the request.
@@ -114,10 +127,17 @@ func (t *Table) Cost(model string, u Usage) (float64, bool) {
 	if lc := m.LongContext; lc != nil && u.Prompt() > lc.OverPromptTokens {
 		r = lc.Rates
 	}
+	mult := 1.0
+	if u.Speed == "fast" && m.FastMultiplier > 0 {
+		mult *= m.FastMultiplier
+	}
+	if u.InferenceGeo == "us" && m.USGeoMultiplier > 0 {
+		mult *= m.USGeoMultiplier
+	}
 	usd := float64(u.Input)*r.Input +
 		float64(u.Output)*r.Output +
 		float64(u.CacheRead)*r.CacheRead +
 		float64(u.CacheWrite5m)*r.CacheWrite5m +
 		float64(u.CacheWrite1h)*r.CacheWrite1h
-	return usd / 1e6, true
+	return usd/1e6*mult + float64(u.WebSearches)*t.Fees.WebSearchPer1K/1000, true
 }

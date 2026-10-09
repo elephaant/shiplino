@@ -42,8 +42,18 @@ type transcriptLine struct {
 				Ephemeral5m int64 `json:"ephemeral_5m_input_tokens"`
 				Ephemeral1h int64 `json:"ephemeral_1h_input_tokens"`
 			} `json:"cache_creation"`
+			ServerToolUse *struct {
+				WebSearchRequests int64 `json:"web_search_requests"`
+			} `json:"server_tool_use"`
+			Speed        string `json:"speed"`
+			InferenceGeo string `json:"inference_geo"`
 		} `json:"usage"`
 	} `json:"message"`
+
+	// cost-state lines: Claude Code's own running total for the process.
+	TotalCostUSD *float64                  `json:"totalCostUSD"`
+	StartTime    int64                     `json:"startTime"`
+	ModelUsage   map[string]map[string]any `json:"modelUsage"`
 }
 
 // ParseTranscriptLine implements adapters.TranscriptParser.
@@ -51,6 +61,9 @@ func (Adapter) ParseTranscriptLine(line []byte, meta adapters.TranscriptMeta) ([
 	var l transcriptLine
 	if err := json.Unmarshal(line, &l); err != nil {
 		return nil, fmt.Errorf("claude-code transcript: %w", err)
+	}
+	if l.Type == "cost-state" {
+		return costReport(l, meta)
 	}
 	u := l.Message.Usage
 	if l.Type != "assistant" || u == nil || l.Message.ID == "" || l.SessionID == "" {
@@ -60,7 +73,13 @@ func (Adapter) ParseTranscriptLine(line []byte, meta adapters.TranscriptMeta) ([
 		return nil, nil
 	}
 
-	usage := pricing.Usage{Input: u.InputTokens, Output: u.OutputTokens, CacheRead: u.CacheReadTokens, CacheWrite5m: u.CacheCreationTokens}
+	usage := pricing.Usage{
+		Input: u.InputTokens, Output: u.OutputTokens, CacheRead: u.CacheReadTokens, CacheWrite5m: u.CacheCreationTokens,
+		Speed: u.Speed, InferenceGeo: u.InferenceGeo,
+	}
+	if u.ServerToolUse != nil {
+		usage.WebSearches = u.ServerToolUse.WebSearchRequests
+	}
 	if cc := u.CacheCreation; cc != nil && cc.Ephemeral5m+cc.Ephemeral1h == u.CacheCreationTokens {
 		usage.CacheWrite5m, usage.CacheWrite1h = cc.Ephemeral5m, cc.Ephemeral1h
 	}
@@ -74,6 +93,15 @@ func (Adapter) ParseTranscriptLine(line []byte, meta adapters.TranscriptMeta) ([
 	}
 	if usage.CacheWrite1h > 0 {
 		data["cache_write_1h_tokens"] = usage.CacheWrite1h
+	}
+	if usage.WebSearches > 0 {
+		data["web_searches"] = usage.WebSearches
+	}
+	if usage.Speed == "fast" {
+		data["speed"] = "fast"
+	}
+	if usage.InferenceGeo == "us" {
+		data["inference_geo"] = "us"
 	}
 	if cost, ok := pricing.Default.Cost(l.Message.Model, usage); ok {
 		data["cost_usd"] = cost
@@ -107,6 +135,43 @@ func (Adapter) ParseTranscriptLine(line []byte, meta adapters.TranscriptMeta) ([
 	}
 	if l.CWD != "" {
 		e.Project = &model.Project{CWD: l.CWD}
+	}
+	if meta.Ref != "" {
+		e.Raw = &model.RawRef{Ref: meta.Ref}
+	}
+	return []model.Event{e}, nil
+}
+
+// costReport turns a cost-state line into a usage event marked as an agent
+// report. Claude Code writes these periodically with the process's running
+// total, which also covers calls that never appear as transcript lines
+// (background model calls, web search fees). The engine attributes each
+// increase of a process's total to the session the line was written in.
+func costReport(l transcriptLine, meta adapters.TranscriptMeta) ([]model.Event, error) {
+	if l.TotalCostUSD == nil || l.StartTime == 0 || l.SessionID == "" {
+		return nil, nil
+	}
+	ts := meta.ReceivedAt
+	if t, err := time.Parse(time.RFC3339Nano, l.Timestamp); err == nil {
+		ts = t
+	}
+	process := fmt.Sprintf("%s:%d", Name, l.StartTime)
+	total := *l.TotalCostUSD
+	sid := model.SessionID(Name, l.SessionID)
+	data := map[string]any{
+		"report":         true,
+		"cost_source":    "reported",
+		"process":        process,
+		"total_cost_usd": total,
+	}
+	if len(l.ModelUsage) > 0 {
+		data["model_usage"] = l.ModelUsage
+	}
+	e := model.Event{
+		ID: model.NewULID(ts), V: model.SchemaVersion, TS: ts.UTC(), ReceivedAt: meta.ReceivedAt.UTC(),
+		Kind: model.KindUsage, Agent: model.Agent{Name: Name, Version: l.Version}, Collector: model.CollectorTranscript,
+		User: meta.User, SessionID: sid, ActorID: sid, Data: data,
+		DedupKey: fmt.Sprintf("%s:cost-state:%d:%.9f", sid, l.StartTime, total),
 	}
 	if meta.Ref != "" {
 		e.Raw = &model.RawRef{Ref: meta.Ref}

@@ -67,13 +67,15 @@ func TestTranscriptUsage(t *testing.T) {
 	for _, e := range evs {
 		keys[e.DedupKey]++
 	}
-	if keys["claude-code:sess-0001:usage:msg_A"] != 2 || len(keys) != 4 {
+	if keys["claude-code:sess-0001:usage:msg_A"] != 2 || keys["claude-code:sess-0001:cost-state:1791367200000:0.250000000"] != 2 || len(keys) != 6 {
 		t.Fatalf("dedup keys: %v", keys)
 	}
 
 	byMsg := map[string]model.Event{}
 	for _, e := range evs {
-		byMsg[e.Data["message_id"].(string)] = e
+		if id, ok := e.Data["message_id"].(string); ok {
+			byMsg[id] = e
+		}
 	}
 	b := byMsg["msg_B"]
 	// Opus 5.5: 5 in × $4 + 420 out × $20 + 41579 read × $0.20 + 1000 5m × $5 + 2000 1h × $8, per MTok.
@@ -91,6 +93,20 @@ func TestTranscriptUsage(t *testing.T) {
 	}
 	if x := byMsg["msg_X"]; x.Data["cost_source"] != "unpriced" || x.Data["cost_usd"] != nil {
 		t.Fatalf("unknown model: %v", x.Data)
+	}
+	// Fast mode (2x) and US inference (1.1x) stack; 3 web searches add $0.03.
+	w := byMsg["msg_W"]
+	if want := (1000*4+100*20)/1e6*2.2 + 0.03; math.Abs(w.Data["cost_usd"].(float64)-want) > 1e-12 {
+		t.Fatalf("msg_W cost = %v, want %v", w.Data["cost_usd"], want)
+	}
+	var report model.Event
+	for _, e := range evs {
+		if e.Data["report"] == true {
+			report = e
+		}
+	}
+	if report.Data["process"] != "claude-code:1791367200000" || report.Data["total_cost_usd"] != 0.25 || report.Data["cost_source"] != "reported" {
+		t.Fatalf("cost report: %v", report.Data)
 	}
 }
 

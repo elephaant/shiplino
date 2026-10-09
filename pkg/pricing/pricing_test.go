@@ -66,6 +66,39 @@ func TestHaikuLongContextTier(t *testing.T) {
 	}
 }
 
+func TestModifiersAndFees(t *testing.T) {
+	base := Usage{Input: 1_000_000, Output: 1_000_000, CacheRead: 1_000_000}
+	std, _ := Default.Cost("claude-opus-5-5", base)
+	if !near(std, 4+20+0.2) {
+		t.Fatalf("standard = %v", std)
+	}
+	fast := base
+	fast.Speed = "fast" // Opus 5.5 fast mode: $8/$40, cache multipliers on top
+	if got, _ := Default.Cost("claude-opus-5-5", fast); !near(got, 2*std) {
+		t.Fatalf("fast = %v, want %v", got, 2*std)
+	}
+	us := base
+	us.InferenceGeo = "us"
+	if got, _ := Default.Cost("claude-opus-5-5", us); !near(got, 1.1*std) {
+		t.Fatalf("us = %v, want %v", got, 1.1*std)
+	}
+	both := fast
+	both.InferenceGeo = "us" // modifiers stack
+	if got, _ := Default.Cost("claude-opus-5-5", both); !near(got, 2.2*std) {
+		t.Fatalf("fast+us = %v", got)
+	}
+	// Models without fast mode / geo pricing ignore the flags.
+	old := Usage{Input: 1_000_000, Speed: "fast", InferenceGeo: "us"}
+	if got, _ := Default.Cost("claude-haiku-4-5", old); !near(got, 1) {
+		t.Fatalf("haiku 4.5 with flags = %v", got)
+	}
+	// Web search: $10 per 1,000, on top of tokens.
+	ws := Usage{WebSearches: 142}
+	if got, _ := Default.Cost("claude-haiku-4-5", ws); !near(got, 1.42) {
+		t.Fatalf("web searches = %v", got)
+	}
+}
+
 func TestBundledTableIsSane(t *testing.T) {
 	if Default.Checked == "" || Default.Source == "" || len(Default.Models) < 10 {
 		t.Fatalf("table: %+v", Default)

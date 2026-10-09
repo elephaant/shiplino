@@ -103,7 +103,11 @@ func (d *Daemon) reload(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	d.eng = engine.New(sessions)
+	totals, err := d.st.ProcessTotals(ctx)
+	if err != nil {
+		return err
+	}
+	d.eng = engine.New(sessions, totals)
 	d.offsets = offsets
 	d.transcripts = map[string]string{}
 	recent := time.Now().Add(-transcriptRecent)
