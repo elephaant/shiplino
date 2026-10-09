@@ -3,6 +3,7 @@
 
 "use client";
 
+import { cn } from "cn";
 import {
   FileText,
   GitBranch,
@@ -17,7 +18,6 @@ import {
 import { AgentDot } from "@/components/common/agent-dot";
 import type { BoardCard } from "@/lib/api";
 import { formatCost, formatDuration } from "@/lib/format";
-import { cn } from "@/lib/utils";
 
 const statusDot: Record<string, string> = {
   running: "bg-status-running",

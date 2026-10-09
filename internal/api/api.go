@@ -79,6 +79,8 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("GET /api/v1/sessions/{id}/events", s.auth(s.listEvents))
 	mux.Handle("GET /api/v1/live", s.auth(s.live))
 	mux.Handle("GET /api/v1/status", s.auth(s.status))
+	mux.Handle("GET /api/v1/search", s.auth(s.search))
+	mux.Handle("GET /api/v1/export", s.auth(s.export))
 	return securityHeaders(localHostOnly(s.devCORS(mux)))
 }
 

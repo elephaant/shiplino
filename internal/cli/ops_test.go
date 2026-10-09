@@ -19,6 +19,7 @@ import (
 	"github.com/elephaant/shiplino/internal/spool"
 	"github.com/elephaant/shiplino/internal/store"
 	"github.com/elephaant/shiplino/pkg/engine"
+	"github.com/elephaant/shiplino/pkg/model"
 )
 
 // liveDaemon runs a real API server with a few sessions, writing the port
@@ -40,6 +41,8 @@ func liveDaemon(t *testing.T, e *env) {
 	} {
 		tx.PutSession(context.Background(), s)
 	}
+	tx.InsertEvent(context.Background(), model.Event{ID: model.NewULID(now), V: 1, TS: now, Kind: model.KindShellExec, Agent: model.Agent{Name: "claude-code"},
+		Collector: model.CollectorHook, SessionID: "claude-code:a", DedupKey: "k1", Data: map[string]any{"command": "npm run migrate:latest"}})
 	tx.Commit()
 	token, _ := api.LoadToken(e.home)
 	srv := api.New(st, api.NewHub(), token, "test", log.New(io.Discard, "", 0))
@@ -135,5 +138,33 @@ func TestDoctor(t *testing.T) {
 	out.Reset()
 	if code := doctor(context.Background(), e, []string{"--fix"}); code != 0 || !strings.Contains(out.String(), "fixed") {
 		t.Fatalf("doctor --fix:\n%s", out)
+	}
+}
+
+func TestSearchAndExport(t *testing.T) {
+	e, out := testEnv(t)
+	liveDaemon(t, e)
+	if code := search(context.Background(), e, []string{"migrate"}); code != 0 || !strings.Contains(out.String(), "«migrate»") || !strings.Contains(out.String(), "Fix login") {
+		t.Fatalf("search %d:\n%s", code, out)
+	}
+	out.Reset()
+	search(context.Background(), e, []string{"zzz"})
+	if !strings.Contains(out.String(), "No matches") {
+		t.Fatalf("no match:\n%s", out)
+	}
+	if code := search(context.Background(), e, nil); code != 2 {
+		t.Fatalf("empty query: %d", code)
+	}
+
+	out.Reset()
+	if code := export(context.Background(), e, nil); code != 0 || !strings.HasPrefix(out.String(), "id,parent_id,agent") || strings.Count(out.String(), "\n") != 4 {
+		t.Fatalf("export csv %d:\n%s", code, out)
+	}
+	file := filepath.Join(t.TempDir(), "s.json")
+	if code := export(context.Background(), e, []string{"--out", file, "--since", "1d"}); code != 0 {
+		t.Fatalf("export json: %s", out)
+	}
+	if b, _ := os.ReadFile(file); !strings.HasPrefix(string(b), "[") || strings.Contains(string(b), "Old task") {
+		t.Fatalf("json file (since 1d): %s", b)
 	}
 }

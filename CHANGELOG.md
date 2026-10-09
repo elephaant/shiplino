@@ -10,10 +10,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Cursor support (IDE agent and `cursor-agent`). `shiplino setup` adds observe-only hooks to `~/.cursor/hooks.json`: never permission hooks, never `failClosed`. It records prompts, turns, tool calls with durations, shell commands with exit codes, file edits, MCP calls, subagents (nested under their parent) and compaction. Token usage is recorded when Cursor includes it in `afterAgentResponse`.
 - Cursor also runs Claude Code and Codex hooks. Those copies are recognized and skipped, so a Cursor session is never recorded twice.
 - `doctor` and `uninstall` cover every connected agent.
+- Search: prompts, commands, file paths, session titles and commit messages are indexed (SQLite FTS5, existing data included) and searchable with ⌘K / Ctrl K in the web app, `shiplino search <words>` and `GET /api/v1/search`. Every word must match, as a prefix.
+- Export: `shiplino export [--format csv|json] [--project] [--since 7d] [--out file]`, `GET /api/v1/export`, and "Export" in the ⌘K menu. CSV cells that a spreadsheet would run as formulas are escaped.
+- `doctor` explains degraded modes and how to fix them: the board running on another port because 4777 was busy, and file notifications being unavailable.
 
 ### Changed
 - The web app's layout and default theme credit their inspiration, next-shadcn-admin-dashboard by Mohammed Arham Khan, in the README and `NOTICE`.
 - A session's model is the one that answered its latest response (sessions can switch models).
+- If the system's file-notification limit is used up by other programs (Linux inotify), the daemon keeps working by polling twice a second instead of stopping, and `doctor` shows the fix.
 - An event from before a session ended, read late (e.g. a subagent's own hook file), still counts but no longer reopens the session.
 
 ## [0.1.0-alpha.1] - 2026-10-10

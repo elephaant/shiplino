@@ -51,7 +51,7 @@ func setup(t *testing.T) *fixture {
 	tx.PutSession(ctx, root)
 	tx.PutSession(ctx, child)
 	tx.InsertEvent(ctx, model.Event{ID: model.NewULID(now), V: 1, TS: now, Kind: model.KindTurnStart, Agent: model.Agent{Name: "claude-code"},
-		Collector: model.CollectorHook, SessionID: "claude-code:s1", DedupKey: "k1"})
+		Collector: model.CollectorHook, SessionID: "claude-code:s1", DedupKey: "k1", Data: map[string]any{"prompt": "fix the login redirect"}})
 	if err := tx.Commit(); err != nil {
 		t.Fatal(err)
 	}
