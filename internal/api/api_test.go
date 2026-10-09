@@ -175,6 +175,10 @@ func TestSessionsAndEvents(t *testing.T) {
 	if resp.StatusCode != 200 || json.Unmarshal(body, &evs) != nil || len(evs.Events) != 1 {
 		t.Fatalf("events: %d %s", resp.StatusCode, body)
 	}
+	resp, body = f.get(t, "/api/v1/projects", bearer)
+	if resp.StatusCode != 200 || !strings.Contains(string(body), `"projects":[]`) {
+		t.Fatalf("projects: %d %s", resp.StatusCode, body)
+	}
 	if resp, _ := f.get(t, "/api/v1/sessions?limit=0", bearer); resp.StatusCode != 400 {
 		t.Fatalf("bad limit: %d", resp.StatusCode)
 	}

@@ -60,6 +60,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /{$}", s.index)
 	mux.HandleFunc("GET /api/v1/health", s.health)
 	mux.Handle("GET /api/v1/sessions", s.auth(s.listSessions))
+	mux.Handle("GET /api/v1/projects", s.auth(s.listProjects))
 	mux.Handle("GET /api/v1/sessions/{id}", s.auth(s.getSession))
 	mux.Handle("GET /api/v1/sessions/{id}/events", s.auth(s.listEvents))
 	mux.Handle("GET /api/v1/live", s.auth(s.live))
@@ -148,7 +149,7 @@ func (s *Server) listSessions(w http.ResponseWriter, r *http.Request) {
 		}
 		limit = n
 	}
-	list, err := s.st.Sessions(r.Context(), limit)
+	list, err := s.st.SessionsIn(r.Context(), r.URL.Query().Get("project"), limit)
 	if err != nil {
 		s.internal(w, err)
 		return
@@ -157,6 +158,18 @@ func (s *Server) listSessions(w http.ResponseWriter, r *http.Request) {
 		list = []*engine.Session{} // encode as [] rather than null
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"sessions": list})
+}
+
+func (s *Server) listProjects(w http.ResponseWriter, r *http.Request) {
+	list, err := s.st.Projects(r.Context())
+	if err != nil {
+		s.internal(w, err)
+		return
+	}
+	if list == nil {
+		list = []store.ProjectSummary{}
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"projects": list})
 }
 
 func (s *Server) getSession(w http.ResponseWriter, r *http.Request) {

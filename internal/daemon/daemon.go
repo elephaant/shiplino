@@ -73,6 +73,7 @@ type Daemon struct {
 	offsets     map[string]int64
 	stats       Stats
 	transcripts map[string]string // transcript path → agent name
+	projects    *resolver
 
 	// OnChange, if set, is called after each commit with the sessions that changed.
 	OnChange func([]*engine.Session)
@@ -83,7 +84,7 @@ func New(ctx context.Context, home string, st *store.Store, logger *log.Logger) 
 	if logger == nil {
 		logger = log.New(io.Discard, "", 0)
 	}
-	d := &Daemon{home: home, spoolRoot: spool.Dir(home), st: st, log: logger, reapAfter: defaultReapAfter}
+	d := &Daemon{home: home, spoolRoot: spool.Dir(home), st: st, log: logger, reapAfter: defaultReapAfter, projects: newResolver()}
 	if u, err := user.Current(); err == nil {
 		d.user = u.Username
 	}
@@ -491,6 +492,7 @@ func (d *Daemon) commit(ctx context.Context, events []model.Event, cur store.Cur
 	changed := map[string]*engine.Session{}
 	var stored int64
 	for _, e := range events {
+		d.projects.annotate(&e)
 		isNew, err := tx.InsertEvent(ctx, e)
 		if err != nil {
 			return err
@@ -510,6 +512,11 @@ func (d *Daemon) commit(ctx context.Context, events []model.Event, cur store.Cur
 	for _, s := range changed {
 		if err := tx.PutSession(ctx, s); err != nil {
 			return err
+		}
+		if p, ok := d.projects.byID[s.ProjectID]; ok && s.ParentID == "" {
+			if err := tx.PutProject(ctx, p, s.LastEventAt); err != nil {
+				return err
+			}
 		}
 		list = append(list, s)
 	}
