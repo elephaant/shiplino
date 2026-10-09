@@ -49,6 +49,10 @@ func Home() string {
 	return filepath.Join(home, ".shiplino")
 }
 
+// MinimalMarker is created in the Shiplino home when the capture level is
+// minimal; the hook then strips content before writing to the spool.
+const MinimalMarker = "capture-minimal"
+
 // Paused reports whether recording is paused: home/paused exists and,
 // if it holds a Unix timestamp, that time hasn't passed yet.
 func Paused(home string, now time.Time) bool {

@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/elephaant/shiplino/internal/api"
+	"github.com/elephaant/shiplino/internal/config"
 	"github.com/elephaant/shiplino/internal/service"
 	"github.com/elephaant/shiplino/internal/spool"
 	"github.com/elephaant/shiplino/pkg/adapters/claudecode"
@@ -60,6 +61,10 @@ func setup(ctx context.Context, e *env, args []string) int {
 	bin := e.binPath()
 	if err := installBinary(e.self, bin); err != nil {
 		fmt.Fprintf(e.errOut, "cannot install the binary to %s: %v\n", bin, err)
+		return 1
+	}
+	if err := config.WriteDefault(e.home); err != nil {
+		fmt.Fprintf(e.errOut, "cannot create %s: %v\n", config.Path(e.home), err)
 		return 1
 	}
 	if _, err := api.LoadToken(e.home); err != nil {

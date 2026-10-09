@@ -112,3 +112,26 @@ func TestParseFlags(t *testing.T) {
 		t.Fatalf("got %q %q", a, e)
 	}
 }
+
+func TestMinimalStripsContentBeforeDisk(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("SHIPLINO_HOME", home)
+	os.WriteFile(filepath.Join(home, spool.MinimalMarker), nil, 0o600)
+	payload := `{"session_id":"m1","hook_event_name":"PostToolUse","prompt":"my secret plan","tool_name":"Bash",` +
+		`"tool_input":{"command":"cat notes.txt","file_path":"/app/x.go"},"tool_response":{"stdout":"private output"},"tool_use_id":"t1"}`
+	Run([]string{"--agent", "claude-code"}, strings.NewReader(payload))
+	raw, err := os.ReadFile(spool.SessionFile(spool.Dir(home), "claude-code", "m1"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, leaked := range []string{"secret plan", "cat notes.txt", "private output"} {
+		if strings.Contains(string(raw), leaked) {
+			t.Errorf("%q reached the spool at minimal level", leaked)
+		}
+	}
+	for _, kept := range []string{`"session_id":"m1"`, `"tool_name":"Bash"`, `"file_path":"/app/x.go"`, `"tool_use_id":"t1"`} {
+		if !strings.Contains(string(raw), strings.ReplaceAll(kept, `"`, `\"`)) && !strings.Contains(string(raw), kept) {
+			t.Errorf("%s missing: %s", kept, raw)
+		}
+	}
+}

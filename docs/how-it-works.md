@@ -33,6 +33,9 @@ Every repo becomes a project with its own board. Many agents and subagents can r
 ## Privacy
 
 - Everything stays on your machine. Nothing is uploaded unless you turn on sync or an integration.
-- Secrets (API keys, tokens, passwords, private keys) are redacted before anything is stored.
-- Capture levels (`minimal`, `standard`, `full`) control how much is recorded, e.g. no prompts at all with `minimal`.
+- Secrets (API keys, tokens, passwords, private keys, `KEY=value` credentials, high-entropy strings in commands) are redacted **before anything is stored**, and replaced with markers like `«redacted:github_token»` so the timeline still reads well. Add your own patterns under `[redaction] extra_patterns` in `~/.shiplino/config.toml`.
+- Capture levels (`capture_level` in `~/.shiplino/config.toml`) control how much is recorded:
+  - `minimal`: timing, tool names, file paths, exit codes, tokens and cost. No prompts, commands, messages or outputs; the hook strips them before writing to disk.
+  - `standard` (default): also prompts (truncated), commands and short summaries.
+  - `full`: everything Shiplino captures.
 - The local API listens on `127.0.0.1` only and requires a token.

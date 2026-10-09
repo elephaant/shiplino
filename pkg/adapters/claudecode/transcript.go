@@ -110,7 +110,7 @@ func (Adapter) ParseTranscriptLine(line []byte, meta adapters.TranscriptMeta) ([
 	if usage.InferenceGeo == "us" {
 		data["inference_geo"] = "us"
 	}
-	if cost, ok := pricing.Default.Cost(l.Message.Model, usage); ok {
+	if cost, ok := pricing.Default().Cost(l.Message.Model, usage); ok {
 		data["cost_usd"] = cost
 		data["cost_source"] = "computed"
 	} else {
