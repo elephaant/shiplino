@@ -11,6 +11,7 @@ import {
   Copy,
   FileText,
   GitBranch,
+  GitCommitHorizontal,
   GitPullRequest,
   Hand,
   MessageSquare,
@@ -100,6 +101,12 @@ function describe(
         : { icon: CircleCheck, text: str(d, "assistant_summary") || "Turn finished", tone: "ok" };
     case "git.pr":
       return { icon: GitPullRequest, text: `Pull request #${num(d, "number")} ${str(d, "action")}` };
+    case "git.commit":
+      return {
+        icon: GitCommitHorizontal,
+        text: `Commit ${str(d, "sha").slice(0, 7)} ${str(d, "message")} (${str(d, "attribution")})`,
+        tone: "ok",
+      };
     case "git.push":
       return { icon: GitBranch, text: `Pushed ${str(d, "branch")}` };
     case "session.end":

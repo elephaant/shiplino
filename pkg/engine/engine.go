@@ -71,18 +71,20 @@ type Session struct {
 
 	Links []Link `json:"links,omitempty"` // PRs and pushes the agent reported
 
-	WaitingMS      int64     `json:"waiting_ms"`
-	WaitingSince   time.Time `json:"waiting_since,omitzero"`
-	TranscriptPath string    `json:"transcript_path,omitempty"`
+	LastGitCommitAt time.Time `json:"last_git_commit_at,omitzero"` // agent ran `git commit` itself
+	WaitingMS       int64     `json:"waiting_ms"`
+	WaitingSince    time.Time `json:"waiting_since,omitzero"`
+	TranscriptPath  string    `json:"transcript_path,omitempty"`
 }
 
 // Link is an external object the session produced, e.g. a pull request.
 type Link struct {
-	Kind   string `json:"kind"` // "pr" | "push"
-	URL    string `json:"url,omitempty"`
-	Number int    `json:"number,omitempty"`
-	Ref    string `json:"ref,omitempty"` // branch for pushes
-	Action string `json:"action,omitempty"`
+	Kind    string `json:"kind"` // "pr" | "push" | "commit"
+	URL     string `json:"url,omitempty"`
+	Number  int    `json:"number,omitempty"`
+	Ref     string `json:"ref,omitempty"` // branch for pushes, sha for commits
+	Action  string `json:"action,omitempty"`
+	Message string `json:"message,omitempty"` // commit subject
 }
 
 // setTitle applies the precedence rule: the agent's own title always
@@ -262,6 +264,18 @@ func (e *Engine) Apply(ev model.Event) []*Session {
 		s.setTitle(str(ev.Data, "title"), "agent")
 		setIfEmpty(&s.Model, str(ev.Data, "model"))
 
+	case model.KindShellExec:
+		if code, ok := ev.Data["exit_code"]; ok && num(ev.Data, "exit_code") == 0 && code != nil && isGitCommit(str(ev.Data, "command")) {
+			s.LastGitCommitAt = ev.TS
+		}
+
+	case model.KindGitCommit:
+		s.addLink(Link{Kind: "commit", Ref: str(ev.Data, "sha"), Message: str(ev.Data, "message"), Action: str(ev.Data, "attribution")})
+		// Committed work is done (the plan's default rule: Review → Done on commit).
+		if s.Status == StatusReview {
+			s.Status = StatusDone
+		}
+
 	case model.KindGitPR:
 		s.addLink(Link{Kind: "pr", URL: str(ev.Data, "url"), Number: num(ev.Data, "number"), Action: str(ev.Data, "action")})
 
@@ -334,6 +348,37 @@ func (e *Engine) endWaiting(s *Session, at time.Time) {
 		s.WaitingMS += d.Milliseconds()
 	}
 	s.WaitingSince = time.Time{}
+}
+
+// isGitCommit reports whether a shell command creates a commit: `git`
+// must be in command position (start, or after && || ; | ( and the like),
+// so `echo git commit` doesn't count.
+func isGitCommit(cmd string) bool {
+	for _, sep := range []string{"&&", "||", ";", "|", "(", ")", "\n"} {
+		cmd = strings.ReplaceAll(cmd, sep, " \x00 ")
+	}
+	f := strings.Fields(cmd)
+	for i := 0; i+1 < len(f); i++ {
+		start := i == 0 || f[i-1] == "\x00" || f[i-1] == "then" || f[i-1] == "do" || f[i-1] == "sudo"
+		if start && (f[i] == "git" || strings.HasSuffix(f[i], "/git")) && hasCommitVerb(f[i+1:]) {
+			return true
+		}
+	}
+	return false
+}
+
+// hasCommitVerb skips git's global options (-C dir, -c k=v) to the verb.
+func hasCommitVerb(args []string) bool {
+	for i := 0; i < len(args); i++ {
+		switch a := args[i]; {
+		case a == "-C" || a == "-c":
+			i++
+		case strings.HasPrefix(a, "-"):
+		default:
+			return a == "commit"
+		}
+	}
+	return false
 }
 
 // addLink records a link once (by kind + URL/ref), keeping the latest action.

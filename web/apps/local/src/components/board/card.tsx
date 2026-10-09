@@ -3,7 +3,17 @@
 
 "use client";
 
-import { FileText, GitBranch, GitPullRequest, Pin, RotateCcw, Search, SquarePen, Terminal } from "lucide-react";
+import {
+  FileText,
+  GitBranch,
+  GitCommitHorizontal,
+  GitPullRequest,
+  Pin,
+  RotateCcw,
+  Search,
+  SquarePen,
+  Terminal,
+} from "lucide-react";
 import { AgentDot } from "@/components/common/agent-dot";
 import type { BoardCard } from "@/lib/api";
 import { formatCost, formatDuration } from "@/lib/format";
@@ -33,6 +43,7 @@ export function CardView({ card, dragging, onOpen }: { card: BoardCard; dragging
   const shown =
     subs.length > 3 ? subs.filter((s) => s.status === "running" || s.status === "waiting").slice(0, 3) : subs;
   const prs = (card.links ?? []).filter((l) => l.kind === "pr");
+  const commits = (card.links ?? []).filter((l) => l.kind === "commit");
   return (
     // The whole card is the control: the drag library won't start a drag
     // inside a <button>, so the card can't be one and can't contain one.
@@ -129,6 +140,15 @@ export function CardView({ card, dragging, onOpen }: { card: BoardCard; dragging
               <GitPullRequest className="size-3" aria-hidden />#{p.number}
             </a>
           ))}
+          {commits.length > 0 && (
+            <span
+              className="flex items-center gap-0.5"
+              title={commits.map((c) => `${c.ref?.slice(0, 7)} ${c.message ?? ""}`).join("\n")}
+            >
+              <GitCommitHorizontal className="size-3" aria-hidden />
+              {commits.length}
+            </span>
+          )}
           <span className="ml-auto flex items-center gap-1">
             {card.rolled_over_from ? (
               <span title={`Rolled over from sprint ${card.rolled_over_from}`}>

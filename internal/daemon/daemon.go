@@ -21,6 +21,7 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 
+	"github.com/elephaant/shiplino/internal/gitwatch"
 	"github.com/elephaant/shiplino/internal/spool"
 	"github.com/elephaant/shiplino/internal/store"
 	"github.com/elephaant/shiplino/pkg/adapters"
@@ -77,6 +78,7 @@ type Daemon struct {
 	projects    *resolver
 	redactor    *redact.Redactor
 	level       redact.Level
+	git         *gitwatch.Watcher
 
 	// OnChange, if set, is called after each commit with the sessions that changed.
 	OnChange func([]*engine.Session)
@@ -88,7 +90,7 @@ func New(ctx context.Context, home string, st *store.Store, logger *log.Logger) 
 		logger = log.New(io.Discard, "", 0)
 	}
 	d := &Daemon{home: home, spoolRoot: spool.Dir(home), st: st, log: logger, reapAfter: defaultReapAfter, projects: newResolver(),
-		redactor: redact.Default, level: redact.Standard}
+		redactor: redact.Default, level: redact.Standard, git: gitwatch.NewWatcher()}
 	if u, err := user.Current(); err == nil {
 		d.user = u.Username
 	}
@@ -127,6 +129,10 @@ func (d *Daemon) reload(ctx context.Context) error {
 	for _, s := range sessions {
 		if s.TranscriptPath != "" && s.LastEventAt.After(recent) {
 			d.addTranscript(s.TranscriptPath, s.Agent)
+		}
+		// Keep linking commits for sessions active before a restart.
+		if s.ParentID == "" && s.CWD != "" && s.LastEventAt.After(recent) && d.git != nil {
+			d.git.Watch(s.CWD)
 		}
 	}
 	return nil
@@ -260,6 +266,9 @@ func (d *Daemon) Poll(ctx context.Context) error {
 		if err := d.maybeReap(ctx, path, src); err != nil {
 			errs = append(errs, fmt.Errorf("reap %s: %w", src, err))
 		}
+	}
+	if err := d.checkCommits(ctx); err != nil {
+		errs = append(errs, fmt.Errorf("git: %w", err))
 	}
 	// Transcripts are read-only: tailed from the saved offset, never deleted.
 	for path, agent := range d.transcripts {
@@ -506,6 +515,9 @@ func (d *Daemon) commit(ctx context.Context, events []model.Event, cur store.Cur
 	for _, e := range events {
 		d.redactor.Event(&e, d.level) // before anything touches disk
 		d.projects.annotate(&e)
+		if e.Project != nil && e.Project.CWD != "" && e.Project.RepoRoot != "" && (e.Kind == model.KindSessionStart || e.Kind == model.KindTurnStart) {
+			d.git.Watch(e.Project.CWD)
+		}
 		isNew, err := tx.InsertEvent(ctx, e)
 		if err != nil {
 			return err
@@ -533,13 +545,17 @@ func (d *Daemon) commit(ctx context.Context, events []model.Event, cur store.Cur
 		}
 		list = append(list, s)
 	}
-	if err := tx.PutCursor(ctx, cur); err != nil {
-		return err
+	if cur.Source != "" {
+		if err := tx.PutCursor(ctx, cur); err != nil {
+			return err
+		}
 	}
 	if err := tx.Commit(); err != nil {
 		return err
 	}
-	d.offsets[cur.Source] = cur.Offset
+	if cur.Source != "" {
+		d.offsets[cur.Source] = cur.Offset
+	}
 	d.stats.Events += stored
 	if d.OnChange != nil && len(list) > 0 {
 		d.OnChange(list)
