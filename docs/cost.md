@@ -52,6 +52,12 @@ Details that matter:
 
 For billing, the source of truth is your provider's console or usage and cost API.
 
+## Codex
+
+- **Tokens** come from Codex's own `token_usage_record` lines in its rollout files, one per API response. Shiplino counts each `response_id` once. OpenAI includes cached tokens in `input_tokens`, so Shiplino stores the uncached part as input and the cached part as cache reads.
+- Summed this way, the totals match Codex's own running `thread_token_usage` for the thread. The exception is a thread you rewound: Codex's total then drops the abandoned branch, but those calls were made, so Shiplino keeps them.
+- **Cost:** the bundled price table has no OpenAI models yet, so Codex sessions show tokens with no dollar figure (`cost_source: unpriced`). On a ChatGPT plan, Codex isn't billed per token anyway.
+
 ## How others do it
 
 - **Transcript-only tools** sum transcript usage × a price table. They're simple and per-response, but they miss background calls and fees, as measured above.

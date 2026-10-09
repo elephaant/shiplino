@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/elephaant/shiplino/pkg/adapters/internal/configfile"
+	"github.com/elephaant/shiplino/pkg/adapters/internal/hookfile"
 )
 
 // absPath gives a platform-appropriate absolute path for test binaries.
@@ -57,9 +58,9 @@ func countOurs(t *testing.T, path string) map[string]int {
 	out := map[string]int{}
 	hooks, _ := root.Get("hooks")
 	for _, m := range hooks.(*configfile.Object).Members {
-		for _, g := range asList(m.Value) {
-			for _, h := range asList(field(g, "hooks")) {
-				if isOurs(h) {
+		for _, g := range hookfile.AsList(m.Value) {
+			for _, h := range hookfile.AsList(hookfile.Field(g, "hooks")) {
+				if hookfile.IsOurs(h, Name) {
 					out[m.Key]++
 				}
 			}
@@ -130,7 +131,7 @@ func TestUninstallRestoresUserContent(t *testing.T) {
 		t.Fatalf("%+v %v", res, err)
 	}
 	b, _ := os.ReadFile(path)
-	if !sameJSON(b, []byte(userSettings)) {
+	if !hookfile.SameJSON(b, []byte(userSettings)) {
 		t.Fatalf("after uninstall:\n%s", b)
 	}
 	if ok, _, _ := Installed(path); ok {
@@ -208,12 +209,12 @@ func TestRecognizesOurEntriesOnly(t *testing.T) {
 		"echo shiplino",
 	}
 	for _, c := range ours {
-		if !isOurs(&configfile.Object{Members: []configfile.Member{{Key: "command", Value: c}}}) {
+		if !hookfile.IsOurs(&configfile.Object{Members: []configfile.Member{{Key: "command", Value: c}}}, Name) {
 			t.Errorf("not recognized: %s", c)
 		}
 	}
 	for _, c := range notOurs {
-		if isOurs(&configfile.Object{Members: []configfile.Member{{Key: "command", Value: c}}}) {
+		if hookfile.IsOurs(&configfile.Object{Members: []configfile.Member{{Key: "command", Value: c}}}, Name) {
 			t.Errorf("wrongly recognized: %s", c)
 		}
 	}

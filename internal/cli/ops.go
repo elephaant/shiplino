@@ -20,7 +20,6 @@ import (
 
 	"github.com/elephaant/shiplino/internal/service"
 	"github.com/elephaant/shiplino/internal/spool"
-	"github.com/elephaant/shiplino/pkg/adapters/claudecode"
 	"github.com/elephaant/shiplino/pkg/engine"
 )
 
@@ -244,27 +243,29 @@ func doctor(ctx context.Context, e *env, args []string) int {
 		checks = append(checks, check{ok: true, name: "Binary", detail: fmt.Sprintf("%s (%.1f MB)", tilde(bin, e.userHome), float64(fi.Size())/1e6)})
 	}
 
-	det := claudecode.Detect(ctx, e.userHome)
-	if det.Installed {
-		ok, cmd, err := claudecode.Installed(det.SettingsPath)
+	for _, a := range agents {
+		found, version, path := a.detect(ctx, e.userHome)
+		if !found {
+			checks = append(checks, check{ok: true, warn: true, name: a.name, detail: "not found"})
+			continue
+		}
+		ok, cmd, err := a.installed(path)
 		reinstall := func(ctx context.Context) error {
-			_, err := claudecode.Install(det.SettingsPath, bin, det.Version, e.backupDir(claudecode.Name))
+			_, _, err := a.install(path, bin, version, e.backupDir(a.id))
 			return err
 		}
 		switch {
-		case errors.Is(err, claudecode.ErrUnparseable):
-			checks = append(checks, check{name: "Claude Code", detail: tilde(det.SettingsPath, e.userHome) + " isn't plain JSON; Shiplino won't edit it", fixHint: "remove comments, then run shiplino setup"})
+		case isUnparseable(err):
+			checks = append(checks, check{name: a.name, detail: tilde(path, e.userHome) + " isn't plain JSON; Shiplino won't edit it", fixHint: "remove comments, then run shiplino setup"})
 		case err != nil:
-			checks = append(checks, check{name: "Claude Code", detail: err.Error()})
+			checks = append(checks, check{name: a.name, detail: err.Error()})
 		case !ok:
-			checks = append(checks, check{name: "Claude Code", detail: "hooks missing (an update may have reset the settings)", fix: reinstall, fixHint: "shiplino doctor --fix"})
-		case cmd != bin:
-			checks = append(checks, check{name: "Claude Code", detail: "hooks point at " + cmd + ", not " + bin, fix: reinstall, fixHint: "shiplino doctor --fix"})
+			checks = append(checks, check{name: a.name, detail: "hooks missing (an update may have reset the config)", fix: reinstall, fixHint: "shiplino doctor --fix"})
+		case !strings.Contains(cmd, bin):
+			checks = append(checks, check{name: a.name, detail: "hooks point at " + cmd + ", not " + bin, fix: reinstall, fixHint: "shiplino doctor --fix"})
 		default:
-			checks = append(checks, check{ok: true, name: "Claude Code", detail: strings.TrimSpace(det.Version + " hooks installed")})
+			checks = append(checks, check{ok: true, name: a.name, detail: strings.TrimSpace(version + " hooks installed")})
 		}
-	} else {
-		checks = append(checks, check{ok: true, warn: true, name: "Claude Code", detail: "not found"})
 	}
 
 	c, err := e.client()

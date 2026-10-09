@@ -43,6 +43,19 @@ type TranscriptMeta struct {
 	ReceivedAt time.Time // fallback timestamp when the line has none
 	User       string
 	Ref        string // e.g. "transcript:/path/to/file.jsonl#1234"
+	// State is per-file memory the daemon keeps for the parser (e.g. the
+	// current model or turn), for formats that state things once.
+	State map[string]string
+	// Warmup is set while the daemon replays a file's earlier lines after
+	// a restart to rebuild State; the parser must return no events.
+	Warmup bool
+}
+
+// TranscriptDiscoverer is implemented by adapters whose transcripts can
+// be found by location (sessions without hooks, e.g. desktop apps).
+type TranscriptDiscoverer interface {
+	// TranscriptRoots returns glob patterns of recently active transcripts.
+	TranscriptRoots(userHome string, now time.Time) []string
 }
 
 // TranscriptParser is implemented by adapters that read the agent's own

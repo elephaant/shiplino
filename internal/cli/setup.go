@@ -21,7 +21,6 @@ import (
 	"github.com/elephaant/shiplino/internal/config"
 	"github.com/elephaant/shiplino/internal/service"
 	"github.com/elephaant/shiplino/internal/spool"
-	"github.com/elephaant/shiplino/pkg/adapters/claudecode"
 )
 
 // env is what commands need from the outside world; tests replace it.
@@ -74,30 +73,35 @@ func setup(ctx context.Context, e *env, args []string) int {
 
 	ok := true
 	connected := 0
-	det := claudecode.Detect(ctx, e.userHome)
-	switch {
-	case !det.Installed:
-		fmt.Fprintf(e.out, "  ➖ %-20s not found\n", "Claude Code")
-	default:
-		res, err := claudecode.Install(det.SettingsPath, bin, det.Version, e.backupDir(claudecode.Name))
+	var notes []string
+	for _, a := range agents {
+		found, version, path := a.detect(ctx, e.userHome)
+		if !found {
+			fmt.Fprintf(e.out, "  ➖ %-20s not found\n", a.name)
+			continue
+		}
+		changed, events, err := a.install(path, bin, version, e.backupDir(a.id))
 		switch {
-		case errors.Is(err, claudecode.ErrUnparseable):
+		case isUnparseable(err):
 			ok = false
-			fmt.Fprintf(e.out, "  ⚠️  %-20s %s isn't plain JSON (comments?), left untouched. Add the hooks by hand: see README.\n", "Claude Code", tilde(det.SettingsPath, e.userHome))
+			fmt.Fprintf(e.out, "  ⚠️  %-20s %s isn't plain JSON (comments?), left untouched. Add the hooks by hand: see README.\n", a.name, tilde(path, e.userHome))
 		case err != nil:
 			ok = false
-			fmt.Fprintf(e.out, "  ❌ %-20s %v\n", "Claude Code", err)
+			fmt.Fprintf(e.out, "  ❌ %-20s %v\n", a.name, err)
 		default:
 			connected++
 			what := "hooks already up to date"
-			if res.Changed {
-				what = fmt.Sprintf("hooks added for %d events", len(res.Events))
+			if changed {
+				what = fmt.Sprintf("hooks added for %d events", events)
+				if a.note != "" {
+					notes = append(notes, a.note)
+				}
 			}
-			name := "Claude Code"
-			if det.Version != "" {
-				name += " " + det.Version
+			name := a.name
+			if version != "" {
+				name += " " + version
 			}
-			fmt.Fprintf(e.out, "  ✅ %-20s %s (%s)\n", name, what, tilde(det.SettingsPath, e.userHome))
+			fmt.Fprintf(e.out, "  ✅ %-20s %s (%s)\n", name, what, tilde(path, e.userHome))
 		}
 	}
 
@@ -137,6 +141,9 @@ func setup(ctx context.Context, e *env, args []string) int {
 	default:
 		fmt.Fprintln(e.out, "Start the daemon with `shiplino daemon`, then open http://localhost:4777.")
 	}
+	for _, n := range notes {
+		fmt.Fprintln(e.out, "Note: "+n+".")
+	}
 	if !ok {
 		return 1
 	}
@@ -153,14 +160,16 @@ func uninstall(ctx context.Context, e *env, args []string) int {
 	} else {
 		fmt.Fprintln(e.out, "  ✅ Daemon       stopped and removed from login items")
 	}
-	settings := filepath.Join(e.userHome, ".claude", "settings.json")
-	if res, err := claudecode.Uninstall(settings, e.backupDir(claudecode.Name)); err != nil {
-		ok = false
-		fmt.Fprintf(e.out, "  ❌ Claude Code  %v\n", err)
-	} else if res.Changed {
-		fmt.Fprintf(e.out, "  ✅ Claude Code  hooks removed (%s)\n", tilde(settings, e.userHome))
-	} else {
-		fmt.Fprintln(e.out, "  ➖ Claude Code  no Shiplino hooks found")
+	for _, a := range agents {
+		_, _, path := a.detect(ctx, e.userHome)
+		if changed, err := a.uninstall(path, e.backupDir(a.id)); err != nil {
+			ok = false
+			fmt.Fprintf(e.out, "  ❌ %-12s %v\n", a.name, err)
+		} else if changed {
+			fmt.Fprintf(e.out, "  ✅ %-12s hooks removed (%s)\n", a.name, tilde(path, e.userHome))
+		} else {
+			fmt.Fprintf(e.out, "  ➖ %-12s no Shiplino hooks found\n", a.name)
+		}
 	}
 	if purge {
 		if err := os.RemoveAll(e.home); err != nil {
