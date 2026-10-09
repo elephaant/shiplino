@@ -27,20 +27,21 @@ const (
 // Session is the materialized state of one actor: a top-level agent
 // session or one of its subagents (ParentID set).
 type Session struct {
-	ID          string    `json:"id"`
-	Agent       string    `json:"agent"`
-	ParentID    string    `json:"parent_id,omitempty"`
-	RootID      string    `json:"root_id"`
-	ActorType   string    `json:"actor_type,omitempty"`
-	Depth       int       `json:"depth"`
-	CWD         string    `json:"cwd,omitempty"`
-	Title       string    `json:"title,omitempty"`
-	Model       string    `json:"model,omitempty"`
-	Status      Status    `json:"status"`
-	NowDoing    string    `json:"now_doing,omitempty"`
-	StartedAt   time.Time `json:"started_at"`
-	EndedAt     time.Time `json:"ended_at,omitzero"`
-	LastEventAt time.Time `json:"last_event_at"`
+	ID           string    `json:"id"`
+	Agent        string    `json:"agent"`
+	AgentVersion string    `json:"agent_version,omitempty"`
+	ParentID     string    `json:"parent_id,omitempty"`
+	RootID       string    `json:"root_id"`
+	ActorType    string    `json:"actor_type,omitempty"`
+	Depth        int       `json:"depth"`
+	CWD          string    `json:"cwd,omitempty"`
+	Title        string    `json:"title,omitempty"`
+	Model        string    `json:"model,omitempty"`
+	Status       Status    `json:"status"`
+	NowDoing     string    `json:"now_doing,omitempty"`
+	StartedAt    time.Time `json:"started_at"`
+	EndedAt      time.Time `json:"ended_at,omitzero"`
+	LastEventAt  time.Time `json:"last_event_at"`
 
 	Turns        int      `json:"turns"`
 	ToolCalls    int      `json:"tool_calls"`
@@ -92,6 +93,9 @@ func (e *Engine) Apply(ev model.Event) []*Session {
 	changed := []*Session{s}
 	if ev.TS.After(s.LastEventAt) {
 		s.LastEventAt = ev.TS
+	}
+	if ev.Agent.Version != "" {
+		s.AgentVersion = ev.Agent.Version
 	}
 
 	switch ev.Kind {
