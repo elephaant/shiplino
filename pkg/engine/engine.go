@@ -35,6 +35,8 @@ type Session struct {
 	ActorType    string    `json:"actor_type,omitempty"`
 	Depth        int       `json:"depth"`
 	CWD          string    `json:"cwd,omitempty"`
+	ProjectID    string    `json:"project_id,omitempty"`
+	Branch       string    `json:"branch,omitempty"`
 	Title        string    `json:"title,omitempty"`
 	TitleSource  string    `json:"title_source,omitempty"` // "agent" or "prompt"
 	Model        string    `json:"model,omitempty"`
@@ -136,6 +138,13 @@ func (e *Engine) Apply(ev model.Event) []*Session {
 	}
 	if ev.Agent.Version != "" {
 		s.AgentVersion = ev.Agent.Version
+	}
+	if ev.Project != nil {
+		// A session stays in the project it started in (doc: edge cases).
+		setIfEmpty(&s.ProjectID, ev.Project.ID)
+		if ev.Project.Branch != "" {
+			s.Branch = ev.Project.Branch
+		}
 	}
 
 	switch ev.Kind {
@@ -285,6 +294,9 @@ func (e *Engine) ensure(id string, ev model.Event) *Session {
 		}
 		s.ActorType = ev.ActorType
 		s.Depth = e.depthOf(s.ParentID) + 1
+		if p := e.sessions[s.ParentID]; p != nil {
+			s.ProjectID, s.Branch = p.ProjectID, p.Branch // subagents work in the parent's project
+		}
 	}
 	e.sessions[id] = s
 	return s
@@ -300,7 +312,8 @@ func (e *Engine) child(parent *Session, id, actorType string, ev model.Event) *S
 	}
 	c := &Session{
 		ID: id, Agent: parent.Agent, ParentID: parent.ID, RootID: parent.RootID, ActorType: actorType,
-		Depth: parent.Depth + 1, CWD: parent.CWD, Status: StatusRunning, StartedAt: ev.TS, LastEventAt: ev.TS,
+		Depth: parent.Depth + 1, CWD: parent.CWD, ProjectID: parent.ProjectID, Branch: parent.Branch,
+		Status: StatusRunning, StartedAt: ev.TS, LastEventAt: ev.TS,
 	}
 	e.sessions[id] = c
 	return c

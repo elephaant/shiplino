@@ -5,12 +5,15 @@ package store
 
 import (
 	"context"
+	"database/sql"
+	"fmt"
 	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/elephaant/shiplino/pkg/engine"
 	"github.com/elephaant/shiplino/pkg/model"
+	"github.com/elephaant/shiplino/pkg/projects"
 )
 
 var ctx = context.Background()
@@ -133,5 +136,66 @@ func TestSessionsAndCursorsPersist(t *testing.T) {
 	cur, _ := s2.Cursors(ctx)
 	if cur["claude-code/b.jsonl"] != 512 {
 		t.Fatalf("cursors = %v", cur)
+	}
+}
+
+func TestUpgradeFromV1KeepsSessions(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "old.db")
+	db, err := sql.Open("sqlite", "file:"+filepath.ToSlash(path))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(migrations[0]); err != nil {
+		t.Fatal(err)
+	}
+	db.Exec(`PRAGMA user_version = 1`)
+	db.Exec(`INSERT INTO sessions (id, root_id, agent, status, started_at, last_event_at, body)
+		VALUES ('claude-code:old', 'claude-code:old', 'claude-code', 'done', 1, 1, '{"id":"claude-code:old","status":"done"}')`)
+	db.Close()
+
+	s, err := Open(path)
+	if err != nil {
+		t.Fatalf("upgrade failed: %v", err)
+	}
+	defer s.Close()
+	got, err := s.Session(ctx, "claude-code:old")
+	if err != nil || got == nil || got.Status != engine.StatusDone {
+		t.Fatalf("session lost in upgrade: %+v %v", got, err)
+	}
+	if list, err := s.Projects(ctx); err != nil || len(list) != 0 {
+		t.Fatalf("projects after upgrade: %v %v", list, err)
+	}
+}
+
+func TestProjectsSummary(t *testing.T) {
+	s, _ := openTemp(t)
+	now := time.Now().Truncate(time.Millisecond)
+	tx, _ := s.Begin(ctx)
+	p := projects.Project{ID: "github.com/acme/api", Name: "api", Kind: "remote", Remote: "github.com/acme/api"}
+	tx.PutProject(ctx, p, now.Add(-time.Hour))
+	tx.PutProject(ctx, p, now) // last_seen moves forward, first_seen stays
+	for i, st := range []engine.Status{engine.StatusRunning, engine.StatusRunning, engine.StatusDone} {
+		tx.PutSession(ctx, &engine.Session{ID: fmt.Sprintf("claude-code:%d", i), RootID: fmt.Sprintf("claude-code:%d", i), Agent: "claude-code",
+			Status: st, ProjectID: p.ID, StartedAt: now, LastEventAt: now, BestCostUSD: 0.5})
+	}
+	tx.PutSession(ctx, &engine.Session{ID: "claude-code:0/sub:x", RootID: "claude-code:0", ParentID: "claude-code:0", Agent: "claude-code",
+		Status: engine.StatusRunning, ProjectID: p.ID, StartedAt: now, LastEventAt: now})
+	tx.Commit()
+
+	list, err := s.Projects(ctx)
+	if err != nil || len(list) != 1 {
+		t.Fatalf("%v %v", list, err)
+	}
+	got := list[0]
+	if got.Counts["running"] != 2 || got.Counts["done"] != 1 || got.Sessions != 3 || got.CostUSD != 1.5 {
+		t.Fatalf("summary (subagents must not count): %+v", got)
+	}
+	if !got.FirstSeen.Equal(now.Add(-time.Hour)) || !got.LastSeen.Equal(now) {
+		t.Fatalf("seen: %v %v", got.FirstSeen, got.LastSeen)
+	}
+	in, _ := s.SessionsIn(ctx, p.ID, 0)
+	other, _ := s.SessionsIn(ctx, "github.com/acme/web", 0)
+	if len(in) != 4 || len(other) != 0 {
+		t.Fatalf("filter: %d %d", len(in), len(other))
 	}
 }

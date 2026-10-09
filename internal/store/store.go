@@ -15,6 +15,7 @@ import (
 
 	"github.com/elephaant/shiplino/pkg/engine"
 	"github.com/elephaant/shiplino/pkg/model"
+	"github.com/elephaant/shiplino/pkg/projects"
 
 	_ "modernc.org/sqlite" // pure-Go SQLite driver, registered as "sqlite"
 )
@@ -85,6 +86,18 @@ var migrations = []string{
 		offset INTEGER NOT NULL,
 		updated_at INTEGER NOT NULL
 	);`,
+	// v2: projects
+	`CREATE TABLE projects (
+		id TEXT PRIMARY KEY,
+		name TEXT NOT NULL,
+		kind TEXT NOT NULL,
+		remote TEXT,
+		repo_root TEXT,
+		first_seen INTEGER NOT NULL,
+		last_seen INTEGER NOT NULL
+	);
+	ALTER TABLE sessions ADD COLUMN project_id TEXT;
+	CREATE INDEX sessions_project ON sessions(project_id, last_event_at);`,
 }
 
 func (s *Store) migrate(ctx context.Context) error {
@@ -165,14 +178,26 @@ func (t *Tx) PutSession(ctx context.Context, s *engine.Session) error {
 		return err
 	}
 	_, err = t.tx.ExecContext(ctx,
-		`INSERT INTO sessions (id, root_id, parent_id, agent, status, started_at, last_event_at, body)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+		`INSERT INTO sessions (id, root_id, parent_id, agent, status, started_at, last_event_at, body, project_id)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 		 ON CONFLICT(id) DO UPDATE SET
 		   root_id = excluded.root_id, parent_id = excluded.parent_id, agent = excluded.agent,
 		   status = excluded.status, started_at = excluded.started_at,
-		   last_event_at = excluded.last_event_at, body = excluded.body`,
+		   last_event_at = excluded.last_event_at, body = excluded.body, project_id = excluded.project_id`,
 		s.ID, s.RootID, nullable(s.ParentID), s.Agent, string(s.Status),
-		s.StartedAt.UnixMilli(), s.LastEventAt.UnixMilli(), body)
+		s.StartedAt.UnixMilli(), s.LastEventAt.UnixMilli(), body, nullable(s.ProjectID))
+	return err
+}
+
+// PutProject inserts or refreshes a project; first_seen never moves.
+func (t *Tx) PutProject(ctx context.Context, p projects.Project, seen time.Time) error {
+	_, err := t.tx.ExecContext(ctx,
+		`INSERT INTO projects (id, name, kind, remote, repo_root, first_seen, last_seen)
+		 VALUES (?, ?, ?, ?, ?, ?, ?)
+		 ON CONFLICT(id) DO UPDATE SET
+		   name = excluded.name, kind = excluded.kind, remote = excluded.remote, repo_root = excluded.repo_root,
+		   last_seen = MAX(projects.last_seen, excluded.last_seen)`,
+		p.ID, p.Name, p.Kind, nullable(p.Remote), nullable(p.RepoRoot), seen.UnixMilli(), seen.UnixMilli())
 	return err
 }
 
@@ -222,10 +247,76 @@ func (s *Store) Cursors(ctx context.Context) (map[string]int64, error) {
 	return out, rows.Err()
 }
 
+// ProjectSummary is a project with live counts of its root sessions.
+type ProjectSummary struct {
+	projects.Project
+	FirstSeen time.Time      `json:"first_seen"`
+	LastSeen  time.Time      `json:"last_seen"`
+	Counts    map[string]int `json:"counts"` // by status
+	Sessions  int            `json:"sessions"`
+	CostUSD   float64        `json:"cost_usd"`
+}
+
+// Projects returns every project with session counts, most recent first.
+func (s *Store) Projects(ctx context.Context) ([]ProjectSummary, error) {
+	rows, err := s.db.QueryContext(ctx, `SELECT id, name, kind, COALESCE(remote,''), COALESCE(repo_root,''), first_seen, last_seen FROM projects ORDER BY last_seen DESC`)
+	if err != nil {
+		return nil, err
+	}
+	var out []ProjectSummary
+	index := map[string]int{}
+	for rows.Next() {
+		var p ProjectSummary
+		var first, last int64
+		if err := rows.Scan(&p.ID, &p.Name, &p.Kind, &p.Remote, &p.RepoRoot, &first, &last); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		p.FirstSeen, p.LastSeen, p.Counts = time.UnixMilli(first), time.UnixMilli(last), map[string]int{}
+		index[p.ID] = len(out)
+		out = append(out, p)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	agg, err := s.db.QueryContext(ctx, `
+		SELECT project_id, status, COUNT(*), COALESCE(SUM(json_extract(body, '$.best_cost_usd')), 0)
+		FROM sessions WHERE parent_id IS NULL AND project_id IS NOT NULL GROUP BY 1, 2`)
+	if err != nil {
+		return nil, err
+	}
+	defer agg.Close()
+	for agg.Next() {
+		var id, status string
+		var n int
+		var cost float64
+		if err := agg.Scan(&id, &status, &n, &cost); err != nil {
+			return nil, err
+		}
+		if i, ok := index[id]; ok {
+			out[i].Counts[status] += n
+			out[i].Sessions += n
+			out[i].CostUSD += cost
+		}
+	}
+	return out, agg.Err()
+}
+
 // Sessions returns sessions, most recently active first. limit <= 0 means all.
 func (s *Store) Sessions(ctx context.Context, limit int) ([]*engine.Session, error) {
-	q := `SELECT body FROM sessions ORDER BY last_event_at DESC`
+	return s.SessionsIn(ctx, "", limit)
+}
+
+// SessionsIn is Sessions limited to one project ("" = all projects).
+func (s *Store) SessionsIn(ctx context.Context, projectID string, limit int) ([]*engine.Session, error) {
+	q := `SELECT body FROM sessions`
 	args := []any{}
+	if projectID != "" {
+		q += ` WHERE project_id = ?`
+		args = append(args, projectID)
+	}
+	q += ` ORDER BY last_event_at DESC`
 	if limit > 0 {
 		q += ` LIMIT ?`
 		args = append(args, limit)
