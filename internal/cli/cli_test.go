@@ -17,6 +17,7 @@ import (
 	"testing"
 
 	"github.com/elephaant/shiplino/pkg/adapters/claudecode"
+	"github.com/elephaant/shiplino/pkg/adapters/codex"
 )
 
 // builtBinary compiles the real shiplino binary once per test run.
@@ -164,4 +165,32 @@ func startFakeDaemon(t *testing.T, home string) *http.Server {
 	srv := &http.Server{Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(200) })}
 	go srv.Serve(ln)
 	return srv
+}
+
+func TestSetupCodex(t *testing.T) {
+	e, out := testEnv(t)
+	os.MkdirAll(filepath.Join(e.userHome, ".codex"), 0o700) // Codex "installed"
+
+	if code := setup(context.Background(), e, []string{"--no-service"}); code != 0 {
+		t.Fatalf("setup exit %d:\n%s", code, out)
+	}
+	if !strings.Contains(out.String(), "✅ Codex") || !strings.Contains(out.String(), "/hooks") {
+		t.Fatalf("output:\n%s", out)
+	}
+	hooks := filepath.Join(e.userHome, ".codex", "hooks.json")
+	if ok, cmd, _ := codex.Installed(hooks); !ok || !strings.Contains(cmd, e.binPath()) {
+		t.Fatalf("installed=%v cmd=%q", ok, cmd)
+	}
+
+	out.Reset()
+	doctor(context.Background(), e, nil)
+	if !strings.Contains(out.String(), "Codex") || strings.Contains(out.String(), "hooks missing") {
+		t.Fatalf("doctor:\n%s", out)
+	}
+
+	out.Reset()
+	uninstall(context.Background(), e, nil)
+	if ok, _, _ := codex.Installed(hooks); ok {
+		t.Fatalf("codex hooks still present:\n%s", out)
+	}
 }

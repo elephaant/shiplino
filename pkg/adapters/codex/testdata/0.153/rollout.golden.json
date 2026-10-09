@@ -1,0 +1,523 @@
+[
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:00Z",
+    "received_at": "2026-10-09T10:00:00Z",
+    "kind": "session.start",
+    "agent": {
+      "name": "codex",
+      "version": "0.153.4"
+    },
+    "collector": "transcript",
+    "session_id": "codex:th-2",
+    "actor_id": "codex:th-2",
+    "project": {
+      "cwd": "/home/dev/site",
+      "branch": "main"
+    },
+    "data": {
+      "source": "rollout"
+    },
+    "dedup_key": "codex:th-2:session.start"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:01.2Z",
+    "received_at": "2026-10-09T10:00:00Z",
+    "kind": "turn.start",
+    "agent": {
+      "name": "codex",
+      "version": "0.153.4"
+    },
+    "collector": "transcript",
+    "session_id": "codex:th-2",
+    "actor_id": "codex:th-2",
+    "turn_id": "tu-9",
+    "project": {
+      "cwd": "/home/dev/site",
+      "branch": "main"
+    },
+    "data": {
+      "model": "gpt-5.6-terra",
+      "prompt": "make the hero section responsive",
+      "prompt_chars": 32
+    },
+    "dedup_key": "codex:th-2:turn:tu-9"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:05Z",
+    "received_at": "2026-10-09T10:00:00Z",
+    "kind": "usage",
+    "agent": {
+      "name": "codex",
+      "version": "0.153.4"
+    },
+    "collector": "transcript",
+    "session_id": "codex:th-2",
+    "actor_id": "codex:th-2",
+    "turn_id": "tu-9",
+    "project": {
+      "cwd": "/home/dev/site",
+      "branch": "main"
+    },
+    "data": {
+      "cache_read_tokens": 12032,
+      "cache_write_tokens": 0,
+      "cost_source": "unpriced",
+      "input_tokens": 19495,
+      "message_id": "resp_1",
+      "model": "gpt-5.6-terra",
+      "output_tokens": 40,
+      "reasoning_tokens": 22
+    },
+    "dedup_key": "codex:th-2:usage:resp_1"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:06Z",
+    "received_at": "2026-10-09T10:00:00Z",
+    "kind": "tool.start",
+    "agent": {
+      "name": "codex",
+      "version": "0.153.4"
+    },
+    "collector": "transcript",
+    "session_id": "codex:th-2",
+    "actor_id": "codex:th-2",
+    "turn_id": "tu-9",
+    "project": {
+      "cwd": "/home/dev/site",
+      "branch": "main"
+    },
+    "data": {
+      "input_summary": "npm run build",
+      "tool": "shell",
+      "tool_call_id": "exec-1",
+      "tool_raw": "exec"
+    },
+    "dedup_key": "codex:th-2:item:exec-1:start"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:06Z",
+    "received_at": "2026-10-09T10:00:00Z",
+    "kind": "tool.end",
+    "agent": {
+      "name": "codex",
+      "version": "0.153.4"
+    },
+    "collector": "transcript",
+    "session_id": "codex:th-2",
+    "actor_id": "codex:th-2",
+    "turn_id": "tu-9",
+    "project": {
+      "cwd": "/home/dev/site",
+      "branch": "main"
+    },
+    "data": {
+      "duration_ms": 3500,
+      "ok": true,
+      "tool": "shell",
+      "tool_call_id": "exec-1"
+    },
+    "dedup_key": "codex:th-2:item:exec-1:end"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:06Z",
+    "received_at": "2026-10-09T10:00:00Z",
+    "kind": "shell.exec",
+    "agent": {
+      "name": "codex",
+      "version": "0.153.4"
+    },
+    "collector": "transcript",
+    "session_id": "codex:th-2",
+    "actor_id": "codex:th-2",
+    "turn_id": "tu-9",
+    "project": {
+      "cwd": "/home/dev/site",
+      "branch": "main"
+    },
+    "data": {
+      "command": "npm run build",
+      "cwd": "/home/dev/site",
+      "duration_ms": 3500,
+      "exit_code": 0,
+      "tool_call_id": "exec-1"
+    },
+    "dedup_key": "codex:th-2:item:exec-1:shell"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:07Z",
+    "received_at": "2026-10-09T10:00:00Z",
+    "kind": "tool.start",
+    "agent": {
+      "name": "codex",
+      "version": "0.153.4"
+    },
+    "collector": "transcript",
+    "session_id": "codex:th-2",
+    "actor_id": "codex:th-2",
+    "turn_id": "tu-9",
+    "project": {
+      "cwd": "/home/dev/site",
+      "branch": "main"
+    },
+    "data": {
+      "input_summary": "/home/dev/site/hero.css, /home/dev/site/index.html",
+      "tool": "edit",
+      "tool_call_id": "fc-1",
+      "tool_raw": "apply_patch"
+    },
+    "dedup_key": "codex:th-2:item:fc-1:start"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:07Z",
+    "received_at": "2026-10-09T10:00:00Z",
+    "kind": "tool.end",
+    "agent": {
+      "name": "codex",
+      "version": "0.153.4"
+    },
+    "collector": "transcript",
+    "session_id": "codex:th-2",
+    "actor_id": "codex:th-2",
+    "turn_id": "tu-9",
+    "project": {
+      "cwd": "/home/dev/site",
+      "branch": "main"
+    },
+    "data": {
+      "duration_ms": 0,
+      "ok": true,
+      "tool": "edit",
+      "tool_call_id": "fc-1"
+    },
+    "dedup_key": "codex:th-2:item:fc-1:end"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:07Z",
+    "received_at": "2026-10-09T10:00:00Z",
+    "kind": "file.edit",
+    "agent": {
+      "name": "codex",
+      "version": "0.153.4"
+    },
+    "collector": "transcript",
+    "session_id": "codex:th-2",
+    "actor_id": "codex:th-2",
+    "turn_id": "tu-9",
+    "project": {
+      "cwd": "/home/dev/site",
+      "branch": "main"
+    },
+    "data": {
+      "lines_added": 2,
+      "lines_removed": 0,
+      "lines_source": "agent",
+      "op": "create",
+      "path": "/home/dev/site/hero.css"
+    },
+    "dedup_key": "codex:th-2:item:fc-1:file0"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:07Z",
+    "received_at": "2026-10-09T10:00:00Z",
+    "kind": "file.edit",
+    "agent": {
+      "name": "codex",
+      "version": "0.153.4"
+    },
+    "collector": "transcript",
+    "session_id": "codex:th-2",
+    "actor_id": "codex:th-2",
+    "turn_id": "tu-9",
+    "project": {
+      "cwd": "/home/dev/site",
+      "branch": "main"
+    },
+    "data": {
+      "lines_added": 2,
+      "lines_removed": 1,
+      "lines_source": "agent",
+      "op": "modify",
+      "path": "/home/dev/site/index.html"
+    },
+    "dedup_key": "codex:th-2:item:fc-1:file1"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:08Z",
+    "received_at": "2026-10-09T10:00:00Z",
+    "kind": "tool.start",
+    "agent": {
+      "name": "codex",
+      "version": "0.153.4"
+    },
+    "collector": "transcript",
+    "session_id": "codex:th-2",
+    "actor_id": "codex:th-2",
+    "turn_id": "tu-9",
+    "project": {
+      "cwd": "/home/dev/site",
+      "branch": "main"
+    },
+    "data": {
+      "input_summary": "browser/screenshot",
+      "tool": "mcp",
+      "tool_call_id": "call_m1",
+      "tool_raw": "browser__screenshot"
+    },
+    "dedup_key": "codex:th-2:item:call_m1:start"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:08Z",
+    "received_at": "2026-10-09T10:00:00Z",
+    "kind": "tool.end",
+    "agent": {
+      "name": "codex",
+      "version": "0.153.4"
+    },
+    "collector": "transcript",
+    "session_id": "codex:th-2",
+    "actor_id": "codex:th-2",
+    "turn_id": "tu-9",
+    "project": {
+      "cwd": "/home/dev/site",
+      "branch": "main"
+    },
+    "data": {
+      "duration_ms": 1000,
+      "ok": true,
+      "tool": "mcp",
+      "tool_call_id": "call_m1"
+    },
+    "dedup_key": "codex:th-2:item:call_m1:end"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:08Z",
+    "received_at": "2026-10-09T10:00:00Z",
+    "kind": "mcp.call",
+    "agent": {
+      "name": "codex",
+      "version": "0.153.4"
+    },
+    "collector": "transcript",
+    "session_id": "codex:th-2",
+    "actor_id": "codex:th-2",
+    "turn_id": "tu-9",
+    "project": {
+      "cwd": "/home/dev/site",
+      "branch": "main"
+    },
+    "data": {
+      "duration_ms": 1000,
+      "ok": true,
+      "server": "browser",
+      "tool": "screenshot"
+    },
+    "dedup_key": "codex:th-2:item:call_m1:mcp"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:09Z",
+    "received_at": "2026-10-09T10:00:00Z",
+    "kind": "usage",
+    "agent": {
+      "name": "codex",
+      "version": "0.153.4"
+    },
+    "collector": "transcript",
+    "session_id": "codex:th-2",
+    "actor_id": "codex:th-2",
+    "turn_id": "tu-9",
+    "project": {
+      "cwd": "/home/dev/site",
+      "branch": "main"
+    },
+    "data": {
+      "cache_read_tokens": 31000,
+      "cache_write_tokens": 0,
+      "cost_source": "unpriced",
+      "input_tokens": 1000,
+      "message_id": "resp_2",
+      "model": "gpt-5.6-terra",
+      "output_tokens": 500,
+      "reasoning_tokens": 100
+    },
+    "dedup_key": "codex:th-2:usage:resp_2"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:11Z",
+    "received_at": "2026-10-09T10:00:00Z",
+    "kind": "turn.end",
+    "agent": {
+      "name": "codex",
+      "version": "0.153.4"
+    },
+    "collector": "transcript",
+    "session_id": "codex:th-2",
+    "actor_id": "codex:th-2",
+    "turn_id": "tu-9",
+    "project": {
+      "cwd": "/home/dev/site",
+      "branch": "main"
+    },
+    "data": {
+      "assistant_summary": "Done.",
+      "duration_ms": 9800,
+      "status": "ok"
+    },
+    "dedup_key": "codex:th-2:turnend:tu-9"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:12.1Z",
+    "received_at": "2026-10-09T10:00:00Z",
+    "kind": "turn.start",
+    "agent": {
+      "name": "codex",
+      "version": "0.153.4"
+    },
+    "collector": "transcript",
+    "session_id": "codex:th-2",
+    "actor_id": "codex:th-2",
+    "turn_id": "tu-10",
+    "project": {
+      "cwd": "/home/dev/site",
+      "branch": "main"
+    },
+    "data": {
+      "model": "gpt-5.6-terra",
+      "prompt": "stop",
+      "prompt_chars": 4
+    },
+    "dedup_key": "codex:th-2:turn:tu-10"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:13Z",
+    "received_at": "2026-10-09T10:00:00Z",
+    "kind": "turn.end",
+    "agent": {
+      "name": "codex",
+      "version": "0.153.4"
+    },
+    "collector": "transcript",
+    "session_id": "codex:th-2",
+    "actor_id": "codex:th-2",
+    "turn_id": "tu-10",
+    "project": {
+      "cwd": "/home/dev/site",
+      "branch": "main"
+    },
+    "data": {
+      "status": "interrupted"
+    },
+    "dedup_key": "codex:th-2:turnend:tu-10"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:01:00.2Z",
+    "received_at": "2026-10-09T10:00:00Z",
+    "kind": "turn.start",
+    "agent": {
+      "name": "codex",
+      "version": "0.153.4"
+    },
+    "collector": "transcript",
+    "session_id": "codex:th-2",
+    "actor_id": "codex:th-2",
+    "turn_id": "tu-11",
+    "project": {
+      "cwd": "/home/dev/site",
+      "branch": "main"
+    },
+    "data": {
+      "model": "gpt-5.6-terra-mini",
+      "prompt": "now add a footer",
+      "prompt_chars": 16
+    },
+    "dedup_key": "codex:th-2:turn:tu-11"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:01:01Z",
+    "received_at": "2026-10-09T10:00:00Z",
+    "kind": "usage",
+    "agent": {
+      "name": "codex",
+      "version": "0.153.4"
+    },
+    "collector": "transcript",
+    "session_id": "codex:th-2",
+    "actor_id": "codex:th-2",
+    "turn_id": "tu-11",
+    "project": {
+      "cwd": "/home/dev/site",
+      "branch": "main"
+    },
+    "data": {
+      "cache_read_tokens": 0,
+      "cache_write_tokens": 0,
+      "cost_source": "unpriced",
+      "input_tokens": 1000,
+      "message_id": "resp_3",
+      "model": "gpt-5.6-terra-mini",
+      "output_tokens": 10,
+      "reasoning_tokens": 0
+    },
+    "dedup_key": "codex:th-2:usage:resp_3"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:01:02Z",
+    "received_at": "2026-10-09T10:00:00Z",
+    "kind": "turn.end",
+    "agent": {
+      "name": "codex",
+      "version": "0.153.4"
+    },
+    "collector": "transcript",
+    "session_id": "codex:th-2",
+    "actor_id": "codex:th-2",
+    "turn_id": "tu-11",
+    "project": {
+      "cwd": "/home/dev/site",
+      "branch": "main"
+    },
+    "data": {
+      "status": "ok"
+    },
+    "dedup_key": "codex:th-2:turnend:tu-11"
+  }
+]

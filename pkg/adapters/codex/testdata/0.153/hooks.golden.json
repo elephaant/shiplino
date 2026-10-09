@@ -1,0 +1,324 @@
+[
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:00Z",
+    "received_at": "2026-10-09T10:00:00Z",
+    "kind": "session.start",
+    "agent": {
+      "name": "codex"
+    },
+    "collector": "hook",
+    "session_id": "codex:th-1",
+    "actor_id": "codex:th-1",
+    "project": {
+      "cwd": "/home/dev/demo"
+    },
+    "data": {
+      "model": "gpt-5.6-terra",
+      "permission_mode": "default",
+      "source": "startup",
+      "transcript_path": "/home/dev/.codex/sessions/2026/10/09/rollout-x.jsonl"
+    },
+    "dedup_key": "codex:th-1:session.start:env-00"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:01Z",
+    "received_at": "2026-10-09T10:00:01Z",
+    "kind": "turn.start",
+    "agent": {
+      "name": "codex"
+    },
+    "collector": "hook",
+    "session_id": "codex:th-1",
+    "actor_id": "codex:th-1",
+    "turn_id": "tu-1",
+    "project": {
+      "cwd": "/home/dev/demo"
+    },
+    "data": {
+      "model": "gpt-5.6-terra",
+      "prompt": "add a health endpoint",
+      "prompt_chars": 21
+    },
+    "dedup_key": "codex:th-1:turn:tu-1"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:02Z",
+    "received_at": "2026-10-09T10:00:02Z",
+    "kind": "tool.start",
+    "agent": {
+      "name": "codex"
+    },
+    "collector": "hook",
+    "session_id": "codex:th-1",
+    "actor_id": "codex:th-1",
+    "turn_id": "tu-1",
+    "project": {
+      "cwd": "/home/dev/demo"
+    },
+    "data": {
+      "input_summary": "rg -n health src",
+      "tool": "shell",
+      "tool_call_id": "call_1",
+      "tool_raw": "exec"
+    },
+    "dedup_key": "codex:th-1:call_1:start"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:03Z",
+    "received_at": "2026-10-09T10:00:03Z",
+    "kind": "tool.end",
+    "agent": {
+      "name": "codex"
+    },
+    "collector": "hook",
+    "session_id": "codex:th-1",
+    "actor_id": "codex:th-1",
+    "turn_id": "tu-1",
+    "project": {
+      "cwd": "/home/dev/demo"
+    },
+    "data": {
+      "ok": false,
+      "tool": "shell",
+      "tool_call_id": "call_1"
+    },
+    "dedup_key": "codex:th-1:call_1:end"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:03Z",
+    "received_at": "2026-10-09T10:00:03Z",
+    "kind": "shell.exec",
+    "agent": {
+      "name": "codex"
+    },
+    "collector": "hook",
+    "session_id": "codex:th-1",
+    "actor_id": "codex:th-1",
+    "turn_id": "tu-1",
+    "project": {
+      "cwd": "/home/dev/demo"
+    },
+    "data": {
+      "command": "rg -n health src",
+      "cwd": "/home/dev/demo",
+      "exit_code": 1,
+      "tool_call_id": "call_1"
+    },
+    "dedup_key": "codex:th-1:call_1:shell"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:04Z",
+    "received_at": "2026-10-09T10:00:04Z",
+    "kind": "waiting.start",
+    "agent": {
+      "name": "codex"
+    },
+    "collector": "hook",
+    "session_id": "codex:th-1",
+    "actor_id": "codex:th-1",
+    "turn_id": "tu-1",
+    "project": {
+      "cwd": "/home/dev/demo"
+    },
+    "data": {
+      "message": "Approve: src/health.ts",
+      "reason": "permission",
+      "tool_raw": "apply_patch"
+    },
+    "dedup_key": "codex:th-1:waiting.start:env-04"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:05Z",
+    "received_at": "2026-10-09T10:00:05Z",
+    "kind": "tool.end",
+    "agent": {
+      "name": "codex"
+    },
+    "collector": "hook",
+    "session_id": "codex:th-1",
+    "actor_id": "codex:th-1",
+    "turn_id": "tu-1",
+    "project": {
+      "cwd": "/home/dev/demo"
+    },
+    "data": {
+      "ok": true,
+      "tool": "edit",
+      "tool_call_id": "call_2"
+    },
+    "dedup_key": "codex:th-1:call_2:end"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:05Z",
+    "received_at": "2026-10-09T10:00:05Z",
+    "kind": "file.edit",
+    "agent": {
+      "name": "codex"
+    },
+    "collector": "hook",
+    "session_id": "codex:th-1",
+    "actor_id": "codex:th-1",
+    "turn_id": "tu-1",
+    "project": {
+      "cwd": "/home/dev/demo"
+    },
+    "data": {
+      "lines_added": 2,
+      "lines_removed": 0,
+      "lines_source": "agent",
+      "op": "create",
+      "path": "/home/dev/demo/src/health.ts"
+    },
+    "dedup_key": "codex:th-1:call_2:file0"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:05Z",
+    "received_at": "2026-10-09T10:00:05Z",
+    "kind": "file.edit",
+    "agent": {
+      "name": "codex"
+    },
+    "collector": "hook",
+    "session_id": "codex:th-1",
+    "actor_id": "codex:th-1",
+    "turn_id": "tu-1",
+    "project": {
+      "cwd": "/home/dev/demo"
+    },
+    "data": {
+      "lines_added": 1,
+      "lines_removed": 1,
+      "lines_source": "agent",
+      "op": "modify",
+      "path": "/home/dev/demo/src/app.ts"
+    },
+    "dedup_key": "codex:th-1:call_2:file1"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:06Z",
+    "received_at": "2026-10-09T10:00:06Z",
+    "kind": "subagent.start",
+    "agent": {
+      "name": "codex"
+    },
+    "collector": "hook",
+    "session_id": "codex:th-1",
+    "actor_id": "codex:th-1",
+    "turn_id": "tu-1",
+    "project": {
+      "cwd": "/home/dev/demo"
+    },
+    "data": {
+      "agent_type": "explorer",
+      "child_session_id": "codex:th-1/sub:sa-1"
+    },
+    "dedup_key": "codex:th-1:subagent.start:env-06"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:07Z",
+    "received_at": "2026-10-09T10:00:07Z",
+    "kind": "subagent.end",
+    "agent": {
+      "name": "codex"
+    },
+    "collector": "hook",
+    "session_id": "codex:th-1",
+    "actor_id": "codex:th-1",
+    "turn_id": "tu-1",
+    "project": {
+      "cwd": "/home/dev/demo"
+    },
+    "data": {
+      "agent_type": "explorer",
+      "child_session_id": "codex:th-1/sub:sa-1",
+      "status": "done"
+    },
+    "dedup_key": "codex:th-1:subagent.end:env-07"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:08Z",
+    "received_at": "2026-10-09T10:00:08Z",
+    "kind": "turn.end",
+    "agent": {
+      "name": "codex"
+    },
+    "collector": "hook",
+    "session_id": "codex:th-1",
+    "actor_id": "codex:th-1",
+    "turn_id": "tu-1",
+    "project": {
+      "cwd": "/home/dev/demo"
+    },
+    "data": {
+      "assistant_summary": "Added /health.",
+      "status": "ok"
+    },
+    "dedup_key": "codex:th-1:turnend:tu-1"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:09Z",
+    "received_at": "2026-10-09T10:00:09Z",
+    "kind": "turn.end",
+    "agent": {
+      "name": "codex"
+    },
+    "collector": "hook",
+    "session_id": "codex:th-1",
+    "actor_id": "codex:th-1",
+    "turn_id": "tu-2",
+    "project": {
+      "cwd": "/home/dev/demo"
+    },
+    "data": {
+      "status": "interrupted"
+    },
+    "dedup_key": "codex:th-1:turnend:tu-2"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:10Z",
+    "received_at": "2026-10-09T10:00:10Z",
+    "kind": "session.end",
+    "agent": {
+      "name": "codex"
+    },
+    "collector": "hook",
+    "session_id": "codex:th-1",
+    "actor_id": "codex:th-1",
+    "project": {
+      "cwd": "/home/dev/demo"
+    },
+    "data": {
+      "reason": "other",
+      "status": "ended"
+    },
+    "dedup_key": "codex:th-1:session.end:env-10"
+  }
+]

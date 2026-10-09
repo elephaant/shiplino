@@ -1,0 +1,11 @@
+{"session_id":"th-1","transcript_path":"/home/dev/.codex/sessions/2026/10/09/rollout-x.jsonl","cwd":"/home/dev/demo","hook_event_name":"SessionStart","model":"gpt-5.6-terra","source":"startup","permission_mode":"default"}
+{"session_id":"th-1","turn_id":"tu-1","cwd":"/home/dev/demo","hook_event_name":"UserPromptSubmit","model":"gpt-5.6-terra","prompt":"add a health endpoint"}
+{"session_id":"th-1","turn_id":"tu-1","cwd":"/home/dev/demo","hook_event_name":"PreToolUse","model":"gpt-5.6-terra","tool_name":"exec","tool_use_id":"call_1","tool_input":{"command":["bash","-lc","rg -n health src"]}}
+{"session_id":"th-1","turn_id":"tu-1","cwd":"/home/dev/demo","hook_event_name":"PostToolUse","model":"gpt-5.6-terra","tool_name":"exec","tool_use_id":"call_1","tool_input":{"command":["bash","-lc","rg -n health src"]},"tool_response":{"exit_code":1}}
+{"session_id":"th-1","turn_id":"tu-1","cwd":"/home/dev/demo","hook_event_name":"PermissionRequest","model":"gpt-5.6-terra","tool_name":"apply_patch","tool_input":{"input":"*** Begin Patch\n*** Add File: src/health.ts\n+export const ok = true\n*** End Patch"}}
+{"session_id":"th-1","turn_id":"tu-1","cwd":"/home/dev/demo","hook_event_name":"PostToolUse","model":"gpt-5.6-terra","tool_name":"apply_patch","tool_use_id":"call_2","tool_input":{"input":"*** Begin Patch\n*** Add File: src/health.ts\n+export const ok = true\n+export const at = 1\n*** Update File: src/app.ts\n@@\n-old\n+new\n*** End Patch"},"tool_response":{"success":true}}
+{"session_id":"th-1","turn_id":"tu-1","cwd":"/home/dev/demo","hook_event_name":"SubagentStart","agent_id":"sa-1","agent_type":"explorer"}
+{"session_id":"th-1","turn_id":"tu-1","cwd":"/home/dev/demo","hook_event_name":"SubagentStop","agent_id":"sa-1","agent_type":"explorer","last_assistant_message":"found it","stop_hook_active":false}
+{"session_id":"th-1","turn_id":"tu-1","cwd":"/home/dev/demo","hook_event_name":"Stop","last_assistant_message":"Added /health.","stop_hook_active":false}
+{"session_id":"th-1","turn_id":"tu-2","cwd":"/home/dev/demo","hook_event_name":"Interrupt","permission_mode":"default"}
+{"session_id":"th-1","cwd":"/home/dev/demo","hook_event_name":"SessionEnd","reason":"other"}

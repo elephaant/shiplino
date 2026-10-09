@@ -5,7 +5,7 @@ Every project, every session, every subagent, every command, every file, every d
 
 **One command to install. Zero tokens to run.**
 
-> ⚠️ **Status: alpha.** Claude Code is supported today; Codex and Cursor are next. Expect rough edges and report them in Issues.
+> ⚠️ **Status: alpha.** Claude Code and Codex (CLI and desktop app) are supported today; Cursor is next. Expect rough edges and report them in Issues.
 
 ---
 

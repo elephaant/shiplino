@@ -4,6 +4,7 @@
 package daemon
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -30,6 +31,7 @@ import (
 	"github.com/elephaant/shiplino/pkg/redact"
 
 	_ "github.com/elephaant/shiplino/pkg/adapters/claudecode" // registers the adapter
+	_ "github.com/elephaant/shiplino/pkg/adapters/codex"      // registers the adapter
 )
 
 const (
@@ -43,6 +45,8 @@ const (
 	// transcriptRecent bounds which stored sessions' transcripts are
 	// re-tailed after a restart.
 	transcriptRecent = 24 * time.Hour
+	// discoverEvery is how often adapters' transcript folders are scanned.
+	discoverEvery = 30 * time.Second
 )
 
 // maxRead caps the bytes read from one file per pass, and so the longest
@@ -75,10 +79,14 @@ type Daemon struct {
 	offsets     map[string]int64
 	stats       Stats
 	transcripts map[string]string // transcript path → agent name
-	projects    *resolver
-	redactor    *redact.Redactor
-	level       redact.Level
-	git         *gitwatch.Watcher
+	// tstate is each transcript file's parser state (model, turn, …),
+	// rebuilt by a warmup pass after a restart.
+	tstate       map[string]map[string]string
+	lastDiscover time.Time
+	projects     *resolver
+	redactor     *redact.Redactor
+	level        redact.Level
+	git          *gitwatch.Watcher
 
 	// OnChange, if set, is called after each commit with the sessions that changed.
 	OnChange func([]*engine.Session)
@@ -125,6 +133,8 @@ func (d *Daemon) reload(ctx context.Context) error {
 	d.eng = engine.New(sessions, totals)
 	d.offsets = offsets
 	d.transcripts = map[string]string{}
+	d.tstate = map[string]map[string]string{}
+	d.lastDiscover = time.Time{}
 	recent := time.Now().Add(-transcriptRecent)
 	for _, s := range sessions {
 		if s.TranscriptPath != "" && s.LastEventAt.After(recent) {
@@ -270,6 +280,9 @@ func (d *Daemon) Poll(ctx context.Context) error {
 	if err := d.checkCommits(ctx); err != nil {
 		errs = append(errs, fmt.Errorf("git: %w", err))
 	}
+	if time.Since(d.lastDiscover) >= discoverEvery {
+		d.discover()
+	}
 	// Transcripts are read-only: tailed from the saved offset, never deleted.
 	for path, agent := range d.transcripts {
 		files := []string{path}
@@ -279,7 +292,14 @@ func (d *Daemon) Poll(ctx context.Context) error {
 			if ctx.Err() != nil {
 				return ctx.Err()
 			}
-			err := d.processFile(ctx, f, "transcript:"+f, d.transcriptParser(agent))
+			src := "transcript:" + f
+			state, ok := d.tstate[src]
+			if !ok {
+				state = map[string]string{}
+				d.tstate[src] = state
+				d.warmup(f, d.offsets[src], agent, state)
+			}
+			err := d.processFile(ctx, f, src, d.transcriptParser(agent, state))
 			if errors.Is(err, os.ErrNotExist) && f == path {
 				delete(d.transcripts, path)
 				break
@@ -317,7 +337,58 @@ func (d *Daemon) addTranscript(path, agent string) {
 	d.transcripts[path] = agent
 }
 
-func (d *Daemon) transcriptParser(agent string) lineParser {
+// discover registers transcripts that adapters can find on disk, for
+// sessions that run without hooks (e.g. desktop apps).
+func (d *Daemon) discover() {
+	d.lastDiscover = time.Now()
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return
+	}
+	recent := time.Now().Add(-transcriptRecent)
+	for _, name := range adapters.Names() {
+		a, _ := adapters.Get(name)
+		td, ok := a.(adapters.TranscriptDiscoverer)
+		if !ok {
+			continue
+		}
+		for _, g := range td.TranscriptRoots(home, time.Now()) {
+			matches, _ := filepath.Glob(g)
+			for _, m := range matches {
+				if fi, err := os.Stat(m); err == nil && fi.ModTime().After(recent) {
+					d.addTranscript(m, name)
+				}
+			}
+		}
+	}
+}
+
+// warmup replays a transcript up to off with Warmup set, so a parser that
+// keeps state across lines (current model, turn) resumes correctly. It
+// produces no events.
+func (d *Daemon) warmup(path string, off int64, agent string, state map[string]string) {
+	if off <= 0 {
+		return
+	}
+	a, _ := adapters.Get(agent)
+	tp, ok := a.(adapters.TranscriptParser)
+	if !ok {
+		return
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+	sc := bufio.NewScanner(io.LimitReader(f, off))
+	sc.Buffer(make([]byte, 64<<10), int(maxRead))
+	meta := adapters.TranscriptMeta{ReceivedAt: time.Now(), User: d.user, State: state, Warmup: true}
+	for sc.Scan() {
+		_, _ = tp.ParseTranscriptLine(sc.Bytes(), meta)
+	}
+}
+
+func (d *Daemon) transcriptParser(agent string, state map[string]string) lineParser {
 	return func(line []byte, ref string) ([]model.Event, string) {
 		d.stats.Lines++
 		a, _ := adapters.Get(agent)
@@ -325,7 +396,7 @@ func (d *Daemon) transcriptParser(agent string) lineParser {
 		if !ok {
 			return nil, ""
 		}
-		evs, err := tp.ParseTranscriptLine(line, adapters.TranscriptMeta{ReceivedAt: time.Now(), User: d.user, Ref: ref})
+		evs, err := tp.ParseTranscriptLine(line, adapters.TranscriptMeta{ReceivedAt: time.Now(), User: d.user, Ref: ref, State: state})
 		if err != nil {
 			d.stats.Bad++
 		}
@@ -514,6 +585,9 @@ func (d *Daemon) commit(ctx context.Context, events []model.Event, cur store.Cur
 	var stored int64
 	for _, e := range events {
 		d.redactor.Event(&e, d.level) // before anything touches disk
+		if d.eng.Redundant(e) {
+			continue
+		}
 		d.projects.annotate(&e)
 		if e.Project != nil && e.Project.CWD != "" && e.Project.RepoRoot != "" && (e.Kind == model.KindSessionStart || e.Kind == model.KindTurnStart) {
 			d.git.Watch(e.Project.CWD)

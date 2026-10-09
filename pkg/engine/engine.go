@@ -75,6 +75,9 @@ type Session struct {
 	WaitingMS       int64     `json:"waiting_ms"`
 	WaitingSince    time.Time `json:"waiting_since,omitzero"`
 	TranscriptPath  string    `json:"transcript_path,omitempty"`
+	// HookSeen is set once the session has events from the agent's hooks.
+	// Activity then comes from hooks; the transcript adds usage and titles.
+	HookSeen bool `json:"hook_seen,omitempty"`
 }
 
 // Link is an external object the session produced, e.g. a pull request.
@@ -140,6 +143,9 @@ func (e *Engine) Apply(ev model.Event) []*Session {
 	}
 	if ev.Agent.Version != "" {
 		s.AgentVersion = ev.Agent.Version
+	}
+	if ev.Collector == model.CollectorHook {
+		s.HookSeen = true
 	}
 	if ev.Project != nil {
 		// A session stays in the project it started in (doc: edge cases).
@@ -258,7 +264,11 @@ func (e *Engine) Apply(ev model.Event) []*Session {
 				}
 			}
 		}
-		setIfEmpty(&s.Model, str(ev.Data, "model"))
+		// The model that answered the latest response is the current one
+		// (sessions can switch). "<synthetic>" marks agent placeholders.
+		if m := str(ev.Data, "model"); m != "" && !strings.HasPrefix(m, "<") {
+			s.Model = m
+		}
 
 	case model.KindSessionUpdate:
 		s.setTitle(str(ev.Data, "title"), "agent")
@@ -291,6 +301,25 @@ func (e *Engine) Apply(ev model.Event) []*Session {
 		}
 	}
 	return changed
+}
+
+// Redundant reports whether ev is transcript-derived activity for a
+// session whose hooks already report that activity. Transcript and hook
+// ids for the same tool call can differ, so both would double count.
+// Usage, cost reports and titles are never redundant.
+func (e *Engine) Redundant(ev model.Event) bool {
+	if ev.Collector != model.CollectorTranscript {
+		return false
+	}
+	switch ev.Kind {
+	case model.KindSessionStart, model.KindTurnStart, model.KindTurnEnd,
+		model.KindToolStart, model.KindToolEnd, model.KindShellExec,
+		model.KindFileEdit, model.KindMCPCall:
+	default:
+		return false
+	}
+	s := e.sessions[ev.SessionID]
+	return s != nil && s.HookSeen
 }
 
 func (e *Engine) ensure(id string, ev model.Event) *Session {
