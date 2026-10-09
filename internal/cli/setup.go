@@ -9,13 +9,16 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/elephaant/shiplino/internal/api"
+	"github.com/elephaant/shiplino/internal/service"
 	"github.com/elephaant/shiplino/internal/spool"
 	"github.com/elephaant/shiplino/pkg/adapters/claudecode"
 )
@@ -27,6 +30,11 @@ type env struct {
 	userHome    string // the user's home directory
 	self        string // path of the running binary
 	version     string
+	svcRun      service.Runner // nil = real OS commands
+}
+
+func (e *env) serviceConfig() service.Config {
+	return service.Config{Bin: e.binPath(), Home: e.home, UserHome: e.userHome, Run: e.svcRun}
 }
 
 func (e *env) binPath() string {
@@ -95,13 +103,34 @@ func setup(ctx context.Context, e *env, args []string) int {
 		fmt.Fprintf(e.out, "  ✅ %-20s prints nothing, exits 0\n", "Hook test")
 	}
 
+	daemonURL := ""
+	if hasFlag(args, "--no-service") {
+		fmt.Fprintf(e.out, "  ➖ %-20s not installed (--no-service): run `shiplino daemon` yourself\n", "Daemon")
+	} else if how, err := service.Install(ctx, e.serviceConfig()); err != nil {
+		ok = false
+		fmt.Fprintf(e.out, "  ❌ %-20s %v\n", "Daemon", err)
+	} else {
+		wctx, cancel := context.WithTimeout(ctx, 8*time.Second)
+		port, err := service.WaitHealthy(wctx, e.home, healthy)
+		cancel()
+		if err != nil {
+			ok = false
+			fmt.Fprintf(e.out, "  ❌ %-20s registered (%s) but not answering: %v\n", "Daemon", how, err)
+		} else {
+			daemonURL = fmt.Sprintf("http://localhost:%d", port)
+			fmt.Fprintf(e.out, "  ✅ %-20s running at %s (%s)\n", "Daemon", daemonURL, how)
+		}
+	}
+
 	fmt.Fprintln(e.out)
 	switch {
 	case connected == 0:
 		fmt.Fprintln(e.out, "No supported agents were connected. Install one and run `shiplino setup` again.")
+	case daemonURL != "":
+		fmt.Fprintf(e.out, "Nothing else to do. Open %s, then start any agent. Zero tokens used.\n", daemonURL)
+		fmt.Fprintln(e.out, "Sessions already running pick up the hooks after a restart.")
 	default:
 		fmt.Fprintln(e.out, "Start the daemon with `shiplino daemon`, then open http://localhost:4777.")
-		fmt.Fprintln(e.out, "New agent sessions are recorded from now on. Restart running sessions to pick up the hooks.")
 	}
 	if !ok {
 		return 1
@@ -113,6 +142,12 @@ func setup(ctx context.Context, e *env, args []string) int {
 func uninstall(ctx context.Context, e *env, args []string) int {
 	purge := hasFlag(args, "--purge")
 	ok := true
+	if err := service.Uninstall(ctx, e.serviceConfig()); err != nil {
+		ok = false
+		fmt.Fprintf(e.out, "  ❌ Daemon       %v\n", err)
+	} else {
+		fmt.Fprintln(e.out, "  ✅ Daemon       stopped and removed from login items")
+	}
 	settings := filepath.Join(e.userHome, ".claude", "settings.json")
 	if res, err := claudecode.Uninstall(settings, e.backupDir(claudecode.Name)); err != nil {
 		ok = false
@@ -198,6 +233,17 @@ func selfTest(ctx context.Context, e *env, bin string) error {
 		return errors.New("hook didn't write to the spool")
 	}
 	return nil
+}
+
+// healthy reports whether a Shiplino daemon answers on the port.
+func healthy(port int) bool {
+	c := http.Client{Timeout: 500 * time.Millisecond}
+	resp, err := c.Get(fmt.Sprintf("http://127.0.0.1:%d/api/v1/health", port))
+	if err != nil {
+		return false
+	}
+	resp.Body.Close()
+	return resp.StatusCode == http.StatusOK
 }
 
 func tilde(path, home string) string {
