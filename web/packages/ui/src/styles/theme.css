@@ -3,124 +3,115 @@
  * SPDX-License-Identifier: FSL-1.1-Apache-2.0
  *
  * Shiplino default theme (the only theme). shadcn/ui token names, Tailwind v4.
- * Brand orange #DF5E3A (same as the logo) on warm stone neutrals; warm charcoal in dark mode.
+ * Orange primary (same as the logo) on cool grey neutrals; navy in dark mode.
  * Import after Tailwind in the app's globals.css. Dark mode = `.dark` on <html>.
  */
 
 :root {
-  --radius: 0.5rem;
+  --radius: 0.625rem;
 
-  /* surfaces */
-  --background: oklch(0.975 0.004 75);
-  --foreground: oklch(0.24 0.01 50);
+  --background: oklch(0.94 0 236.5);
+  --foreground: oklch(0.32 0 0);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.24 0.01 50);
+  --card-foreground: oklch(0.32 0 0);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.24 0.01 50);
+  --popover-foreground: oklch(0.32 0 0);
+  --primary: oklch(0.64 0.17 36.44);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.97 0 264.54);
+  --secondary-foreground: oklch(0.45 0.03 256.8);
+  --muted: oklch(0.98 0 247.84);
+  --muted-foreground: oklch(0.55 0.02 264.36);
+  --accent: oklch(0.91 0.02 243.82);
+  --accent-foreground: oklch(0.38 0.14 265.52);
+  --destructive: oklch(0.64 0.21 25.33);
+  --border: oklch(0.9 0.01 247.88);
+  --input: oklch(0.97 0 264.54);
+  --ring: oklch(0.64 0.17 36.44);
+  --chart-1: oklch(0.72 0.06 248.68);
+  --chart-2: oklch(0.79 0.09 35.96);
+  --chart-3: oklch(0.58 0.08 254.16);
+  --chart-4: oklch(0.5 0.08 259.49);
+  --chart-5: oklch(0.42 0.1 264.03);
+  --sidebar: oklch(0.9 0 258.33);
+  --sidebar-foreground: oklch(0.32 0 0);
+  --sidebar-primary: oklch(0.64 0.17 36.44);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.91 0.02 243.82);
+  --sidebar-accent-foreground: oklch(0.38 0.14 265.52);
+  --sidebar-border: oklch(0.93 0.01 264.53);
+  --sidebar-ring: oklch(0.64 0.17 36.44);
 
-  /* brand */
-  --primary: oklch(0.64 0.17 36.3); /* #DF5E3A */
-  --primary-foreground: oklch(0.99 0.005 75);
-  --ring: oklch(0.64 0.17 36.3);
-
-  --secondary: oklch(0.955 0.006 70);
-  --secondary-foreground: oklch(0.33 0.015 50);
-  --muted: oklch(0.96 0.005 70);
-  --muted-foreground: oklch(0.52 0.015 55);
-  --accent: oklch(0.95 0.025 45);
-  --accent-foreground: oklch(0.42 0.12 36);
-  --destructive: oklch(0.55 0.2 22);
-  --border: oklch(0.91 0.006 70);
-  --input: oklch(0.91 0.006 70);
-
-  /* charts: brand, teal, indigo, gold, stone */
-  --chart-1: oklch(0.64 0.17 36.3);
-  --chart-2: oklch(0.68 0.11 195);
-  --chart-3: oklch(0.58 0.14 265);
-  --chart-4: oklch(0.78 0.13 85);
-  --chart-5: oklch(0.55 0.04 55);
-
-  /* sidebar */
-  --sidebar: oklch(0.965 0.005 70);
-  --sidebar-foreground: oklch(0.3 0.01 50);
-  --sidebar-primary: oklch(0.64 0.17 36.3);
-  --sidebar-primary-foreground: oklch(0.99 0.005 75);
-  --sidebar-accent: oklch(0.93 0.02 45);
-  --sidebar-accent-foreground: oklch(0.38 0.1 36);
-  --sidebar-border: oklch(0.91 0.006 70);
-  --sidebar-ring: oklch(0.64 0.17 36.3);
+  --shadow-2xs: 0px 1px 3px 0px hsl(0 0% 0% / 0.05);
+  --shadow-xs: 0px 1px 3px 0px hsl(0 0% 0% / 0.05);
+  --shadow-sm: 0px 1px 3px 0px hsl(0 0% 0% / 0.1), 0px 1px 2px -1px hsl(0 0% 0% / 0.1);
+  --shadow: 0px 1px 3px 0px hsl(0 0% 0% / 0.1), 0px 1px 2px -1px hsl(0 0% 0% / 0.1);
+  --shadow-md: 0px 1px 3px 0px hsl(0 0% 0% / 0.1), 0px 2px 4px -1px hsl(0 0% 0% / 0.1);
+  --shadow-lg: 0px 1px 3px 0px hsl(0 0% 0% / 0.1), 0px 4px 6px -1px hsl(0 0% 0% / 0.1);
+  --shadow-xl: 0px 1px 3px 0px hsl(0 0% 0% / 0.1), 0px 8px 10px -1px hsl(0 0% 0% / 0.1);
+  --shadow-2xl: 0px 1px 3px 0px hsl(0 0% 0% / 0.25);
 
   /* card status (always paired with an icon, never color alone) */
-  --status-running: oklch(0.64 0.17 36.3);
+  --status-running: oklch(0.64 0.17 36.44);
   --status-waiting: oklch(0.78 0.15 85);
-  --status-review: oklch(0.58 0.14 265);
+  --status-review: oklch(0.55 0.14 265);
   --status-done: oklch(0.6 0.13 150);
-  --status-failed: oklch(0.55 0.2 22);
+  --status-failed: oklch(0.58 0.21 25.33);
 
   /* agent identity (always paired with the agent icon) */
   --agent-claude: oklch(0.6 0.11 55);
-  --agent-codex: oklch(0.62 0.11 175);
+  --agent-codex: oklch(0.6 0.11 175);
   --agent-cursor: oklch(0.35 0.01 260);
-  --agent-gemini: oklch(0.6 0.15 255);
+  --agent-gemini: oklch(0.58 0.15 255);
   --agent-copilot: oklch(0.55 0.18 300);
-  --agent-windsurf: oklch(0.65 0.11 200);
-  --agent-other: oklch(0.52 0.015 55);
-
-  --shadow-sm: 0 1px 2px 0 oklch(0.3 0.02 50 / 0.06), 0 1px 3px 0 oklch(0.3 0.02 50 / 0.08);
-  --shadow-md: 0 2px 4px -1px oklch(0.3 0.02 50 / 0.08), 0 4px 8px -2px oklch(0.3 0.02 50 / 0.08);
+  --agent-windsurf: oklch(0.62 0.11 200);
+  --agent-other: oklch(0.55 0.02 264.36);
 }
 
 .dark {
-  --background: oklch(0.19 0.008 55);
-  --foreground: oklch(0.94 0.005 75);
-  --card: oklch(0.225 0.009 55);
-  --card-foreground: oklch(0.94 0.005 75);
-  --popover: oklch(0.24 0.01 55);
-  --popover-foreground: oklch(0.94 0.005 75);
-
-  --primary: oklch(0.68 0.16 38);
-  --primary-foreground: oklch(0.18 0.01 50);
-  --ring: oklch(0.68 0.16 38);
-
-  --secondary: oklch(0.27 0.01 55);
-  --secondary-foreground: oklch(0.92 0.005 75);
-  --muted: oklch(0.26 0.008 55);
-  --muted-foreground: oklch(0.7 0.01 70);
-  --accent: oklch(0.3 0.04 40);
-  --accent-foreground: oklch(0.88 0.06 45);
-  --destructive: oklch(0.62 0.2 22);
-  --border: oklch(0.31 0.01 55);
-  --input: oklch(0.31 0.01 55);
-
-  --chart-1: oklch(0.7 0.16 38);
-  --chart-2: oklch(0.74 0.11 195);
-  --chart-3: oklch(0.68 0.13 265);
-  --chart-4: oklch(0.82 0.12 85);
-  --chart-5: oklch(0.65 0.04 55);
-
-  --sidebar: oklch(0.17 0.008 55);
-  --sidebar-foreground: oklch(0.92 0.005 75);
-  --sidebar-primary: oklch(0.68 0.16 38);
-  --sidebar-primary-foreground: oklch(0.18 0.01 50);
-  --sidebar-accent: oklch(0.27 0.02 45);
-  --sidebar-accent-foreground: oklch(0.9 0.04 45);
-  --sidebar-border: oklch(0.27 0.01 55);
-  --sidebar-ring: oklch(0.68 0.16 38);
+  --background: oklch(0.26 0.03 262.67);
+  --foreground: oklch(0.92 0 0);
+  --card: oklch(0.31 0.03 268.64);
+  --card-foreground: oklch(0.92 0 0);
+  --popover: oklch(0.29 0.02 268.4);
+  --popover-foreground: oklch(0.92 0 0);
+  --primary: oklch(0.64 0.17 36.44);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.31 0.03 266.71);
+  --secondary-foreground: oklch(0.92 0 0);
+  --muted: oklch(0.31 0.03 266.71);
+  --muted-foreground: oklch(0.72 0 0);
+  --accent: oklch(0.34 0.06 267.59);
+  --accent-foreground: oklch(0.88 0.06 254.13);
+  --destructive: oklch(0.64 0.21 25.33);
+  --border: oklch(0.38 0.03 269.73);
+  --input: oklch(0.38 0.03 269.73);
+  --ring: oklch(0.64 0.17 36.44);
+  --chart-1: oklch(0.72 0.06 248.68);
+  --chart-2: oklch(0.77 0.09 34.19);
+  --chart-3: oklch(0.58 0.08 254.16);
+  --chart-4: oklch(0.5 0.08 259.49);
+  --chart-5: oklch(0.42 0.1 264.03);
+  --sidebar: oklch(0.31 0.03 267.74);
+  --sidebar-foreground: oklch(0.92 0 0);
+  --sidebar-primary: oklch(0.64 0.17 36.44);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.34 0.06 267.59);
+  --sidebar-accent-foreground: oklch(0.88 0.06 254.13);
+  --sidebar-border: oklch(0.38 0.03 269.73);
+  --sidebar-ring: oklch(0.64 0.17 36.44);
 
   --status-running: oklch(0.7 0.16 38);
   --status-waiting: oklch(0.82 0.14 88);
-  --status-review: oklch(0.68 0.13 265);
-  --status-done: oklch(0.7 0.13 150);
-  --status-failed: oklch(0.65 0.2 22);
+  --status-review: oklch(0.72 0.12 265);
+  --status-done: oklch(0.72 0.13 150);
+  --status-failed: oklch(0.66 0.2 25.33);
 
-  --agent-claude: oklch(0.72 0.11 58);
-  --agent-codex: oklch(0.72 0.11 175);
-  --agent-cursor: oklch(0.85 0.01 260);
-  --agent-gemini: oklch(0.72 0.13 255);
-  --agent-copilot: oklch(0.7 0.15 300);
-  --agent-windsurf: oklch(0.74 0.1 200);
-  --agent-other: oklch(0.7 0.01 70);
-
-  --shadow-sm: 0 1px 2px 0 oklch(0 0 0 / 0.3);
-  --shadow-md: 0 2px 6px -1px oklch(0 0 0 / 0.35);
+  --agent-claude: oklch(0.74 0.11 58);
+  --agent-codex: oklch(0.74 0.11 175);
+  --agent-cursor: oklch(0.88 0.01 260);
+  --agent-gemini: oklch(0.74 0.13 255);
+  --agent-copilot: oklch(0.72 0.15 300);
+  --agent-windsurf: oklch(0.76 0.1 200);
+  --agent-other: oklch(0.72 0 0);
 }

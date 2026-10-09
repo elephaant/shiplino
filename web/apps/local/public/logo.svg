@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%" fill="#DF5E3A">
+  <title>Shiplino</title>
+  <!-- Main Sail (Left) -->
+  <path d="M 238 72 L 116 264 L 238 264 Z" />
+  
+  <!-- Jib Sail (Right) -->
+  <path d="M 266 120 L 266 264 L 388 264 Z" />
+  
+  <!-- Aerodynamic Hull -->
+  <path d="M 72 292 L 440 292 L 356 388 L 156 388 Z" />
+</svg>
+

@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -116,7 +117,11 @@ func (h *Hub) unsubscribe(c chan []byte) {
 // live upgrades to a WebSocket and streams updates. websocket.Accept
 // rejects cross-origin requests (Origin must match Host).
 func (s *Server) live(w http.ResponseWriter, r *http.Request) {
-	conn, err := websocket.Accept(w, r, nil)
+	var opts *websocket.AcceptOptions
+	if s.DevOrigin != "" {
+		opts = &websocket.AcceptOptions{OriginPatterns: []string{strings.TrimPrefix(strings.TrimPrefix(s.DevOrigin, "http://"), "https://")}}
+	}
+	conn, err := websocket.Accept(w, r, opts)
 	if err != nil {
 		return
 	}

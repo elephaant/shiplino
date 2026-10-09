@@ -58,6 +58,7 @@ func Main(ctx context.Context, version string) error {
 	go func() {
 		srv := api.New(st, hub, token, version, logger)
 		srv.Status = func() any { return d.Health() }
+		srv.DevOrigin = os.Getenv("SHIPLINO_DEV_ORIGIN")
 		apiErr <- srv.Serve(ctx, ln)
 		cancel() // if the API dies, stop the daemon too
 	}()
