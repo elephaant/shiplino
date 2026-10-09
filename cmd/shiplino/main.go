@@ -37,7 +37,7 @@ func main() {
 	case "daemon":
 		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 		defer stop()
-		if err := daemon.Main(ctx); err != nil {
+		if err := daemon.Main(ctx, version); err != nil {
 			fmt.Fprintln(os.Stderr, "shiplino daemon:", err)
 			os.Exit(1)
 		}

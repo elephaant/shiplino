@@ -7,15 +7,17 @@ import (
 	"context"
 	"errors"
 	"log"
+	"net"
 	"os"
 	"path/filepath"
 
+	"github.com/elephaant/shiplino/internal/api"
 	"github.com/elephaant/shiplino/internal/spool"
 	"github.com/elephaant/shiplino/internal/store"
 )
 
 // Main runs the daemon in the foreground until ctx is cancelled.
-func Main(ctx context.Context) error {
+func Main(ctx context.Context, version string) error {
 	home := spool.Home()
 	if home == "" {
 		return errors.New("cannot find the home directory (set SHIPLINO_HOME)")
@@ -38,8 +40,28 @@ func Main(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	logger.Printf("daemon started (home %s)", home)
-	err = d.Run(ctx)
+	token, err := api.LoadToken(home)
+	if err != nil {
+		return err
+	}
+	ln, err := api.Listen(home, api.DefaultPort)
+	if err != nil {
+		return err
+	}
+	hub := api.NewHub()
+	d.OnChange = hub.Publish
+
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	go hub.Run(ctx)
+	apiErr := make(chan error, 1)
+	go func() {
+		apiErr <- api.New(st, hub, token, version, logger).Serve(ctx, ln)
+		cancel() // if the API dies, stop the daemon too
+	}()
+
+	logger.Printf("daemon started: http://localhost:%d (home %s)", ln.Addr().(*net.TCPAddr).Port, home)
+	err = errors.Join(d.Run(ctx), <-apiErr)
 	s := d.Stats()
 	logger.Printf("daemon stopped: %d lines, %d events, %d unknown, %d bad", s.Lines, s.Events, s.Unknown, s.Bad)
 	return err
