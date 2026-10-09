@@ -110,6 +110,10 @@ All commits must be signed off ([DCO](https://developercertificate.org/)): `git 
 - Code of conduct: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
 - How decisions are made: [GOVERNANCE.md](GOVERNANCE.md)
 
+## Acknowledgments
+
+The web app's layout and its default color theme are inspired by [next-shadcn-admin-dashboard](https://github.com/arhamkhnz/next-shadcn-admin-dashboard) by [Mohammed Arham Khan](https://github.com/arhamkhnz) (MIT). Thank you! Shiplino's screens are our own code, built with [shadcn/ui](https://ui.shadcn.com).
+
 ## License
 
 The code in this repository is licensed under the [Functional Source License (FSL-1.1-Apache-2.0)](LICENSE).

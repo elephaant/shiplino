@@ -3,3 +3,7 @@ Copyright 2026 The Shiplino Authors
 
 This product includes software developed by The Shiplino Authors
 (https://github.com/elephaant/shiplino).
+
+The web app's layout and default color theme are inspired by
+next-shadcn-admin-dashboard by Mohammed Arham Khan
+(https://github.com/arhamkhnz/next-shadcn-admin-dashboard, MIT License).
