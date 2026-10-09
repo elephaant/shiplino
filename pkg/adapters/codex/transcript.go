@@ -259,8 +259,8 @@ func items(st map[string]string, meta adapters.TranscriptMeta, l line, raw json.
 			if ch.Type == "add" {
 				added, removed = countLines(ch.Content), 0
 			}
-			if !filepath.IsAbs(path) && st["cwd"] != "" {
-				path = filepath.Join(st["cwd"], path)
+			if st["cwd"] != "" {
+				path = joinPath(st["cwd"], path)
 			}
 			out = append(out, event(st, meta, l, model.KindFileEdit, map[string]any{
 				"path": path, "op": op, "lines_added": added, "lines_removed": removed, "lines_source": "agent",

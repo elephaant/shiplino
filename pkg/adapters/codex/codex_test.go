@@ -85,7 +85,7 @@ func TestHooksGolden(t *testing.T) {
 		t.Errorf("shell: %+v", sh)
 	}
 	edits := byKind[model.KindFileEdit]
-	if len(edits) != 2 || edits[0].Data["path"] != filepath.Join("/home/dev/demo", "src/health.ts") || edits[0].Data["lines_added"] != 2 || edits[1].Data["lines_removed"] != 1 {
+	if len(edits) != 2 || edits[0].Data["path"] != "/home/dev/demo/src/health.ts" || edits[0].Data["lines_added"] != 2 || edits[1].Data["lines_removed"] != 1 {
 		t.Errorf("edits: %+v", edits)
 	}
 	if ts := byKind[model.KindTurnStart]; ts[0].DedupKey != "codex:th-1:turn:tu-1" {
@@ -224,5 +224,19 @@ func TestRegistered(t *testing.T) {
 	}
 	if _, ok := a.(adapters.TranscriptDiscoverer); !ok {
 		t.Fatal("no transcript discovery")
+	}
+}
+
+func TestJoinPath(t *testing.T) {
+	cases := [][3]string{
+		{"/home/dev/demo", "src/a.ts", "/home/dev/demo/src/a.ts"},
+		{"/home/dev/demo", "/etc/x", "/etc/x"},
+		{`C:\Users\dev\demo`, "src/a.ts", `C:\Users\dev\demo\src\a.ts`},
+		{`C:\Users\dev\demo`, `D:\x.txt`, `D:\x.txt`},
+	}
+	for _, c := range cases {
+		if got := joinPath(c[0], c[1]); got != c[2] {
+			t.Errorf("joinPath(%q, %q) = %q, want %q", c[0], c[1], got, c[2])
+		}
 	}
 }

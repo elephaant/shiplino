@@ -6,7 +6,7 @@ package codex
 import (
 	"encoding/json"
 	"fmt"
-	"path/filepath"
+	"path"
 	"strings"
 
 	"github.com/elephaant/shiplino/pkg/adapters"
@@ -279,8 +279,8 @@ func patchFiles(patch, cwd string) []map[string]any {
 		for _, h := range [][2]string{{"*** Add File: ", "create"}, {"*** Update File: ", "modify"}, {"*** Delete File: ", "delete"}} {
 			if strings.HasPrefix(line, h[0]) {
 				path := strings.TrimSpace(strings.TrimPrefix(line, h[0]))
-				if cwd != "" && !filepath.IsAbs(path) {
-					path = filepath.Join(cwd, path)
+				if cwd != "" {
+					path = joinPath(cwd, path)
 				}
 				cur = map[string]any{"path": path, "op": h[1], "lines_added": 0, "lines_removed": 0, "lines_source": "agent"}
 				out = append(out, cur)
@@ -328,4 +328,16 @@ func compact(m map[string]any) map[string]any {
 		}
 	}
 	return m
+}
+
+// joinPath resolves p against cwd in the agent's own path style (Unix or
+// Windows), independent of the OS Shiplino runs on.
+func joinPath(cwd, p string) string {
+	if p == "" || strings.HasPrefix(p, "/") || strings.HasPrefix(p, `\\`) || (len(p) > 2 && p[1] == ':' && (p[2] == '\\' || p[2] == '/')) {
+		return p
+	}
+	if strings.HasPrefix(cwd, "/") {
+		return path.Join(cwd, p)
+	}
+	return strings.TrimRight(cwd, `\/`) + `\` + strings.ReplaceAll(p, "/", `\`)
 }
