@@ -1,0 +1,63 @@
+# Build output
+/bin/
+/dist/
+*.exe
+*.test
+*.out
+coverage.*
+
+# Go
+/vendor/
+go.work
+go.work.sum
+
+# Node / web
+node_modules/
+web/**/dist/
+.vite/
+*.tsbuildinfo
+.npm/
+.pnpm-store/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+.pytest_cache/
+
+# Secrets and local config: never commit
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+id_rsa*
+*.keystore
+secrets.*
+credentials*
+
+# Local Shiplino data (databases, spool, logs)
+.shiplino/
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.log
+
+# Local agent/editor settings
+.claude/settings.local.json
+.claude/scratchpad/
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+.DS_Store
+Thumbs.db
+
+# Claude Code plugin data (may contain API keys)
+.claude/.supermemory-claude/
+
+# Personal / private Claude Code notes (never publish)
+CLAUDE.local.md

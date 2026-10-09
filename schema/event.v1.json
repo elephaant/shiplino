@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://shiplino.com/schema/event.v1.json",
+  "title": "Shiplino universal event v1",
+  "description": "One thing an AI agent did. See docs/event-format.md.",
+  "type": "object",
+  "required": ["id", "v", "ts", "kind", "agent", "collector", "session_id"],
+  "properties": {
+    "id": { "type": "string", "description": "ULID" },
+    "v": { "const": 1 },
+    "ts": { "type": "string", "format": "date-time" },
+    "received_at": { "type": "string", "format": "date-time" },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "session.start", "session.end", "turn.start", "turn.end",
+        "tool.start", "tool.end", "shell.exec", "file.read", "file.edit", "mcp.call",
+        "waiting.start", "waiting.end", "subagent.start", "subagent.end",
+        "usage", "compact", "git.commit", "git.branch", "error", "note"
+      ]
+    },
+    "agent": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string", "examples": ["claude-code", "codex", "cursor"] },
+        "version": { "type": "string" },
+        "surface": { "enum": ["cli", "ide", "desktop", "cloud"] }
+      }
+    },
+    "collector": { "enum": ["hook", "transcript", "git", "otlp", "http", "wrap"] },
+    "machine_id": { "type": "string" },
+    "user": { "type": "string" },
+    "session_id": { "type": "string", "description": "Namespaced by agent, e.g. claude-code:3f2c..." },
+    "actor_id": { "type": "string", "description": "Session or subagent instance that produced the event" },
+    "parent_actor": { "type": ["string", "null"] },
+    "actor_type": { "type": "string" },
+    "turn_id": { "type": "string" },
+    "project": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "cwd": { "type": "string" },
+        "repo_root": { "type": "string" },
+        "remote": { "type": "string" },
+        "branch": { "type": "string" },
+        "head": { "type": "string" }
+      }
+    },
+    "data": { "type": "object", "description": "Kind-specific fields" },
+    "dedup_key": { "type": "string" },
+    "raw": { "type": "object" }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "shiplino-web",
+  "private": true,
+  "license": "FSL-1.1-Apache-2.0",
+  "workspaces": ["packages/*", "apps/*"]
+}
