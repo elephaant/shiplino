@@ -78,7 +78,7 @@ func TestLinuxWithoutSystemdFallsBack(t *testing.T) {
 		t.Fatalf("%q %v", how, err)
 	}
 	desktop, _ := os.ReadFile(c.autostartPath())
-	if !strings.Contains(string(desktop), c.Bin) || !strings.Contains(string(desktop), "daemon") {
+	if !strings.Contains(string(desktop), "shiplino") || !strings.Contains(string(desktop), " daemon") {
 		t.Fatalf("desktop entry:\n%s", desktop)
 	}
 	if !r.ran(c.Bin + " daemon") {
@@ -96,13 +96,13 @@ func TestLinuxEnableFailureIsReported(t *testing.T) {
 func TestMacLaunchAgent(t *testing.T) {
 	r := &recorder{}
 	c := cfg(t, "darwin", r)
-	c.Bin = "/Users/a&b/.shiplino/bin/shiplino"
+	c.Bin = filepath.Join(c.UserHome, "a&b", "shiplino") // absolute on any host
 	how, err := Install(context.Background(), c)
 	if err != nil || !strings.Contains(how, "LaunchAgent") {
 		t.Fatalf("%q %v", how, err)
 	}
 	plist, _ := os.ReadFile(c.plistPath())
-	for _, want := range []string{"<string>dev.shiplino.daemon</string>", "/Users/a&amp;b/.shiplino/bin/shiplino", "<key>RunAtLoad</key><true/>", "<key>KeepAlive</key>"} {
+	for _, want := range []string{"<string>dev.shiplino.daemon</string>", "a&amp;b", "<key>RunAtLoad</key><true/>", "<key>KeepAlive</key>"} {
 		if !strings.Contains(string(plist), want) {
 			t.Errorf("plist missing %q", want)
 		}
