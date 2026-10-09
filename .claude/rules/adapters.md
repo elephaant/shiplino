@@ -11,6 +11,8 @@ Files: `detect.go`, `install.go`, `parse.go`, `transcript.go` (optional), `testd
 
 ## Rules
 
+- **The agent's own data wins.** If the agent records a value itself (cost totals, session titles, diff/patch line counts, durations, exit codes, status, model, version), use it. Shiplino's own derivation is only the fallback, and the event or session says which source was used (e.g. `cost_source: reported | computed`). Before mapping a field, inspect everything the agent writes (hook payloads, every transcript line type, structured tool results), not just the obvious fields.
+
 - **User-level config only** (e.g. `~/.claude/settings.json`, `~/.codex/hooks.json`, `~/.cursor/hooks.json`). Never edit project files, so we don't dirty user repos.
 - **Our entries are recognized by their command string**, `shiplino hook --agent <name>`. Install is idempotent: it updates our entry in place and never duplicates it. Uninstall removes only our entries and never restores old backups.
 - **Editing config:** use a real parser (JSON/TOML) and preserve the user's other keys and formatting where possible. Back up to `~/.shiplino/backups/<agent>/<ts>-<file>` first, then write temp → fsync → rename. If the file doesn't parse, **don't touch it**: report it through `Check`.

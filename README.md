@@ -58,29 +58,15 @@ curl -fsSL https://shiplino.com/install | sh
 
 That's it. Agents are detected and connected automatically, and the board opens in your browser.
 
-## Try the pre-alpha (Claude Code only, manual setup)
-
-Until `shiplino setup` exists, you can wire Claude Code by hand:
+## Try the pre-alpha (Claude Code)
 
 ```bash
 make build
-./bin/shiplino daemon          # serves http://localhost:4777 (Ctrl+C to stop)
+./bin/shiplino setup       # installs to ~/.shiplino/bin and connects Claude Code
+~/.shiplino/bin/shiplino daemon   # serves http://localhost:4777 (Ctrl+C to stop)
 ```
 
-Then add a hook for each event you want to record to `~/.claude/settings.json`, using the **absolute** path to the binary, for example:
-
-```json
-{
-  "hooks": {
-    "UserPromptSubmit": [{ "hooks": [{ "type": "command", "command": "/path/to/shiplino hook --agent claude-code", "async": true, "timeout": 5 }] }],
-    "PreToolUse":       [{ "matcher": "*", "hooks": [{ "type": "command", "command": "/path/to/shiplino hook --agent claude-code", "async": true, "timeout": 5 }] }],
-    "PostToolUse":      [{ "matcher": "*", "hooks": [{ "type": "command", "command": "/path/to/shiplino hook --agent claude-code", "async": true, "timeout": 5 }] }],
-    "Stop":             [{ "hooks": [{ "type": "command", "command": "/path/to/shiplino hook --agent claude-code", "async": true, "timeout": 5 }] }]
-  }
-}
-```
-
-Start a new Claude Code session and open http://localhost:4777. The hook prints nothing, so it adds no tokens.
+`setup` backs up `~/.claude/settings.json`, adds one hook per event (your own hooks and settings are kept), and checks that the hook prints nothing. Start a new Claude Code session and open http://localhost:4777. To remove everything: `shiplino uninstall` (add `--purge` to delete recorded data).
 
 ## Repository layout
 
