@@ -56,7 +56,9 @@ func Main(ctx context.Context, version string) error {
 	go hub.Run(ctx)
 	apiErr := make(chan error, 1)
 	go func() {
-		apiErr <- api.New(st, hub, token, version, logger).Serve(ctx, ln)
+		srv := api.New(st, hub, token, version, logger)
+		srv.Status = func() any { return d.Health() }
+		apiErr <- srv.Serve(ctx, ln)
 		cancel() // if the API dies, stop the daemon too
 	}()
 

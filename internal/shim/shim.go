@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"io"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -31,7 +30,7 @@ func Run(args []string, stdin io.Reader) {
 	if home == "" {
 		return
 	}
-	if _, err := os.Stat(filepath.Join(home, "paused")); err == nil {
+	if spool.Paused(home, time.Now()) {
 		return
 	}
 

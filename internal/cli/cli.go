@@ -21,9 +21,15 @@ Usage:
   shiplino <command> [flags]
 
 Commands:
-  setup             install Shiplino and connect detected agents
+  setup             install Shiplino, connect detected agents, start the daemon
+  status            daemon state and what's running right now
+  ls                recent sessions (--running, --today)
+  open              open the board in your browser
+  doctor            check everything and explain problems (--fix to repair)
+  pause             stop recording (--for 30m); hooks stay installed
+  resume            start recording again
   daemon            run the background service in the foreground
-  uninstall         remove Shiplino's hooks (--purge also deletes all data)
+  uninstall         remove Shiplino (--purge also deletes all data)
   version           print the version
   help              show this help
 `
@@ -52,6 +58,18 @@ func Run(args []string, stdout, stderr io.Writer, version string) int {
 		return setup(ctx, e, args[1:])
 	case "uninstall":
 		return uninstall(ctx, e, args[1:])
+	case "status":
+		return status(ctx, e, args[1:])
+	case "ls":
+		return ls(ctx, e, args[1:])
+	case "open":
+		return open(ctx, e, args[1:])
+	case "doctor":
+		return doctor(ctx, e, args[1:])
+	case "pause":
+		return pause(ctx, e, args[1:])
+	case "resume":
+		return resume(ctx, e, args[1:])
 	case "daemon":
 		if err := daemon.Main(ctx, version); err != nil {
 			fmt.Fprintln(stderr, "shiplino daemon:", err)

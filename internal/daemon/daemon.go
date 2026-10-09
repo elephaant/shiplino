@@ -49,10 +49,10 @@ var maxRead int64 = 4 << 20
 
 // Stats counts what the daemon could not turn into events.
 type Stats struct {
-	Lines   int64 // spool lines read
-	Events  int64 // new events stored
-	Unknown int64 // unknown agents or native events (kept on disk as raw until reaped)
-	Bad     int64 // lines or payloads that failed to decode
+	Lines   int64 `json:"lines"`   // lines read (spool and transcripts)
+	Events  int64 `json:"events"`  // new events stored
+	Unknown int64 `json:"unknown"` // unknown agents or native events
+	Bad     int64 `json:"bad"`     // lines or payloads that failed to decode
 }
 
 // lineParser turns one line into events. blob, if set, is a spool blob to
@@ -117,6 +117,33 @@ func (d *Daemon) reload(ctx context.Context) error {
 		}
 	}
 	return nil
+}
+
+// Health is what the daemon reports about itself.
+type Health struct {
+	Stats
+	SpoolBacklogBytes int64 `json:"spool_backlog_bytes"` // unprocessed spool data
+	Transcripts       int   `json:"transcripts"`         // transcript files being tailed
+	Paused            bool  `json:"paused"`
+}
+
+// Health returns counters plus the current spool backlog.
+func (d *Daemon) Health() Health {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	h := Health{Stats: d.stats, Transcripts: len(d.transcripts), Paused: spool.Paused(d.home, time.Now())}
+	files, _ := filepath.Glob(filepath.Join(d.spoolRoot, "*", "*.jsonl"))
+	for _, f := range files {
+		fi, err := os.Stat(f)
+		if err != nil {
+			continue
+		}
+		rel, _ := filepath.Rel(d.spoolRoot, f)
+		if n := fi.Size() - d.offsets["spool/"+filepath.ToSlash(rel)]; n > 0 {
+			h.SpoolBacklogBytes += n
+		}
+	}
+	return h
 }
 
 // Stats returns a snapshot of the counters.

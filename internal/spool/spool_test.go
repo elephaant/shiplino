@@ -13,6 +13,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 )
 
 func TestSafeName(t *testing.T) {
@@ -137,5 +138,21 @@ func TestHome(t *testing.T) {
 	t.Setenv("SHIPLINO_HOME", "/tmp/custom-shiplino")
 	if got := Home(); got != "/tmp/custom-shiplino" {
 		t.Fatalf("Home() = %q", got)
+	}
+}
+
+func TestPaused(t *testing.T) {
+	home := t.TempDir()
+	now := time.Unix(1_800_000_000, 0)
+	if Paused(home, now) {
+		t.Fatal("paused without a marker")
+	}
+	os.WriteFile(filepath.Join(home, "paused"), nil, 0o600)
+	if !Paused(home, now) {
+		t.Fatal("empty marker should pause indefinitely")
+	}
+	os.WriteFile(filepath.Join(home, "paused"), []byte("1800000060\n"), 0o600)
+	if !Paused(home, now) || Paused(home, now.Add(2*time.Minute)) {
+		t.Fatal("timed pause wrong")
 	}
 }
