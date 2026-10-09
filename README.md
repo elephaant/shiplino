@@ -62,11 +62,10 @@ That's it. Agents are detected and connected automatically, and the board opens 
 
 ```bash
 make build
-./bin/shiplino setup       # installs to ~/.shiplino/bin and connects Claude Code
-~/.shiplino/bin/shiplino daemon   # serves http://localhost:4777 (Ctrl+C to stop)
+./bin/shiplino setup   # installs to ~/.shiplino/bin, connects Claude Code, starts the daemon at login
 ```
 
-`setup` backs up `~/.claude/settings.json`, adds one hook per event (your own hooks and settings are kept), and checks that the hook prints nothing. Start a new Claude Code session and open http://localhost:4777. To remove everything: `shiplino uninstall` (add `--purge` to delete recorded data).
+Then open http://localhost:4777 and start a Claude Code session. `setup` backs up `~/.claude/settings.json`, adds one hook per event (your own hooks and settings are kept), and checks that the hook prints nothing. Start a new Claude Code session and open http://localhost:4777. To remove everything: `shiplino uninstall` (add `--purge` to delete recorded data).
 
 ## Repository layout
 

@@ -6,6 +6,9 @@ package cli
 import (
 	"bytes"
 	"context"
+	"fmt"
+	"net"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -35,14 +38,16 @@ func testEnv(t *testing.T) (*env, *bytes.Buffer) {
 	bin := builtBinary(t)
 	t.Setenv("PATH", "") // never find a real `claude` binary
 	var out bytes.Buffer
-	return &env{out: &out, errOut: &out, home: filepath.Join(user, ".shiplino"), userHome: user, self: bin, version: "test"}, &out
+	// Never touch the real service manager from tests.
+	fake := func(context.Context, string, ...string) ([]byte, error) { return nil, nil }
+	return &env{out: &out, errOut: &out, home: filepath.Join(user, ".shiplino"), userHome: user, self: bin, version: "test", svcRun: fake}, &out
 }
 
 func TestSetupAndUninstall(t *testing.T) {
 	e, out := testEnv(t)
 	os.MkdirAll(filepath.Join(e.userHome, ".claude"), 0o700) // Claude Code "installed"
 
-	if code := setup(context.Background(), e, nil); code != 0 {
+	if code := setup(context.Background(), e, []string{"--no-service"}); code != 0 {
 		t.Fatalf("setup exit %d:\n%s", code, out)
 	}
 	if !strings.Contains(out.String(), "✅ Claude Code") || !strings.Contains(out.String(), "✅ Hook test") {
@@ -73,7 +78,7 @@ func TestSetupAndUninstall(t *testing.T) {
 
 	// Setup again: nothing changes.
 	out.Reset()
-	setup(context.Background(), e, nil)
+	setup(context.Background(), e, []string{"--no-service"})
 	if !strings.Contains(out.String(), "already up to date") {
 		t.Fatalf("second setup:\n%s", out)
 	}
@@ -96,7 +101,7 @@ func TestSetupAndUninstall(t *testing.T) {
 
 func TestSetupWithoutAgents(t *testing.T) {
 	e, out := testEnv(t)
-	if code := setup(context.Background(), e, nil); code != 0 {
+	if code := setup(context.Background(), e, []string{"--no-service"}); code != 0 {
 		t.Fatalf("exit %d:\n%s", code, out)
 	}
 	if !strings.Contains(out.String(), "not found") || !strings.Contains(out.String(), "No supported agents") {
@@ -110,7 +115,7 @@ func TestSetupLeavesCommentedSettingsAlone(t *testing.T) {
 	os.MkdirAll(filepath.Dir(settings), 0o700)
 	content := "{\n  // mine\n  \"model\": \"opus\"\n}\n"
 	os.WriteFile(settings, []byte(content), 0o600)
-	if code := setup(context.Background(), e, nil); code == 0 {
+	if code := setup(context.Background(), e, []string{"--no-service"}); code == 0 {
 		t.Fatal("setup reported success")
 	}
 	if b, _ := os.ReadFile(settings); string(b) != content {
@@ -130,4 +135,33 @@ func TestRunDispatch(t *testing.T) {
 	if code := Run([]string{"nope"}, &out, &out, "x"); code != 2 {
 		t.Fatalf("unknown command exit %d", code)
 	}
+}
+
+func TestSetupStartsServiceAndWaitsForHealth(t *testing.T) {
+	e, out := testEnv(t)
+	os.MkdirAll(filepath.Join(e.userHome, ".claude"), 0o700)
+	// A fake service manager that "starts" a real daemon in-process.
+	srv := startFakeDaemon(t, e.home)
+	defer srv.Close()
+	if code := setup(context.Background(), e, nil); code != 0 {
+		t.Fatalf("exit %d:\n%s", code, out)
+	}
+	if !strings.Contains(out.String(), "✅ Daemon") || !strings.Contains(out.String(), "Nothing else to do") {
+		t.Fatalf("output:\n%s", out)
+	}
+}
+
+// startFakeDaemon serves /api/v1/health and writes the port file, like a
+// daemon the service manager would have started.
+func startFakeDaemon(t *testing.T, home string) *http.Server {
+	t.Helper()
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.MkdirAll(home, 0o700)
+	os.WriteFile(filepath.Join(home, "port"), []byte(fmt.Sprint(ln.Addr().(*net.TCPAddr).Port)), 0o600)
+	srv := &http.Server{Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(200) })}
+	go srv.Serve(ln)
+	return srv
 }
