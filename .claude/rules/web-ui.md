@@ -9,7 +9,7 @@ paths:
 ## Look and theme
 
 - **One theme: the default theme**, defined once in `web/packages/ui/src/styles/theme.css` (shadcn token names, light + `.dark`). Apps import it from `@shiplino/ui` after Tailwind in `globals.css`. No other presets, no preset switcher. Keep the light/dark/system toggle.
-  - Brand orange `--primary` = logo color `#DF5E3A`. Neutrals are warm stone (light) and warm charcoal (dark). Radius `0.5rem`.
+  - Orange `--primary` (same hue as the logo), cool grey neutrals with white cards (light), deep navy (dark). Radius `0.625rem`.
   - To change a color, edit `theme.css` only and check contrast in both modes.
 - Use tokens (`bg-primary`, `text-muted-foreground`, `--chart-1..5`, `--sidebar-*`, `--status-*`, `--agent-*`), never hard-coded colors.
 - **Status colors** (`--status-running|waiting|review|done|failed`) and **agent colors** (`--agent-claude|codex|cursor|gemini|copilot|windsurf|other`) are always paired with an icon, never color alone. Use our own agent icons, not vendor logos.

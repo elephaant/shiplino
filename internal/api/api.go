@@ -44,6 +44,10 @@ type Server struct {
 
 	// Status, if set, reports daemon health for /api/v1/status.
 	Status func() any
+	// DevOrigin, if set (e.g. "http://localhost:3000"), is the one extra
+	// origin allowed to call the API with credentials, for `next dev`.
+	// Empty in normal use: the API is strictly same-origin.
+	DevOrigin string
 }
 
 // New returns a server reading from st and pushing hub updates.
@@ -57,7 +61,11 @@ func New(st *store.Store, hub *Hub, token, version string, logger *log.Logger) *
 // Handler returns the full HTTP handler with security checks applied.
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /{$}", s.index)
+	if app, ok := webApp(); ok {
+		mux.HandleFunc("GET /", s.serveUI(app))
+	} else {
+		mux.HandleFunc("GET /{$}", s.index)
+	}
 	mux.HandleFunc("GET /api/v1/health", s.health)
 	mux.Handle("GET /api/v1/sessions", s.auth(s.listSessions))
 	mux.Handle("GET /api/v1/projects", s.auth(s.listProjects))
@@ -71,7 +79,29 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("GET /api/v1/sessions/{id}/events", s.auth(s.listEvents))
 	mux.Handle("GET /api/v1/live", s.auth(s.live))
 	mux.Handle("GET /api/v1/status", s.auth(s.status))
-	return securityHeaders(localHostOnly(mux))
+	return securityHeaders(localHostOnly(s.devCORS(mux)))
+}
+
+// devCORS allows exactly DevOrigin, and only when it's configured.
+func (s *Server) devCORS(next http.Handler) http.Handler {
+	if s.DevOrigin == "" {
+		return next
+	}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Origin") == s.DevOrigin {
+			h := w.Header()
+			h.Set("Access-Control-Allow-Origin", s.DevOrigin)
+			h.Set("Access-Control-Allow-Credentials", "true")
+			h.Set("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS")
+			h.Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+			h.Add("Vary", "Origin")
+			if r.Method == http.MethodOptions {
+				w.WriteHeader(http.StatusNoContent)
+				return
+			}
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 // localHostOnly rejects requests whose Host isn't loopback. This blocks
@@ -125,10 +155,14 @@ func (s *Server) auth(next http.HandlerFunc) http.Handler {
 
 // index serves the page and hands the browser the token as a strict,
 // HttpOnly cookie, so page scripts never see the token itself.
-func (s *Server) index(w http.ResponseWriter, r *http.Request) {
+func (s *Server) setCookie(w http.ResponseWriter) {
 	http.SetCookie(w, &http.Cookie{
 		Name: cookieName, Value: s.token, Path: "/", HttpOnly: true, SameSite: http.SameSiteStrictMode,
 	})
+}
+
+func (s *Server) index(w http.ResponseWriter, r *http.Request) {
+	s.setCookie(w)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	_, _ = w.Write(indexHTML)
 }

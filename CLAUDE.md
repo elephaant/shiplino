@@ -55,7 +55,7 @@ Path-scoped rules: [go-code.md](.claude/rules/go-code.md), [adapters.md](.claude
 
 ## UI
 
-A shadcn/ui dashboard with Shiplino's own layout and the single **default theme** (brand orange `#DF5E3A` on warm neutrals, light + dark), defined in `web/packages/ui/src/styles/theme.css`. The project board is a `@dnd-kit/react` kanban. Stack: Next.js 16 (static export), React 19, Tailwind v4, shadcn/ui, `@dnd-kit/react`, Zustand, Recharts. See [.claude/rules/web-ui.md](.claude/rules/web-ui.md).
+A shadcn/ui dashboard with Shiplino's own layout and the single **default theme** (orange primary on cool grey, navy in dark mode), defined in `web/packages/ui/src/styles/theme.css`. The project board is a `@dnd-kit/react` kanban. Stack: Next.js 16 (static export), React 19, Tailwind v4, shadcn/ui, `@dnd-kit/react`, Zustand, Recharts. See [.claude/rules/web-ui.md](.claude/rules/web-ui.md).
 
 ## Skills in this repo
 

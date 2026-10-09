@@ -2,5 +2,11 @@
   "name": "shiplino-web",
   "private": true,
   "license": "FSL-1.1-Apache-2.0",
-  "workspaces": ["packages/*", "apps/*"]
+  "workspaces": ["packages/*", "apps/*"],
+  "scripts": {
+    "build": "npm run build -w @shiplino/local",
+    "dev": "npm run dev -w @shiplino/local",
+    "check": "npm run check -w @shiplino/local",
+    "typecheck": "npm run typecheck -w @shiplino/local"
+  }
 }
