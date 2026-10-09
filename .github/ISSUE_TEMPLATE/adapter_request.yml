@@ -1,0 +1,21 @@
+name: New agent adapter
+description: Ask for support for another AI agent
+labels: [adapter]
+body:
+  - type: input
+    id: agent
+    attributes:
+      label: Agent name and link
+    validations:
+      required: true
+  - type: textarea
+    id: hooks
+    attributes:
+      label: Does it have hooks, plugins, logs or transcripts? Where are they documented?
+  - type: checkboxes
+    id: help
+    attributes:
+      label: Can you help?
+      options:
+        - label: I can share redacted sample payloads
+        - label: I'd like to build the adapter

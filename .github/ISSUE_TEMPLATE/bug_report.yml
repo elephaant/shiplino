@@ -1,0 +1,32 @@
+name: Bug report
+description: Something isn't working
+labels: [bug]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Shiplino version
+      placeholder: "shiplino version"
+    validations:
+      required: true
+  - type: input
+    id: agent
+    attributes:
+      label: Agent and version
+      placeholder: "Claude Code 2.4.1 / Codex 0.52 / Cursor 2.1"
+  - type: input
+    id: os
+    attributes:
+      label: OS
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: doctor
+    attributes:
+      label: Output of `shiplino doctor`
+      description: Please remove anything private before pasting.
+      render: text
