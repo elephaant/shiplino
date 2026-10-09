@@ -16,7 +16,8 @@
         "session.start", "session.end", "turn.start", "turn.end",
         "tool.start", "tool.end", "shell.exec", "file.read", "file.edit", "mcp.call",
         "waiting.start", "waiting.end", "subagent.start", "subagent.end",
-        "usage", "compact", "git.commit", "git.branch", "error", "note"
+        "usage", "compact", "git.commit", "git.branch", "git.push", "git.pr",
+        "session.update", "error", "note"
       ]
     },
     "agent": {

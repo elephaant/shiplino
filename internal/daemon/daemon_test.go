@@ -117,21 +117,26 @@ func TestEndToEndFromHookToSession(t *testing.T) {
 	e.poll()
 
 	s := e.session(sid)
-	if s.Title != "fix the failing greeting test" || s.Model != "claude-sonnet-5-5" || s.Turns != 1 {
+	// Claude Code reported its own title, so it wins over the first prompt.
+	if s.Title != "Greeting fix" || s.TitleSource != "agent" || s.Model != "claude-sonnet-5-5" || s.Turns != 2 {
 		t.Errorf("session: %+v", s)
 	}
-	if s.Status != engine.StatusFailed { // the fixture ends with StopFailure
+	if s.Status != engine.StatusDone { // a new turn started, then the session ended
 		t.Errorf("status = %s", s.Status)
 	}
-	if s.FilesChanged() != 2 || s.ToolErrors != 1 || s.EndedAt.IsZero() {
-		t.Errorf("counters: files=%v errors=%d ended=%v", s.Files, s.ToolErrors, s.EndedAt)
+	// Lines: greet.ts estimated +2 −1, NOTES.md created +3, app.ts from the agent's own diff +3 −1.
+	if s.FilesChanged() != 3 || s.LinesAdded != 8 || s.LinesRemoved != 2 || s.ToolErrors != 1 || s.EndedAt.IsZero() {
+		t.Errorf("counters: files=%v +%d -%d errors=%d ended=%v", s.Files, s.LinesAdded, s.LinesRemoved, s.ToolErrors, s.EndedAt)
+	}
+	if len(s.Links) != 1 || s.Links[0].Number != 12 {
+		t.Errorf("links: %+v", s.Links)
 	}
 	child := e.session(sid + "/sub:ag-7")
 	if child.ParentID != sid || child.Status != engine.StatusDone || child.ToolCalls != 1 {
 		t.Errorf("child: %+v", child)
 	}
 	st := e.d.Stats()
-	if st.Lines != 21 || st.Bad != 0 || st.Unknown != 0 || st.Events != int64(e.eventCount()) {
+	if st.Lines != 25 || st.Bad != 0 || st.Unknown != 0 || st.Events != int64(e.eventCount()) {
 		t.Errorf("stats = %+v, events in db = %d", st, e.eventCount())
 	}
 }

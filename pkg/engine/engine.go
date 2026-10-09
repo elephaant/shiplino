@@ -36,6 +36,7 @@ type Session struct {
 	Depth        int       `json:"depth"`
 	CWD          string    `json:"cwd,omitempty"`
 	Title        string    `json:"title,omitempty"`
+	TitleSource  string    `json:"title_source,omitempty"` // "agent" or "prompt"
 	Model        string    `json:"model,omitempty"`
 	Status       Status    `json:"status"`
 	NowDoing     string    `json:"now_doing,omitempty"`
@@ -66,9 +67,31 @@ type Session struct {
 	BestCostUSD float64 `json:"best_cost_usd"`
 	CostSource  string  `json:"cost_source,omitempty"`
 
+	Links []Link `json:"links,omitempty"` // PRs and pushes the agent reported
+
 	WaitingMS      int64     `json:"waiting_ms"`
 	WaitingSince   time.Time `json:"waiting_since,omitzero"`
 	TranscriptPath string    `json:"transcript_path,omitempty"`
+}
+
+// Link is an external object the session produced, e.g. a pull request.
+type Link struct {
+	Kind   string `json:"kind"` // "pr" | "push"
+	URL    string `json:"url,omitempty"`
+	Number int    `json:"number,omitempty"`
+	Ref    string `json:"ref,omitempty"` // branch for pushes
+	Action string `json:"action,omitempty"`
+}
+
+// setTitle applies the precedence rule: the agent's own title always
+// wins; a title derived from the prompt only fills an empty one.
+func (s *Session) setTitle(title, source string) {
+	if title == "" {
+		return
+	}
+	if source == "agent" || s.Title == "" {
+		s.Title, s.TitleSource = title, source
+	}
 }
 
 // FilesChanged is the number of distinct files the session edited.
@@ -119,7 +142,7 @@ func (e *Engine) Apply(ev model.Event) []*Session {
 	case model.KindSessionStart:
 		s.Status = StatusRunning
 		s.NowDoing = ""
-		setIfEmpty(&s.Title, str(ev.Data, "title"))
+		s.setTitle(str(ev.Data, "title"), "agent")
 		setIfEmpty(&s.Model, str(ev.Data, "model"))
 		setIfEmpty(&s.TranscriptPath, str(ev.Data, "transcript_path"))
 
@@ -128,7 +151,11 @@ func (e *Engine) Apply(ev model.Event) []*Session {
 		s.Status = StatusRunning
 		s.Turns++
 		s.NowDoing = "Thinking…"
-		setIfEmpty(&s.Title, TitleFromPrompt(str(ev.Data, "prompt")))
+		if t := str(ev.Data, "title"); t != "" {
+			s.setTitle(t, "agent")
+		} else {
+			s.setTitle(TitleFromPrompt(str(ev.Data, "prompt")), "prompt")
+		}
 		setIfEmpty(&s.TranscriptPath, str(ev.Data, "transcript_path"))
 
 	case model.KindToolStart:
@@ -222,6 +249,16 @@ func (e *Engine) Apply(ev model.Event) []*Session {
 		}
 		setIfEmpty(&s.Model, str(ev.Data, "model"))
 
+	case model.KindSessionUpdate:
+		s.setTitle(str(ev.Data, "title"), "agent")
+		setIfEmpty(&s.Model, str(ev.Data, "model"))
+
+	case model.KindGitPR:
+		s.addLink(Link{Kind: "pr", URL: str(ev.Data, "url"), Number: num(ev.Data, "number"), Action: str(ev.Data, "action")})
+
+	case model.KindGitPush:
+		s.addLink(Link{Kind: "push", Ref: str(ev.Data, "branch")})
+
 	case model.KindSessionEnd:
 		e.endWaiting(s, ev.TS)
 		s.EndedAt = ev.TS
@@ -284,6 +321,17 @@ func (e *Engine) endWaiting(s *Session, at time.Time) {
 		s.WaitingMS += d.Milliseconds()
 	}
 	s.WaitingSince = time.Time{}
+}
+
+// addLink records a link once (by kind + URL/ref), keeping the latest action.
+func (s *Session) addLink(l Link) {
+	for i, x := range s.Links {
+		if x.Kind == l.Kind && x.URL == l.URL && x.Ref == l.Ref {
+			s.Links[i].Action = l.Action
+			return
+		}
+	}
+	s.Links = append(s.Links, l)
 }
 
 // updateBestCost picks the figure to display. The agent's own report

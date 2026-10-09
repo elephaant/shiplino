@@ -34,6 +34,11 @@ const (
 	KindCompact       Kind = "compact"
 	KindGitCommit     Kind = "git.commit"
 	KindGitBranch     Kind = "git.branch"
+	KindGitPush       Kind = "git.push"
+	KindGitPR         Kind = "git.pr"
+	// KindSessionUpdate changes session metadata (title, model) reported by
+	// the agent, without changing status.
+	KindSessionUpdate Kind = "session.update"
 	KindError         Kind = "error"
 	KindNote          Kind = "note"
 )
@@ -43,7 +48,8 @@ var knownKinds = map[Kind]bool{
 	KindToolStart: true, KindToolEnd: true, KindShellExec: true, KindFileRead: true,
 	KindFileEdit: true, KindMCPCall: true, KindWaitingStart: true, KindWaitingEnd: true,
 	KindSubagentStart: true, KindSubagentEnd: true, KindUsage: true, KindCompact: true,
-	KindGitCommit: true, KindGitBranch: true, KindError: true, KindNote: true,
+	KindGitCommit: true, KindGitBranch: true, KindGitPush: true, KindGitPR: true,
+	KindSessionUpdate: true, KindError: true, KindNote: true,
 }
 
 // Known reports whether k is a kind defined by schema v1.

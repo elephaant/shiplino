@@ -4,8 +4,10 @@
 package claudecode
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/elephaant/shiplino/pkg/adapters"
@@ -50,6 +52,8 @@ type transcriptLine struct {
 		} `json:"usage"`
 	} `json:"message"`
 
+	AITitle string `json:"aiTitle"` // ai-title lines: Claude Code's own session title
+
 	// cost-state lines: Claude Code's own running total for the process.
 	TotalCostUSD *float64                  `json:"totalCostUSD"`
 	StartTime    int64                     `json:"startTime"`
@@ -62,8 +66,11 @@ func (Adapter) ParseTranscriptLine(line []byte, meta adapters.TranscriptMeta) ([
 	if err := json.Unmarshal(line, &l); err != nil {
 		return nil, fmt.Errorf("claude-code transcript: %w", err)
 	}
-	if l.Type == "cost-state" {
+	switch l.Type {
+	case "cost-state":
 		return costReport(l, meta)
+	case "ai-title":
+		return titleUpdate(l, meta)
 	}
 	u := l.Message.Usage
 	if l.Type != "assistant" || u == nil || l.Message.ID == "" || l.SessionID == "" {
@@ -172,6 +179,30 @@ func costReport(l transcriptLine, meta adapters.TranscriptMeta) ([]model.Event, 
 		Kind: model.KindUsage, Agent: model.Agent{Name: Name, Version: l.Version}, Collector: model.CollectorTranscript,
 		User: meta.User, SessionID: sid, ActorID: sid, Data: data,
 		DedupKey: fmt.Sprintf("%s:cost-state:%d:%.9f", sid, l.StartTime, total),
+	}
+	if meta.Ref != "" {
+		e.Raw = &model.RawRef{Ref: meta.Ref}
+	}
+	return []model.Event{e}, nil
+}
+
+// titleUpdate turns an ai-title line (the title Claude Code generated for
+// the session) into a session.update event. It takes precedence over a
+// title derived from the first prompt.
+func titleUpdate(l transcriptLine, meta adapters.TranscriptMeta) ([]model.Event, error) {
+	title := strings.TrimSpace(l.AITitle)
+	if title == "" || l.SessionID == "" {
+		return nil, nil
+	}
+	sum := sha256.Sum256([]byte(title))
+	sid := model.SessionID(Name, l.SessionID)
+	ts := meta.ReceivedAt
+	e := model.Event{
+		ID: model.NewULID(ts), V: model.SchemaVersion, TS: ts.UTC(), ReceivedAt: ts.UTC(),
+		Kind: model.KindSessionUpdate, Agent: model.Agent{Name: Name}, Collector: model.CollectorTranscript,
+		User: meta.User, SessionID: sid, ActorID: sid,
+		Data:     map[string]any{"title": title, "title_source": "agent"},
+		DedupKey: fmt.Sprintf("%s:title:%x", sid, sum[:8]),
 	}
 	if meta.Ref != "" {
 		e.Raw = &model.RawRef{Ref: meta.Ref}

@@ -33,7 +33,9 @@ Every adapter converts its agent's native hooks and transcripts into this format
 | `subagent.start` / `subagent.end` | `child_session_id`, `agent_type`, `status` |
 | `usage` | per response: `model`, `message_id`, `input_tokens`, `output_tokens`, `cache_read_tokens`, `cache_write_tokens`, `web_searches`, `cost_usd`, `cost_source` (`computed` / `unpriced`); agent cost report: `report: true`, `process`, `total_cost_usd`, `cost_source: reported` (see [cost.md](cost.md)) |
 | `compact` | `phase`, `trigger` |
-| `git.commit` / `git.branch` | `sha`, `message`, `files` / `from`, `to` |
+| `git.commit` / `git.branch` | `sha`, `message`, `files` / `from`, `to`, `action` |
+| `git.push` / `git.pr` | `branch` / `number`, `url`, `action` (as reported by the agent) |
+| `session.update` | metadata the agent reports, e.g. `title` with `title_source: agent` |
 | `error`, `note` | `message` |
 
 ## Rules

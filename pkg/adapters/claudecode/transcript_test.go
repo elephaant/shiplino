@@ -67,7 +67,7 @@ func TestTranscriptUsage(t *testing.T) {
 	for _, e := range evs {
 		keys[e.DedupKey]++
 	}
-	if keys["claude-code:sess-0001:usage:msg_A"] != 2 || keys["claude-code:sess-0001:cost-state:1791367200000:0.250000000"] != 2 || len(keys) != 6 {
+	if keys["claude-code:sess-0001:usage:msg_A"] != 2 || keys["claude-code:sess-0001:cost-state:1791367200000:0.250000000"] != 2 || len(keys) != 7 {
 		t.Fatalf("dedup keys: %v", keys)
 	}
 
