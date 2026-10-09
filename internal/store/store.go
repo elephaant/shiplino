@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/elephaant/shiplino/pkg/board"
 	"github.com/elephaant/shiplino/pkg/engine"
 	"github.com/elephaant/shiplino/pkg/model"
 	"github.com/elephaant/shiplino/pkg/projects"
@@ -98,6 +99,19 @@ var migrations = []string{
 	);
 	ALTER TABLE sessions ADD COLUMN project_id TEXT;
 	CREATE INDEX sessions_project ON sessions(project_id, last_event_at);`,
+	// v3: user changes to cards (pins, positions, notes) and manual cards
+	`CREATE TABLE cards (
+		id TEXT PRIMARY KEY,
+		project_id TEXT NOT NULL,
+		origin TEXT NOT NULL,
+		title TEXT,
+		notes TEXT,
+		col TEXT,
+		position REAL,
+		created_at INTEGER NOT NULL,
+		updated_at INTEGER NOT NULL
+	);
+	CREATE INDEX cards_project ON cards(project_id);`,
 }
 
 func (s *Store) migrate(ctx context.Context) error {
@@ -245,6 +259,74 @@ func (s *Store) Cursors(ctx context.Context) (map[string]int64, error) {
 		out[src] = off
 	}
 	return out, rows.Err()
+}
+
+// Overrides returns the user's card changes for a project, by card id.
+func (s *Store) Overrides(ctx context.Context, projectID string) (map[string]board.Override, error) {
+	rows, err := s.db.QueryContext(ctx, `SELECT id, project_id, origin, COALESCE(title,''), COALESCE(notes,''), COALESCE(col,''), COALESCE(position,0), created_at FROM cards WHERE project_id = ?`, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[string]board.Override{}
+	for rows.Next() {
+		var o board.Override
+		var created int64
+		if err := rows.Scan(&o.CardID, &o.ProjectID, &o.Origin, &o.Title, &o.Notes, &o.Column, &o.Position, &created); err != nil {
+			return nil, err
+		}
+		o.CreatedAt = time.UnixMilli(created)
+		out[o.CardID] = o
+	}
+	return out, rows.Err()
+}
+
+// Override returns one card's override, or nil.
+func (s *Store) Override(ctx context.Context, cardID string) (*board.Override, error) {
+	var o board.Override
+	var created int64
+	err := s.db.QueryRowContext(ctx, `SELECT id, project_id, origin, COALESCE(title,''), COALESCE(notes,''), COALESCE(col,''), COALESCE(position,0), created_at FROM cards WHERE id = ?`, cardID).
+		Scan(&o.CardID, &o.ProjectID, &o.Origin, &o.Title, &o.Notes, &o.Column, &o.Position, &created)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	o.CreatedAt = time.UnixMilli(created)
+	return &o, err
+}
+
+// PutOverride saves a card's override.
+func (s *Store) PutOverride(ctx context.Context, o board.Override) error {
+	now := time.Now().UnixMilli()
+	if o.CreatedAt.IsZero() {
+		o.CreatedAt = time.Now()
+	}
+	_, err := s.db.ExecContext(ctx,
+		`INSERT INTO cards (id, project_id, origin, title, notes, col, position, created_at, updated_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+		 ON CONFLICT(id) DO UPDATE SET title = excluded.title, notes = excluded.notes, col = excluded.col,
+		   position = excluded.position, updated_at = excluded.updated_at`,
+		o.CardID, o.ProjectID, o.Origin, nullable(o.Title), nullable(o.Notes), nullable(o.Column), o.Position, o.CreatedAt.UnixMilli(), now)
+	return err
+}
+
+// DeleteOverride removes a card override (and so a manual card).
+func (s *Store) DeleteOverride(ctx context.Context, cardID string) error {
+	_, err := s.db.ExecContext(ctx, `DELETE FROM cards WHERE id = ?`, cardID)
+	return err
+}
+
+// Project returns one project summary, or nil.
+func (s *Store) Project(ctx context.Context, id string) (*ProjectSummary, error) {
+	list, err := s.Projects(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for i := range list {
+		if list[i].ID == id {
+			return &list[i], nil
+		}
+	}
+	return nil, nil
 }
 
 // ProjectSummary is a project with live counts of its root sessions.
