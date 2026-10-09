@@ -199,3 +199,32 @@ func TestCostRollupAndReports(t *testing.T) {
 		t.Fatalf("replayed total re-counted after restart: %v", got)
 	}
 }
+
+func TestAgentTitleWins(t *testing.T) {
+	e := New(nil, nil)
+	e.Apply(ev(0, model.KindTurnStart, map[string]any{"prompt": "please fix the flaky login test"}))
+	if s := e.Get(sid); s.Title != "please fix the flaky login test" || s.TitleSource != "prompt" {
+		t.Fatalf("prompt title: %q %q", s.Title, s.TitleSource)
+	}
+	e.Apply(ev(1, model.KindSessionUpdate, map[string]any{"title": "Fix flaky login test", "title_source": "agent"}))
+	e.Apply(ev(2, model.KindTurnStart, map[string]any{"prompt": "now also update the docs"}))
+	if s := e.Get(sid); s.Title != "Fix flaky login test" || s.TitleSource != "agent" {
+		t.Fatalf("agent title should stick: %q %q", s.Title, s.TitleSource)
+	}
+	e.Apply(ev(3, model.KindSessionUpdate, map[string]any{"title": "Fix login test and docs"}))
+	if s := e.Get(sid); s.Title != "Fix login test and docs" {
+		t.Fatalf("newer agent title should replace: %q", s.Title)
+	}
+}
+
+func TestLinks(t *testing.T) {
+	e := New(nil, nil)
+	pr := map[string]any{"url": "https://github.com/acme/api/pull/7", "number": 7, "action": "created"}
+	e.Apply(ev(0, model.KindGitPR, pr))
+	e.Apply(ev(1, model.KindGitPR, pr))
+	e.Apply(ev(2, model.KindGitPush, map[string]any{"branch": "fix/login"}))
+	s := e.Get(sid)
+	if len(s.Links) != 2 || s.Links[0].Number != 7 || s.Links[1].Ref != "fix/login" {
+		t.Fatalf("links: %+v", s.Links)
+	}
+}

@@ -137,6 +137,24 @@
   {
     "id": "",
     "v": 1,
+    "ts": "2026-10-09T10:00:00Z",
+    "received_at": "2026-10-09T10:00:00Z",
+    "kind": "session.update",
+    "agent": {
+      "name": "claude-code"
+    },
+    "collector": "transcript",
+    "session_id": "claude-code:sess-0001",
+    "actor_id": "claude-code:sess-0001",
+    "data": {
+      "title": "Fix greeting test",
+      "title_source": "agent"
+    },
+    "dedup_key": "claude-code:sess-0001:title:fbd65c171698aeb6"
+  },
+  {
+    "id": "",
+    "v": 1,
     "ts": "2026-10-09T10:00:13Z",
     "received_at": "2026-10-09T10:00:00Z",
     "kind": "usage",

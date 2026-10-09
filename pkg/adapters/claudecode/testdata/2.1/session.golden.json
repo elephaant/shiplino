@@ -204,6 +204,7 @@
     "data": {
       "lines_added": 2,
       "lines_removed": 1,
+      "lines_source": "estimated",
       "op": "modify",
       "path": "/home/dev/demo/src/greet.ts"
     },
@@ -397,6 +398,7 @@
     "data": {
       "lines_added": 3,
       "lines_removed": 0,
+      "lines_source": "agent",
       "op": "create",
       "path": "/home/dev/demo/NOTES.md"
     },
@@ -544,6 +546,204 @@
     "v": 1,
     "ts": "2026-10-09T10:00:20Z",
     "received_at": "2026-10-09T10:00:20Z",
+    "kind": "tool.end",
+    "agent": {
+      "name": "claude-code"
+    },
+    "collector": "hook",
+    "session_id": "claude-code:sess-0001",
+    "actor_id": "claude-code:sess-0001",
+    "turn_id": "p-3",
+    "project": {
+      "cwd": "/home/dev/demo"
+    },
+    "data": {
+      "duration_ms": 12,
+      "ok": true,
+      "tool": "edit",
+      "tool_call_id": "toolu_10"
+    },
+    "dedup_key": "claude-code:sess-0001:toolu_10:end"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:20Z",
+    "received_at": "2026-10-09T10:00:20Z",
+    "kind": "file.edit",
+    "agent": {
+      "name": "claude-code"
+    },
+    "collector": "hook",
+    "session_id": "claude-code:sess-0001",
+    "actor_id": "claude-code:sess-0001",
+    "turn_id": "p-3",
+    "project": {
+      "cwd": "/home/dev/demo"
+    },
+    "data": {
+      "lines_added": 3,
+      "lines_removed": 1,
+      "lines_source": "agent",
+      "op": "modify",
+      "path": "/home/dev/demo/src/app.ts"
+    },
+    "dedup_key": "claude-code:sess-0001:toolu_10:file"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:21Z",
+    "received_at": "2026-10-09T10:00:21Z",
+    "kind": "tool.end",
+    "agent": {
+      "name": "claude-code"
+    },
+    "collector": "hook",
+    "session_id": "claude-code:sess-0001",
+    "actor_id": "claude-code:sess-0001",
+    "turn_id": "p-3",
+    "project": {
+      "cwd": "/home/dev/demo"
+    },
+    "data": {
+      "duration_ms": 2300,
+      "ok": true,
+      "tool": "shell",
+      "tool_call_id": "toolu_11"
+    },
+    "dedup_key": "claude-code:sess-0001:toolu_11:end"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:21Z",
+    "received_at": "2026-10-09T10:00:21Z",
+    "kind": "shell.exec",
+    "agent": {
+      "name": "claude-code"
+    },
+    "collector": "hook",
+    "session_id": "claude-code:sess-0001",
+    "actor_id": "claude-code:sess-0001",
+    "turn_id": "p-3",
+    "project": {
+      "cwd": "/home/dev/demo"
+    },
+    "data": {
+      "command": "gh pr create --fill",
+      "cwd": "/home/dev/demo",
+      "duration_ms": 2300,
+      "exit_code": 0,
+      "tool_call_id": "toolu_11"
+    },
+    "dedup_key": "claude-code:sess-0001:toolu_11:shell"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:21Z",
+    "received_at": "2026-10-09T10:00:21Z",
+    "kind": "git.pr",
+    "agent": {
+      "name": "claude-code"
+    },
+    "collector": "hook",
+    "session_id": "claude-code:sess-0001",
+    "actor_id": "claude-code:sess-0001",
+    "turn_id": "p-3",
+    "project": {
+      "cwd": "/home/dev/demo"
+    },
+    "data": {
+      "action": "created",
+      "number": 12,
+      "source": "agent",
+      "url": "https://github.com/acme/demo/pull/12"
+    },
+    "dedup_key": "claude-code:sess-0001:toolu_11:git"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:22Z",
+    "received_at": "2026-10-09T10:00:22Z",
+    "kind": "tool.end",
+    "agent": {
+      "name": "claude-code"
+    },
+    "collector": "hook",
+    "session_id": "claude-code:sess-0001",
+    "actor_id": "claude-code:sess-0001",
+    "turn_id": "p-3",
+    "project": {
+      "cwd": "/home/dev/demo"
+    },
+    "data": {
+      "duration_ms": 120000,
+      "interrupted": true,
+      "ok": true,
+      "timed_out_ms": 120000,
+      "tool": "shell",
+      "tool_call_id": "toolu_12"
+    },
+    "dedup_key": "claude-code:sess-0001:toolu_12:end"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:22Z",
+    "received_at": "2026-10-09T10:00:22Z",
+    "kind": "shell.exec",
+    "agent": {
+      "name": "claude-code"
+    },
+    "collector": "hook",
+    "session_id": "claude-code:sess-0001",
+    "actor_id": "claude-code:sess-0001",
+    "turn_id": "p-3",
+    "project": {
+      "cwd": "/home/dev/demo"
+    },
+    "data": {
+      "command": "npm run dev",
+      "cwd": "/home/dev/demo",
+      "duration_ms": 120000,
+      "exit_code": 0,
+      "interrupted": true,
+      "tool_call_id": "toolu_12"
+    },
+    "dedup_key": "claude-code:sess-0001:toolu_12:shell"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:23Z",
+    "received_at": "2026-10-09T10:00:23Z",
+    "kind": "turn.start",
+    "agent": {
+      "name": "claude-code"
+    },
+    "collector": "hook",
+    "session_id": "claude-code:sess-0001",
+    "actor_id": "claude-code:sess-0001",
+    "turn_id": "p-3",
+    "project": {
+      "cwd": "/home/dev/demo"
+    },
+    "data": {
+      "prompt": "thanks",
+      "prompt_chars": 6,
+      "title": "Greeting fix",
+      "title_source": "agent"
+    },
+    "dedup_key": "claude-code:sess-0001:turn.start:env-023"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:24Z",
+    "received_at": "2026-10-09T10:00:24Z",
     "kind": "session.end",
     "agent": {
       "name": "claude-code"
@@ -558,6 +758,6 @@
       "reason": "prompt_input_exit",
       "status": "ended"
     },
-    "dedup_key": "claude-code:sess-0001:session.end:env-020"
+    "dedup_key": "claude-code:sess-0001:session.end:env-024"
   }
 ]

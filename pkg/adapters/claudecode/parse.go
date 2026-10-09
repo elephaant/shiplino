@@ -75,6 +75,48 @@ type payload struct {
 	Trigger         string          `json:"trigger"`
 }
 
+// toolResponse holds the parts of tool results Claude Code reports itself.
+type toolResponse struct {
+	Type            string `json:"type"` // Write: "create" | "update"
+	StructuredPatch []struct {
+		Lines []string `json:"lines"`
+	} `json:"structuredPatch"`
+	Interrupted  bool  `json:"interrupted"`
+	TimedOutMS   int64 `json:"timedOutAfterMs"`
+	GitOperation *struct {
+		Push *struct {
+			Branch string `json:"branch"`
+		} `json:"push"`
+		PR *struct {
+			Number int    `json:"number"`
+			URL    string `json:"url"`
+			Action string `json:"action"`
+		} `json:"pr"`
+		Branch *struct {
+			Ref    string `json:"ref"`
+			Action string `json:"action"`
+		} `json:"branch"`
+	} `json:"gitOperation"`
+}
+
+// patchLines counts added and removed lines in Claude Code's own diff.
+func (r toolResponse) patchLines() (added, removed int, ok bool) {
+	if len(r.StructuredPatch) == 0 {
+		return 0, 0, false
+	}
+	for _, h := range r.StructuredPatch {
+		for _, l := range h.Lines {
+			switch {
+			case strings.HasPrefix(l, "+"):
+				added++
+			case strings.HasPrefix(l, "-"):
+				removed++
+			}
+		}
+	}
+	return added, removed, true
+}
+
 type toolInput struct {
 	FilePath     string `json:"file_path"`
 	NotebookPath string `json:"notebook_path"`
@@ -111,16 +153,24 @@ func (Adapter) ParseHook(raw []byte, meta adapters.HookMeta) ([]model.Event, err
 
 	switch event {
 	case "SessionStart":
-		return b.one(model.KindSessionStart, compact(map[string]any{
+		data := compact(map[string]any{
 			"source": p.Source, "model": p.Model, "permission_mode": p.PermissionMode,
 			"title": p.SessionTitle, "transcript_path": p.TranscriptPath,
-		})), nil
+		})
+		if p.SessionTitle != "" {
+			data["title_source"] = "agent"
+		}
+		return b.one(model.KindSessionStart, data), nil
 	case "SessionEnd":
 		return b.one(model.KindSessionEnd, map[string]any{"reason": p.Reason, "status": "ended"}), nil
 	case "UserPromptSubmit":
-		return b.one(model.KindTurnStart, compact(map[string]any{
+		data := compact(map[string]any{
 			"prompt": p.Prompt, "prompt_chars": len([]rune(p.Prompt)), "transcript_path": p.TranscriptPath,
-		})), nil
+		})
+		if p.SessionTitle != "" {
+			data["title"], data["title_source"] = p.SessionTitle, "agent"
+		}
+		return b.one(model.KindTurnStart, data), nil
 	case "Stop":
 		return b.one(model.KindTurnEnd, compact(map[string]any{"status": "ok", "assistant_summary": p.LastMessage})), nil
 	case "StopFailure":
@@ -255,6 +305,23 @@ func (b builder) toolEnd(ok bool, errMsg string) []model.Event {
 
 	var in toolInput
 	_ = json.Unmarshal(b.p.ToolInput, &in)
+	var resp toolResponse
+	_ = json.Unmarshal(b.p.ToolResponse, &resp)
+	if resp.Interrupted {
+		end.Data["interrupted"] = true
+	}
+	if resp.TimedOutMS > 0 {
+		end.Data["timed_out_ms"] = resp.TimedOutMS
+	}
+	// fileEdit prefers Claude Code's own diff; counting the strings in the
+	// tool input is only the fallback.
+	fileEdit := func(path, op string, added, removed int) map[string]any {
+		d := map[string]any{"path": path, "op": op, "lines_added": added, "lines_removed": removed, "lines_source": "estimated"}
+		if a, r, ok := resp.patchLines(); ok {
+			d["lines_added"], d["lines_removed"], d["lines_source"] = a, r, "agent"
+		}
+		return d
+	}
 	derived := func(kind model.Kind, suffix string, d map[string]any) {
 		e := b.base(kind, d)
 		if b.p.ToolUseID != "" {
@@ -277,7 +344,20 @@ func (b builder) toolEnd(ok bool, errMsg string) []model.Event {
 		if b.p.CWD != "" {
 			d["cwd"] = b.p.CWD
 		}
+		if resp.Interrupted {
+			d["interrupted"] = true
+		}
 		derived(model.KindShellExec, "shell", d)
+		if g := resp.GitOperation; g != nil && ok {
+			switch {
+			case g.PR != nil && g.PR.URL != "":
+				derived(model.KindGitPR, "git", map[string]any{"number": g.PR.Number, "url": g.PR.URL, "action": g.PR.Action, "source": "agent"})
+			case g.Push != nil:
+				derived(model.KindGitPush, "git", map[string]any{"branch": g.Push.Branch, "source": "agent"})
+			case g.Branch != nil:
+				derived(model.KindGitBranch, "git", map[string]any{"to": g.Branch.Ref, "action": g.Branch.Action, "source": "agent"})
+			}
+		}
 	case !ok:
 		// Failed non-shell tools changed nothing.
 	case tool == "Read" || tool == "NotebookRead":
@@ -285,32 +365,24 @@ func (b builder) toolEnd(ok bool, errMsg string) []model.Event {
 			derived(model.KindFileRead, "file", map[string]any{"path": path})
 		}
 	case tool == "Edit":
-		derived(model.KindFileEdit, "file", map[string]any{
-			"path": in.FilePath, "op": "modify",
-			"lines_added": lines(in.NewString), "lines_removed": lines(in.OldString),
-		})
+		derived(model.KindFileEdit, "file", fileEdit(in.FilePath, "modify", lines(in.NewString), lines(in.OldString)))
 	case tool == "MultiEdit":
 		added, removed := 0, 0
 		for _, ed := range in.Edits {
 			added += lines(ed.NewString)
 			removed += lines(ed.OldString)
 		}
-		derived(model.KindFileEdit, "file", map[string]any{
-			"path": in.FilePath, "op": "modify", "lines_added": added, "lines_removed": removed,
-		})
+		derived(model.KindFileEdit, "file", fileEdit(in.FilePath, "modify", added, removed))
 	case tool == "NotebookEdit":
 		derived(model.KindFileEdit, "file", map[string]any{"path": in.NotebookPath, "op": "modify"})
 	case tool == "Write":
-		op := "modify"
-		var resp struct {
-			Type string `json:"type"`
+		if resp.Type == "create" {
+			// A new file: every line of its content was added (exact).
+			d := map[string]any{"path": in.FilePath, "op": "create", "lines_added": lines(in.Content), "lines_removed": 0, "lines_source": "agent"}
+			derived(model.KindFileEdit, "file", d)
+		} else {
+			derived(model.KindFileEdit, "file", fileEdit(in.FilePath, "modify", lines(in.Content), 0))
 		}
-		if json.Unmarshal(b.p.ToolResponse, &resp) == nil && resp.Type == "create" {
-			op = "create"
-		}
-		derived(model.KindFileEdit, "file", map[string]any{
-			"path": in.FilePath, "op": op, "lines_added": lines(in.Content), "lines_removed": 0,
-		})
 	case strings.HasPrefix(tool, "mcp__"):
 		server, name := splitMCP(tool)
 		d := map[string]any{"server": server, "tool": name, "ok": ok}
