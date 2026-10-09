@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Added
+- Project board in the web app: kanban with drag to pin (agent-driven cards can't be dropped into Running or Waiting), nested subagents, live now-doing lines, PR badges, sprint selector, filters, new backlog cards, and a quick-look drawer.
+- Session page: stats, a timeline of every prompt, tool call, file edit, command and subagent (in-progress calls included), files, commands with exit codes, and per-response token usage; copy the resume command.
 - Web app (Next.js static export, embedded in the binary): app shell with project switcher and live running/waiting strip, light/dark/system theme, and the all-projects overview with a Needs-you queue. `make ui` builds it; without Node the daemon serves a fallback page.
 - Board per project: one card per agent session in Running / Waiting on you / Review / Done / Failed (from live status), subagents nested, drag to pin, manual Backlog cards, automatic weekly sprints with rollover, sprint report, and an all-projects overview with a "Needs you" queue.
 - Projects: every session is assigned to a project automatically (git remote, else the repo's common dir so worktrees group together, else the nearest folder with a project marker, else Unsorted), with its branch. `GET /api/v1/projects` lists projects with live counts and cost; `GET /api/v1/sessions?project=` filters.

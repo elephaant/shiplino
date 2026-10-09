@@ -125,3 +125,68 @@ export function liveURL(): string {
   const base = API_BASE || (typeof window === "undefined" ? "" : window.location.origin);
   return `${base.replace(/^http/, "ws")}/api/v1/live`;
 }
+
+export type ColumnId = "backlog" | "running" | "waiting" | "review" | "done" | "failed";
+
+export interface SubagentRow {
+  id: string;
+  type?: string;
+  status: Status;
+  now_doing?: string;
+  cost_usd: number;
+}
+
+export interface BoardCard {
+  id: string;
+  origin: "auto" | "manual";
+  title: string;
+  title_source?: string;
+  column: ColumnId;
+  pinned: boolean;
+  position?: number;
+  project_id: string;
+  agent?: string;
+  model?: string;
+  status?: Status;
+  branch?: string;
+  now_doing?: string;
+  started_at: string;
+  last_event_at: string;
+  duration_ms: number;
+  waiting_ms?: number;
+  cost_usd: number;
+  cost_source?: "reported" | "computed";
+  files: number;
+  lines_added: number;
+  lines_removed: number;
+  links?: Link[];
+  subagents?: SubagentRow[];
+  sprint: number;
+  rolled_over_from?: number;
+  notes?: string;
+}
+
+export interface BoardColumn {
+  id: ColumnId;
+  name: string;
+  cards: BoardCard[];
+}
+
+export interface BoardResponse {
+  project: ProjectSummary;
+  columns: BoardColumn[];
+  current_sprint: number;
+  sprint?: Sprint;
+}
+
+export interface AgentEvent {
+  id: string;
+  ts: string;
+  kind: string;
+  agent: { name: string; version?: string };
+  collector: string;
+  session_id: string;
+  actor_id?: string;
+  actor_type?: string;
+  data?: Record<string, unknown>;
+}
