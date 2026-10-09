@@ -180,8 +180,9 @@ func TestInstall(t *testing.T) {
 }
 
 func TestInstallNewFile(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "hooks.json")
-	if _, err := Install(path, "/opt/shiplino/bin/shiplino", t.TempDir()); err != nil {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "hooks.json")
+	if _, err := Install(path, filepath.Join(dir, "bin", "shiplino"), t.TempDir()); err != nil {
 		t.Fatal(err)
 	}
 	b, _ := os.ReadFile(path)
