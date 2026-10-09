@@ -3,6 +3,7 @@
 
 "use client";
 
+import { cn } from "cn";
 import { ChartColumn, Kanban, LayoutDashboard, Settings } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
@@ -21,7 +22,6 @@ import {
 } from "@/components/ui/sidebar";
 import { api, type ProjectSummary } from "@/lib/api";
 import { useLive } from "@/lib/live";
-import { cn } from "@/lib/utils";
 
 function ProjectList() {
   const pathname = usePathname();

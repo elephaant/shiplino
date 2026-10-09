@@ -7,6 +7,7 @@ import { Monitor, Moon, Sun } from "lucide-react";
 import Link from "next/link";
 import { useTheme } from "next-themes";
 import { useEffect, useMemo } from "react";
+import { CommandMenu } from "@/components/shell/command-menu";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -66,7 +67,8 @@ export function SiteHeader() {
       <SidebarTrigger className="-ml-1" />
       <Separator orientation="vertical" className="mr-1 h-4" />
       <LiveStrip />
-      <div className="ml-auto flex items-center gap-1">
+      <div className="ml-auto flex items-center gap-2">
+        <CommandMenu />
         <ThemeToggle />
       </div>
     </header>

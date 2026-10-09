@@ -6,10 +6,10 @@
 import { move } from "@dnd-kit/helpers";
 import { DragDropProvider, DragOverlay, useDroppable } from "@dnd-kit/react";
 import { useSortable } from "@dnd-kit/react/sortable";
+import { cn } from "cn";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { api, type BoardCard, type BoardColumn, type ColumnId } from "@/lib/api";
-import { cn } from "@/lib/utils";
 import { CardView } from "./card";
 
 type Items = Record<ColumnId, BoardCard[]>;

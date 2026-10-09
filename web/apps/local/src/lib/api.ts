@@ -91,6 +91,17 @@ export interface NeedsYou {
   since: string;
 }
 
+export interface SearchHit {
+  event_id: string;
+  session_id: string;
+  kind: string;
+  ts: string;
+  snippet: string;
+  session_title?: string;
+  agent?: string;
+  project_id?: string;
+}
+
 export interface Overview {
   projects: OverviewRow[];
   needs_you: NeedsYou[];

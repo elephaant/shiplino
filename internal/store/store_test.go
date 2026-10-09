@@ -199,3 +199,81 @@ func TestProjectsSummary(t *testing.T) {
 		t.Fatalf("filter: %d %d", len(in), len(other))
 	}
 }
+
+func searchEvent(key string, kind model.Kind, ts time.Time, data map[string]any) model.Event {
+	e := event(key, ts)
+	e.Kind, e.Data = kind, data
+	return e
+}
+
+func TestSearch(t *testing.T) {
+	s, _ := openTemp(t)
+	at := time.Date(2026, 10, 9, 10, 0, 0, 0, time.UTC)
+	tx, _ := s.Begin(ctx)
+	tx.InsertEvent(ctx, searchEvent("a", model.KindTurnStart, at, map[string]any{"prompt": "fix the cart_total rounding bug"}))
+	tx.InsertEvent(ctx, searchEvent("b", model.KindShellExec, at.Add(time.Second), map[string]any{"command": "npm test -- cart.spec.ts"}))
+	tx.InsertEvent(ctx, searchEvent("c", model.KindFileEdit, at.Add(2*time.Second), map[string]any{"path": "/home/dev/shop/src/cart.ts"}))
+	tx.InsertEvent(ctx, searchEvent("d", model.KindToolStart, at.Add(3*time.Second), map[string]any{"input_summary": "cart"}))
+	tx.InsertEvent(ctx, searchEvent("a", model.KindTurnStart, at, map[string]any{"prompt": "fix the cart_total rounding bug"})) // duplicate
+	tx.PutSession(ctx, &engine.Session{ID: "claude-code:s1", RootID: "claude-code:s1", Agent: "claude-code", Title: "Cart rounding", ProjectID: "p1", StartedAt: at, LastEventAt: at})
+	if err := tx.Commit(); err != nil {
+		t.Fatal(err)
+	}
+
+	hits, err := s.Search(ctx, "cart", "", 0)
+	if err != nil || len(hits) != 3 {
+		t.Fatalf("hits=%+v err=%v", hits, err)
+	}
+	if hits[0].Kind != "file.edit" || hits[0].Title != "Cart rounding" || hits[0].ProjectID != "p1" {
+		t.Fatalf("newest first, with session info: %+v", hits[0])
+	}
+	cases := map[string]int{
+		"rounding":        1, // prompt
+		"roun":            1, // prefix
+		"cart.ts":         1, // path, punctuation kept literal
+		"cart_total":      1,
+		"npm cart":        1, // all words must match
+		"nothing-matches": 0,
+		"   ":             0,
+	}
+	for q, want := range cases {
+		if got, err := s.Search(ctx, q, "", 0); err != nil || len(got) != want {
+			t.Errorf("Search(%q) = %d hits (%v), want %d", q, len(got), err, want)
+		}
+	}
+	if got, _ := s.Search(ctx, `cart" OR "x`, "", 0); len(got) != 0 {
+		t.Errorf("FTS syntax wasn't neutralized: %d hits", len(got))
+	}
+	if got, _ := s.Search(ctx, "cart", "other-project", 0); len(got) != 0 {
+		t.Errorf("project filter: %d hits", len(got))
+	}
+	if got, _ := s.Search(ctx, "rounding", "", 0); len(got) == 1 && got[0].Snippet != "fix the cart_total «rounding» bug" {
+		t.Errorf("snippet: %q", got[0].Snippet)
+	}
+}
+
+func TestSearchBackfillOnUpgrade(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "old.db")
+	db, err := sql.Open("sqlite", "file:"+filepath.ToSlash(path))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, m := range migrations[:3] {
+		if _, err := db.Exec(m); err != nil {
+			t.Fatal(err)
+		}
+	}
+	db.Exec(`PRAGMA user_version = 3`)
+	db.Exec(`INSERT INTO events (id, ts, kind, agent, session_id, collector, dedup_key, body)
+		VALUES ('e1', 1, 'shell.exec', 'claude-code', 'claude-code:s1', 'hook', 'k1', '{"data":{"command":"go test ./..."}}')`)
+	db.Close()
+
+	s, err := Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	if hits, err := s.Search(ctx, "go test", "", 0); err != nil || len(hits) != 1 || hits[0].EventID != "e1" {
+		t.Fatalf("backfill: %+v %v", hits, err)
+	}
+}

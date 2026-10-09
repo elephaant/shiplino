@@ -18,6 +18,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/elephaant/shiplino/internal/api"
 	"github.com/elephaant/shiplino/internal/service"
 	"github.com/elephaant/shiplino/internal/spool"
 	"github.com/elephaant/shiplino/pkg/engine"
@@ -61,13 +62,14 @@ func (c *client) get(ctx context.Context, path string, v any) error {
 type statusResp struct {
 	Version string `json:"version"`
 	Daemon  struct {
-		Lines             int64 `json:"lines"`
-		Events            int64 `json:"events"`
-		Unknown           int64 `json:"unknown"`
-		Bad               int64 `json:"bad"`
-		SpoolBacklogBytes int64 `json:"spool_backlog_bytes"`
-		Transcripts       int   `json:"transcripts"`
-		Paused            bool  `json:"paused"`
+		Lines             int64  `json:"lines"`
+		Events            int64  `json:"events"`
+		Unknown           int64  `json:"unknown"`
+		Bad               int64  `json:"bad"`
+		SpoolBacklogBytes int64  `json:"spool_backlog_bytes"`
+		Transcripts       int    `json:"transcripts"`
+		Paused            bool   `json:"paused"`
+		WatchError        string `json:"watch_error"`
 	} `json:"daemon"`
 }
 
@@ -286,12 +288,19 @@ func doctor(ctx context.Context, e *env, args []string) int {
 		checks = append(checks, check{name: "Daemon", detail: "not running", fix: startService, fixHint: "shiplino doctor --fix"})
 	} else {
 		checks = append(checks, check{ok: true, name: "Daemon", detail: "running at " + strings.Replace(c.base, "127.0.0.1", "localhost", 1)})
+		if !strings.HasSuffix(c.base, ":"+strconv.Itoa(api.DefaultPort)) {
+			checks = append(checks, check{ok: true, warn: true, name: "Port", detail: fmt.Sprintf("%d was busy, so the board moved; bookmarks of localhost:%d won't reach it", api.DefaultPort, api.DefaultPort),
+				fixHint: fmt.Sprintf("free port %d (see what holds it: lsof -i :%d), then restart the daemon; `shiplino open` always finds it", api.DefaultPort, api.DefaultPort)})
+		}
 		d := st.Daemon
 		switch {
 		case d.SpoolBacklogBytes > 1<<20:
 			checks = append(checks, check{ok: true, warn: true, name: "Backlog", detail: fmt.Sprintf("%.1f MB of events waiting to be processed", float64(d.SpoolBacklogBytes)/1e6)})
 		default:
 			checks = append(checks, check{ok: true, name: "Backlog", detail: "up to date"})
+		}
+		if d.WatchError != "" {
+			checks = append(checks, check{ok: true, warn: true, name: "Watching", detail: "file notifications unavailable (" + d.WatchError + "); polling instead, so updates can lag up to half a second", fixHint: watchFixHint()})
 		}
 		if d.Bad > 0 || d.Unknown > 0 {
 			checks = append(checks, check{ok: true, warn: true, name: "Parsing", detail: fmt.Sprintf("%d unreadable and %d unknown lines since start (an agent update may have changed its format)", d.Bad, d.Unknown)})
@@ -335,7 +344,7 @@ func doctor(ctx context.Context, e *env, args []string) int {
 			mark = "⚠️ "
 		}
 		line := fmt.Sprintf("  %s %-12s %s", mark, ch.name, ch.detail)
-		if !ch.ok && ch.fixHint != "" {
+		if (!ch.ok || ch.warn) && ch.fixHint != "" {
 			line += "  → " + ch.fixHint
 		}
 		fmt.Fprintln(e.out, line)
@@ -374,4 +383,13 @@ func ago(t time.Time) string {
 		return fmt.Sprintf("%dh ago", int(d.Hours()))
 	}
 	return fmt.Sprintf("%dd ago", int(d.Hours()/24))
+}
+
+// watchFixHint says how to restore file notifications. On Linux the usual
+// cause is the per-user inotify instance limit, shared by every program.
+func watchFixHint() string {
+	if runtime.GOOS == "linux" {
+		return "raise the inotify limit: echo fs.inotify.max_user_instances=512 | sudo tee /etc/sysctl.d/60-inotify.conf && sudo sysctl --system, then restart the daemon"
+	}
+	return "restart the daemon; if it persists, report it in Issues"
 }

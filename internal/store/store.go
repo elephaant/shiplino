@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/elephaant/shiplino/pkg/board"
@@ -112,6 +113,24 @@ var migrations = []string{
 		updated_at INTEGER NOT NULL
 	);
 	CREATE INDEX cards_project ON cards(project_id);`,
+	// v4: full-text search over prompts, commands, file paths, titles and
+	// commit messages (see searchText), backfilled from stored events.
+	`CREATE VIRTUAL TABLE search USING fts5(
+		text, event_id UNINDEXED, session_id UNINDEXED, kind UNINDEXED, ts UNINDEXED,
+		tokenize = 'unicode61 remove_diacritics 2', prefix = '2 3'
+	);
+	INSERT INTO search (text, event_id, session_id, kind, ts)
+	SELECT t, id, session_id, kind, ts FROM (
+		SELECT id, session_id, kind, ts, CASE kind
+			WHEN 'turn.start' THEN json_extract(body, '$.data.prompt')
+			WHEN 'shell.exec' THEN json_extract(body, '$.data.command')
+			WHEN 'file.edit' THEN json_extract(body, '$.data.path')
+			WHEN 'session.start' THEN json_extract(body, '$.data.title')
+			WHEN 'session.update' THEN json_extract(body, '$.data.title')
+			WHEN 'git.commit' THEN json_extract(body, '$.data.message')
+			WHEN 'git.pr' THEN json_extract(body, '$.data.url')
+		END AS t FROM events
+	) WHERE t IS NOT NULL AND t != '';`,
 }
 
 func (s *Store) migrate(ctx context.Context) error {
@@ -182,7 +201,85 @@ func (t *Tx) InsertEvent(ctx context.Context, e model.Event) (bool, error) {
 		return false, err
 	}
 	n, err := res.RowsAffected()
-	return n == 1, err
+	if err != nil || n != 1 {
+		return false, err
+	}
+	if text := searchText(e); text != "" {
+		if _, err := t.tx.ExecContext(ctx, `INSERT INTO search (text, event_id, session_id, kind, ts) VALUES (?, ?, ?, ?, ?)`,
+			text, e.ID, e.SessionID, string(e.Kind), e.TS.UnixMilli()); err != nil {
+			return false, err
+		}
+	}
+	return true, nil
+}
+
+// searchText is the searchable text of an event: prompts, commands, file
+// paths, titles and commit messages. Keep in sync with migration v4.
+func searchText(e model.Event) string {
+	key := map[model.Kind]string{
+		model.KindTurnStart: "prompt", model.KindShellExec: "command", model.KindFileEdit: "path",
+		model.KindSessionStart: "title", model.KindSessionUpdate: "title", model.KindGitCommit: "message", model.KindGitPR: "url",
+	}[e.Kind]
+	v, _ := e.Data[key].(string)
+	return v
+}
+
+// Hit is one search result.
+type Hit struct {
+	EventID   string    `json:"event_id"`
+	SessionID string    `json:"session_id"`
+	Kind      string    `json:"kind"`
+	TS        time.Time `json:"ts"`
+	Snippet   string    `json:"snippet"` // matches wrapped in « »
+	Title     string    `json:"session_title,omitempty"`
+	Agent     string    `json:"agent,omitempty"`
+	ProjectID string    `json:"project_id,omitempty"`
+}
+
+// Search finds events matching query, newest first. Every word must
+// match, as a prefix; projectID ("" for all) limits it to one project.
+func (s *Store) Search(ctx context.Context, query, projectID string, limit int) ([]Hit, error) {
+	q := ftsQuery(query)
+	if q == "" {
+		return nil, nil
+	}
+	if limit <= 0 || limit > 200 {
+		limit = 50
+	}
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT f.event_id, f.session_id, f.kind, f.ts, snippet(search, 0, '«', '»', '…', 16),
+		        coalesce(json_extract(ss.body, '$.title'), ''), coalesce(ss.agent, ''), coalesce(ss.project_id, '')
+		 FROM search f LEFT JOIN sessions ss ON ss.id = f.session_id
+		 WHERE search MATCH ? AND (? = '' OR ss.project_id = ?)
+		 ORDER BY f.ts DESC LIMIT ?`, q, projectID, projectID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Hit
+	for rows.Next() {
+		var h Hit
+		var ts int64
+		if err := rows.Scan(&h.EventID, &h.SessionID, &h.Kind, &ts, &h.Snippet, &h.Title, &h.Agent, &h.ProjectID); err != nil {
+			return nil, err
+		}
+		h.TS = time.UnixMilli(ts).UTC()
+		out = append(out, h)
+	}
+	return out, rows.Err()
+}
+
+// ftsQuery turns user input into a safe FTS5 query: each word becomes a
+// quoted prefix term, so punctuation and FTS operators are literal.
+func ftsQuery(in string) string {
+	var terms []string
+	for _, w := range strings.Fields(in) {
+		w = strings.ReplaceAll(w, `"`, "")
+		if w != "" {
+			terms = append(terms, `"`+w+`"*`)
+		}
+	}
+	return strings.Join(terms, " ")
 }
 
 // PutSession writes a session snapshot.

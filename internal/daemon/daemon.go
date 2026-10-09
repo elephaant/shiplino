@@ -43,6 +43,8 @@ const (
 	defaultReapAfter = 10 * time.Minute
 	// rescanEvery is the safety-net rescan when no file events arrive.
 	rescanEvery = 2 * time.Second
+	// pollFallback is the poll interval when file notifications fail.
+	pollFallback = 500 * time.Millisecond
 	// transcriptRecent bounds which stored sessions' transcripts are
 	// re-tailed after a restart.
 	transcriptRecent = 24 * time.Hour
@@ -84,6 +86,7 @@ type Daemon struct {
 	// rebuilt by a warmup pass after a restart.
 	tstate       map[string]map[string]string
 	lastDiscover time.Time
+	watchErr     string
 	projects     *resolver
 	redactor     *redact.Redactor
 	level        redact.Level
@@ -155,13 +158,16 @@ type Health struct {
 	SpoolBacklogBytes int64 `json:"spool_backlog_bytes"` // unprocessed spool data
 	Transcripts       int   `json:"transcripts"`         // transcript files being tailed
 	Paused            bool  `json:"paused"`
+	// WatchError is set when file notifications are unavailable and the
+	// daemon polls instead (slower to react, a little more CPU).
+	WatchError string `json:"watch_error,omitempty"`
 }
 
 // Health returns counters plus the current spool backlog.
 func (d *Daemon) Health() Health {
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	h := Health{Stats: d.stats, Transcripts: len(d.transcripts), Paused: spool.Paused(d.home, time.Now())}
+	h := Health{Stats: d.stats, Transcripts: len(d.transcripts), Paused: spool.Paused(d.home, time.Now()), WatchError: d.watchErr}
 	files, _ := filepath.Glob(filepath.Join(d.spoolRoot, "*", "*.jsonl"))
 	for _, f := range files {
 		fi, err := os.Stat(f)
@@ -189,14 +195,25 @@ func (d *Daemon) Run(ctx context.Context) error {
 	if err := os.MkdirAll(d.spoolRoot, 0o700); err != nil {
 		return err
 	}
+	// Without file notifications (e.g. the system's inotify limit is used
+	// up by other programs) the daemon still works, by polling often.
+	every := rescanEvery
+	var events <-chan fsnotify.Event
+	var werrs <-chan error
 	w, err := fsnotify.NewWatcher()
 	if err != nil {
-		return err
+		d.log.Printf("file notifications unavailable (%v); polling every %s", err, pollFallback)
+		every = pollFallback
+		d.mu.Lock()
+		d.watchErr = err.Error()
+		d.mu.Unlock()
+	} else {
+		defer w.Close()
+		d.watchDirs(w)
+		events, werrs = w.Events, w.Errors
 	}
-	defer w.Close()
-	d.watchDirs(w)
 
-	tick := time.NewTicker(rescanEvery)
+	tick := time.NewTicker(every)
 	defer tick.Stop()
 	var debounce <-chan time.Time
 	poll := func() {
@@ -209,7 +226,7 @@ func (d *Daemon) Run(ctx context.Context) error {
 		select {
 		case <-ctx.Done():
 			return nil
-		case ev, ok := <-w.Events:
+		case ev, ok := <-events:
 			if !ok {
 				return nil
 			}
@@ -221,7 +238,7 @@ func (d *Daemon) Run(ctx context.Context) error {
 			if debounce == nil {
 				debounce = time.After(20 * time.Millisecond)
 			}
-		case err, ok := <-w.Errors:
+		case err, ok := <-werrs:
 			if !ok {
 				return nil
 			}
@@ -230,7 +247,9 @@ func (d *Daemon) Run(ctx context.Context) error {
 			debounce = nil
 			poll()
 		case <-tick.C:
-			d.watchDirs(w)
+			if w != nil {
+				d.watchDirs(w)
+			}
 			poll()
 		}
 	}
