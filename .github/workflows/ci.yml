@@ -43,6 +43,22 @@ jobs:
       - run: npm run check
       - run: npm run build
 
+  release-config:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: goreleaser/goreleaser-action@v7
+        with:
+          version: v2.18.2
+          args: check
+
+  installer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: ShellCheck install.sh
+        run: shellcheck -s sh scripts/install.sh
+
   secrets:
     runs-on: ubuntu-latest
     steps:

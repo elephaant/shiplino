@@ -6,6 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Added
+- Releases for macOS, Linux and Windows (amd64, arm64) built by GoReleaser with the web app embedded; checksums signed keylessly with Sigstore. One-line installers (`install.sh`, `install.ps1`) verify the checksum (and the signature when cosign is available) before installing.
 - Commits are linked to the agent sessions that produced them (exact when the agent ran `git commit` itself, likely when it edited the committed files, shared when several did), and a card in Review moves to Done when its work is committed. Repos are only checked when their reflog changes.
 - Privacy: secrets are redacted before anything is stored (cloud and VCS tokens, private keys, JWTs, bearer headers, URL passwords, secret `KEY=value` pairs and flags, high-entropy strings in commands, custom patterns). Capture levels `minimal` / `standard` / `full` in `~/.shiplino/config.toml`; at `minimal` the hook strips content before it reaches disk.
 - Project board in the web app: kanban with drag to pin (agent-driven cards can't be dropped into Running or Waiting), nested subagents, live now-doing lines, PR badges, sprint selector, filters, new backlog cards, and a quick-look drawer.

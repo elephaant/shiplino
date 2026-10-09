@@ -1,0 +1,65 @@
+# Copyright 2026 The Shiplino Authors
+# SPDX-License-Identifier: FSL-1.1-Apache-2.0
+#
+# Release builds. The web app must be built first (`make ui`) so it is
+# embedded into the binary; the release workflow does that.
+version: 2
+project_name: shiplino
+
+builds:
+  - id: shiplino
+    main: ./cmd/shiplino
+    binary: shiplino
+    env: [CGO_ENABLED=0]
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+    flags: [-trimpath]
+    ldflags: ["-s -w -X main.version={{ .Version }}"]
+    mod_timestamp: "{{ .CommitTimestamp }}"
+
+archives:
+  - id: default
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files: [LICENSE, NOTICE, README.md, CHANGELOG.md]
+
+checksum:
+  name_template: checksums.txt
+  algorithm: sha256
+
+# Keyless signing: the signature is bound to this repository's release
+# workflow identity through Sigstore. Nothing secret to store or leak.
+signs:
+  - cmd: cosign
+    artifacts: checksum
+    signature: "${artifact}.sigstore.json"
+    args: ["sign-blob", "--yes", "--bundle=${signature}", "${artifact}"]
+
+release:
+  github:
+    owner: elephaant
+    name: shiplino
+  prerelease: auto
+  header: |
+    Install or upgrade:
+
+    ```sh
+    curl -fsSL https://raw.githubusercontent.com/elephaant/shiplino/main/scripts/install.sh | sh
+    ```
+
+    Windows (PowerShell): `irm https://raw.githubusercontent.com/elephaant/shiplino/main/scripts/install.ps1 | iex`
+
+changelog:
+  use: github
+  groups:
+    - title: Features
+      regexp: '^.*?(feat|setup|service|cli|projects|board|web|git|transcript|privacy|cost|api|adapter)'
+      order: 0
+    - title: Fixes
+      regexp: '^.*?fix'
+      order: 1
+    - title: Other
+      order: 99

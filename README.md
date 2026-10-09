@@ -5,7 +5,7 @@ Every project, every session, every subagent, every command, every file, every d
 
 **One command to install. Zero tokens to run.**
 
-> ⚠️ **Status: pre-alpha / planning.** This repo has the project skeleton. The installer and daemon aren't functional yet. Star or watch the repo to follow progress.
+> ⚠️ **Status: alpha.** Claude Code is supported today; Codex and Cursor are next. Expect rough edges and report them in Issues.
 
 ---
 
@@ -50,22 +50,30 @@ Read more: [How it works](docs/how-it-works.md).
 
 Want another agent? Open an issue, or read [Adding an agent adapter](docs/adding-an-adapter.md).
 
-## Install (when released)
+## Install
+
+macOS and Linux:
 
 ```bash
-curl -fsSL https://shiplino.com/install | sh
+curl -fsSL https://raw.githubusercontent.com/elephaant/shiplino/main/scripts/install.sh | sh
 ```
 
-That's it. Agents are detected and connected automatically, and the board opens in your browser.
+Windows (PowerShell):
 
-## Try the pre-alpha (Claude Code)
+```powershell
+irm https://raw.githubusercontent.com/elephaant/shiplino/main/scripts/install.ps1 | iex
+```
+
+The installer downloads the release for your OS and CPU, **verifies its SHA-256 checksum** (and, if [cosign](https://docs.sigstore.dev/cosign/system_config/installation/) is installed, the Sigstore signature that ties the release to this repository's build), installs to `~/.shiplino/bin`, then runs `shiplino setup`: agents are detected and connected, the daemon starts at login, and the board is at http://localhost:4777.
+
+Remove everything with `shiplino uninstall` (add `--purge` to delete recorded data).
+
+## Build from source
 
 ```bash
-make build
-./bin/shiplino setup   # installs to ~/.shiplino/bin, connects Claude Code, starts the daemon at login
+make build        # builds the web app (if Node is installed) and ./bin/shiplino
+./bin/shiplino setup
 ```
-
-Then open http://localhost:4777 and start a Claude Code session. `setup` backs up `~/.claude/settings.json`, adds one hook per event (your own hooks and settings are kept), and checks that the hook prints nothing. Start a new Claude Code session and open http://localhost:4777. To remove everything: `shiplino uninstall` (add `--purge` to delete recorded data).
 
 ## Repository layout
 
