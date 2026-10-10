@@ -36,6 +36,7 @@ Details that matter:
 - **Some models have a long-context tier.** Example: Claude Haiku 5.5 charges higher rates for the whole request when its prompt, cache tokens included, is over 100,000 tokens.
 - **Model ids** are matched through provider prefixes, date suffixes and variant tags (`us.anthropic.…`, `…-20251001`, `…[1m]`).
 - **Unknown models** are shown as *unpriced* rather than guessed.
+- **Announced price changes are dated.** A model can list rates that apply from a given day (00:00 UTC). Each response is priced at the rates in effect when it was made, so history keeps its old price after a change.
 
 ## How accurate is it?
 
@@ -58,6 +59,12 @@ For billing, the source of truth is your provider's console or usage and cost AP
 - Summed this way, the totals match Codex's own running `thread_token_usage` for the thread. The exception is a thread you rewound: Codex's total then drops the abandoned branch, but those calls were made, so Shiplino keeps them.
 - **Cost:** tokens × OpenAI's list prices (gpt-5.6-terra, gpt-5.6-luna, gpt-5.5, gpt-5.3-codex; checked 2026-10-10). A response whose prompt is over 272K tokens uses the long-context rates. Fast (priority) and flex tiers use their multipliers when Codex records the service tier. Models OpenAI doesn't list (e.g. `codex-auto-review`) stay unpriced.
 - **On a ChatGPT plan, Codex isn't billed per token.** The figure is then an API-equivalent cost: useful for comparing work, not money you spent.
+
+## Gemini CLI
+
+- **Tokens** come from the `tokens` of each response in Gemini CLI's chat recordings, one per API response, counted once per message id. The Gemini API includes cached tokens in its input count, so Shiplino stores the uncached part as input and the cached part as cache reads. Thinking tokens are billed as output and tool-use prompt tokens as input.
+- **Cost:** tokens × the Gemini API's paid-tier Standard list prices (checked 2026-10-10). A prompt over 200K tokens uses the long-context rates on models that have them. Gemini 3.6 and 3.8 Flash list higher rates from 2027-01-01; responses from that day on use them.
+- **With a Google sign-in (free tier or a Code Assist plan), Gemini CLI isn't billed per token.** The figure is then an API-equivalent cost.
 
 ## Cursor
 

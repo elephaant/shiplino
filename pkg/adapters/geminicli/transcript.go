@@ -168,11 +168,16 @@ func newChatBuilder(st map[string]string, meta adapters.TranscriptMeta) *chatBui
 	return b
 }
 
-func (b *chatBuilder) event(kind model.Kind, ts string, data map[string]any, key string) model.Event {
-	t := b.meta.ReceivedAt
-	if p, err := time.Parse(time.RFC3339Nano, ts); err == nil {
-		t = p
+// at is the time a record gives, or when it was read.
+func (b *chatBuilder) at(ts string) time.Time {
+	if t, err := time.Parse(time.RFC3339Nano, ts); err == nil {
+		return t
 	}
+	return b.meta.ReceivedAt
+}
+
+func (b *chatBuilder) event(kind model.Kind, ts string, data map[string]any, key string) model.Event {
+	t := b.at(ts)
 	e := model.Event{
 		ID: model.NewULID(t), V: model.SchemaVersion, TS: t.UTC(), ReceivedAt: b.meta.ReceivedAt.UTC(),
 		Kind: kind, Agent: model.Agent{Name: Name}, Collector: model.CollectorTranscript,
@@ -200,7 +205,7 @@ func (b *chatBuilder) usage(r record, t *tokens) model.Event {
 		"model": r.Model, "message_id": r.ID, "input_tokens": uncached, "output_tokens": output,
 		"cache_read_tokens": t.Cached, "cache_write_tokens": int64(0), "reasoning_tokens": t.Thoughts,
 	}
-	if cost, ok := pricing.Default().Cost(r.Model, pricing.Usage{Input: uncached, Output: output, CacheRead: t.Cached}); ok {
+	if cost, ok := pricing.Default().Cost(r.Model, pricing.Usage{Input: uncached, Output: output, CacheRead: t.Cached, At: b.at(r.Timestamp)}); ok {
 		data["cost_usd"], data["cost_source"] = cost, "computed"
 	} else {
 		data["cost_source"] = "unpriced"

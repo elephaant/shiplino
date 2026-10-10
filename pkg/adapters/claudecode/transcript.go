@@ -81,9 +81,13 @@ func (Adapter) ParseTranscriptLine(line []byte, meta adapters.TranscriptMeta) ([
 		return acts, nil
 	}
 
+	ts := meta.ReceivedAt
+	if t, err := time.Parse(time.RFC3339Nano, l.Timestamp); err == nil {
+		ts = t
+	}
 	usage := pricing.Usage{
 		Input: u.InputTokens, Output: u.OutputTokens, CacheRead: u.CacheReadTokens, CacheWrite5m: u.CacheCreationTokens,
-		Speed: u.Speed, InferenceGeo: u.InferenceGeo,
+		Speed: u.Speed, InferenceGeo: u.InferenceGeo, At: ts,
 	}
 	if u.ServerToolUse != nil {
 		usage.WebSearches = u.ServerToolUse.WebSearchRequests
@@ -118,10 +122,6 @@ func (Adapter) ParseTranscriptLine(line []byte, meta adapters.TranscriptMeta) ([
 		data["cost_source"] = "unpriced"
 	}
 
-	ts := meta.ReceivedAt
-	if t, err := time.Parse(time.RFC3339Nano, l.Timestamp); err == nil {
-		ts = t
-	}
 	sid := model.SessionID(Name, l.SessionID)
 	e := model.Event{
 		ID:         model.NewULID(ts),
