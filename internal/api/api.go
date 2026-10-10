@@ -88,6 +88,7 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("POST /api/v1/pause", s.auth(s.pause))
 	mux.Handle("POST /api/v1/resume", s.auth(s.resume))
 	mux.Handle("POST /api/v1/notify/test", s.auth(s.testNotification))
+	mux.Handle("POST /api/v1/backfill", s.auth(s.backfill))
 	return securityHeaders(localHostOnly(s.devCORS(mux)))
 }
 

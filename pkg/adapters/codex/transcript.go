@@ -299,12 +299,15 @@ func event(st map[string]string, meta adapters.TranscriptMeta, l line, kind mode
 	return e
 }
 
-// TranscriptRoots implements adapters.TranscriptDiscoverer: rollouts of
-// the last two days (sessions without hooks, e.g. the Codex desktop app).
-func (Adapter) TranscriptRoots(userHome string, now time.Time) []string {
+// TranscriptRoots implements adapters.TranscriptDiscoverer: rollouts are
+// filed by day, so recent ones are found without listing all history.
+func (Adapter) TranscriptRoots(userHome string, now, since time.Time) []string {
 	base := filepath.Join(userHome, ".codex", "sessions")
 	if _, err := os.Stat(base); err != nil {
 		return nil
+	}
+	if now.Sub(since) > 48*time.Hour {
+		return []string{filepath.Join(base, "*", "*", "*", "rollout-*.jsonl")} // backfill
 	}
 	var globs []string
 	seen := map[string]bool{}

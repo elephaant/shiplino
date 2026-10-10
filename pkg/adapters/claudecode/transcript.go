@@ -72,12 +72,13 @@ func (Adapter) ParseTranscriptLine(line []byte, meta adapters.TranscriptMeta) ([
 	case "ai-title":
 		return titleUpdate(l, meta)
 	}
+	acts := activity(line, meta)
 	u := l.Message.Usage
-	if l.Type != "assistant" || u == nil || l.Message.ID == "" || l.SessionID == "" {
-		return nil, nil
+	if l.Type != "assistant" || u == nil || l.Message.ID == "" || l.SessionID == "" || meta.Warmup {
+		return acts, nil
 	}
 	if l.Message.Model == "<synthetic>" { // local error messages, not API calls
-		return nil, nil
+		return acts, nil
 	}
 
 	usage := pricing.Usage{
@@ -146,7 +147,7 @@ func (Adapter) ParseTranscriptLine(line []byte, meta adapters.TranscriptMeta) ([
 	if meta.Ref != "" {
 		e.Raw = &model.RawRef{Ref: meta.Ref}
 	}
-	return []model.Event{e}, nil
+	return append(acts, e), nil
 }
 
 // costReport turns a cost-state line into a usage event marked as an agent

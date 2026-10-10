@@ -84,6 +84,8 @@ func (a *admin) Settings(ctx context.Context) any {
 	return v
 }
 
+func (a *admin) Backfill(since time.Time) int { return a.d.Backfill(since) }
+
 func (a *admin) Pause(until time.Time) error { return spool.Pause(a.home, until) }
 func (a *admin) Resume() error               { return spool.Resume(a.home) }
 

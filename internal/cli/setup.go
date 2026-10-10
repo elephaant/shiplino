@@ -138,6 +138,10 @@ func setup(ctx context.Context, e *env, args []string) int {
 		} else {
 			daemonURL = fmt.Sprintf("http://localhost:%d", port)
 			fmt.Fprintf(e.out, "  ✅ %-20s running at %s (%s)\n", "Daemon", daemonURL, how)
+			// Fill the board with recent history right away.
+			if n, err := runBackfill(ctx, e, 30); err == nil && n > 0 {
+				fmt.Fprintf(e.out, "  ✅ %-20s importing %d past session%s from the last 30 days\n", "History", n, plural(n))
+			}
 		}
 	}
 
