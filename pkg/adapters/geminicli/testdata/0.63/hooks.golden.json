@@ -451,5 +451,86 @@
       "status": "ended"
     },
     "dedup_key": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001:session.end:env-15"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:17Z",
+    "received_at": "2026-10-09T11:00:00Z",
+    "kind": "tool.end",
+    "agent": {
+      "name": "gemini-cli"
+    },
+    "collector": "hook",
+    "session_id": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001",
+    "actor_id": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001",
+    "project": {
+      "cwd": "/home/dev/demo"
+    },
+    "data": {
+      "ok": true,
+      "tool": "other"
+    },
+    "dedup_key": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001:tool.end:env-17"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:17Z",
+    "received_at": "2026-10-09T11:00:00Z",
+    "kind": "session.update",
+    "agent": {
+      "name": "gemini-cli"
+    },
+    "collector": "hook",
+    "session_id": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001",
+    "actor_id": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001",
+    "project": {
+      "cwd": "/home/dev/demo"
+    },
+    "data": {
+      "plan_done": 1,
+      "plan_items": [
+        {
+          "status": "completed",
+          "text": "Add the route"
+        },
+        {
+          "status": "cancelled",
+          "text": "Drop the old handler"
+        },
+        {
+          "status": "in_progress",
+          "text": "Add a test"
+        },
+        {
+          "status": "blocked",
+          "text": "Wait for review"
+        }
+      ],
+      "plan_total": 3
+    },
+    "dedup_key": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001:session.update:plan:env-17"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:18Z",
+    "received_at": "2026-10-09T11:00:00Z",
+    "kind": "tool.end",
+    "agent": {
+      "name": "gemini-cli"
+    },
+    "collector": "hook",
+    "session_id": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001",
+    "actor_id": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001",
+    "project": {
+      "cwd": "/home/dev/demo"
+    },
+    "data": {
+      "ok": false,
+      "tool": "other"
+    },
+    "dedup_key": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001:tool.end:env-18"
   }
 ]

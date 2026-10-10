@@ -153,6 +153,56 @@ var keepInput = map[string]bool{"file_path": true, "notebook_path": true, "path"
 // names, never the prompt, response, edits, command or MCP arguments.
 var keepInfo = map[string]bool{"file_path": true, "cwd": true, "mcp_server_name": true, "mcp_tool_name": true}
 
+// Todo list tools keep their progress at minimal: item ids and statuses
+// (never the text) and whether the call succeeded.
+var (
+	planTools        = map[string]bool{"TodoWrite": true, "TaskCreate": true, "TaskUpdate": true, "update_plan": true, "write_todos": true, "todowrite": true}
+	keepPlanInput    = map[string]bool{"todos": true, "plan": true, "merge": true, "taskId": true, "task_id": true, "id": true, "status": true}
+	keepPlanItem     = map[string]bool{"id": true, "status": true}
+	keepPlanResponse = map[string]bool{"success": true, "taskId": true, "task": true, "statusChange": true, "error": true}
+)
+
+func planTool(m map[string]json.RawMessage) bool {
+	var name string
+	if json.Unmarshal(m["tool_name"], &name) != nil {
+		_ = json.Unmarshal(m["tool"], &name) // OpenCode plugin
+	}
+	return planTools[name]
+}
+
+// planSub cuts a todo tool's response: a created task keeps its id, an
+// error only its presence.
+func planSub(k string, v json.RawMessage) json.RawMessage {
+	switch k {
+	case "task":
+		return keepOnly(v, keepPlanItem, nil)
+	case "error":
+		return json.RawMessage("{}")
+	}
+	return v
+}
+
+// planList keeps the id and status of each todo item (a list, or a list
+// in a JSON string).
+func planList(raw json.RawMessage) json.RawMessage {
+	var s string
+	if json.Unmarshal(raw, &s) == nil {
+		raw = []byte(s)
+	}
+	var items []json.RawMessage
+	if json.Unmarshal(raw, &items) != nil {
+		return json.RawMessage("[]")
+	}
+	for i, it := range items {
+		items[i] = keepOnly(it, keepPlanItem, nil)
+	}
+	b, err := json.Marshal(items)
+	if err != nil {
+		return json.RawMessage("[]")
+	}
+	return b
+}
+
 // stripContent removes content fields from a JSON object payload. On any
 // parse problem it returns {} rather than risk writing content.
 func stripContent(in []byte) []byte {
@@ -160,12 +210,23 @@ func stripContent(in []byte) []byte {
 	if json.Unmarshal(in, &m) != nil {
 		return []byte("{}")
 	}
+	input := keepInput
+	var planResp json.RawMessage
+	if planTool(m) {
+		input = keepPlanInput
+		if raw, ok := m["tool_response"]; ok {
+			planResp = keepOnly(raw, keepPlanResponse, planSub)
+		}
+	}
 	for _, k := range contentKeys {
 		delete(m, k)
 	}
+	if planResp != nil {
+		m["tool_response"] = planResp
+	}
 	// Tool arguments, as an object or a JSON string (Copilot's toolArgs):
 	// only the fields in each key's keep list stay.
-	for key, keep := range map[string]map[string]bool{"tool_input": keepInput, "toolArgs": keepInput, "tool_info": keepInfo} {
+	for key, keep := range map[string]map[string]bool{"tool_input": input, "toolArgs": keepInput, "tool_info": keepInfo} {
 		raw, ok := m[key]
 		if !ok {
 			continue
@@ -179,9 +240,12 @@ func stripContent(in []byte) []byte {
 			delete(m, key)
 			continue
 		}
-		for k := range ti {
-			if !keep[k] {
+		for k, v := range ti {
+			switch {
+			case !keep[k]:
 				delete(ti, k)
+			case k == "todos" || k == "plan":
+				ti[k] = planList(v)
 			}
 		}
 		b, _ := json.Marshal(ti)

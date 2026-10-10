@@ -71,6 +71,10 @@ func TestForSyncSendsMetadataOnly(t *testing.T) {
 				"limit_id": "codex", "plan_type": "plus", "limit_source": "reported", "message": "You've hit your limit"},
 			map[string]any{"limit_window": "5h", "window_minutes": 300, "used_percent": 62.5, "limit_reached": false, "resets_at": "2026-10-09T12:20:00Z",
 				"limit_id": "codex", "plan_type": "plus", "limit_source": "reported"}},
+		{model.KindSessionUpdate, // a todo list: the counts, never the items
+			map[string]any{"plan_total": 2, "plan_done": 1, "plan_merge": true,
+				"plan_items": []any{map[string]any{"id": "1", "text": "Rotate the customer key", "status": "completed"}}},
+			map[string]any{"plan_done": 1, "plan_total": 2}},
 	}
 	for _, c := range cases {
 		e := model.Event{Kind: c.kind, User: "dev", Raw: &model.RawRef{Ref: "x"}, Data: c.data}

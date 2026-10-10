@@ -248,6 +248,24 @@ func TestParseLevel(t *testing.T) {
 	}
 }
 
+func TestPlanItemsByLevel(t *testing.T) {
+	plan := func() *model.Event {
+		d := model.PlanData([]model.PlanItem{{ID: "1", Text: "Rotate " + ghToken, Status: "completed"}, {ID: "2", Text: "Ship it", Status: "pending"}}, false)
+		return ev(model.KindSessionUpdate, d)
+	}
+	std := plan()
+	Default.Event(std, Standard)
+	if b, _ := json.Marshal(std.Data); strings.Contains(string(b), ghToken) || !strings.Contains(string(b), "Ship it") {
+		t.Fatalf("standard: %s", b)
+	}
+	minimal := plan()
+	Default.Event(minimal, Minimal)
+	b, _ := json.Marshal(minimal.Data)
+	if want := `{"plan_done":1,"plan_items":[{"id":"1","status":"completed"},{"id":"2","status":"pending"}],"plan_total":2}`; string(b) != want {
+		t.Fatalf("minimal:\n got %s\nwant %s", b, want)
+	}
+}
+
 func TestMinimalMessageOnlyOnWaiting(t *testing.T) {
 	commit := model.Event{Kind: model.KindGitCommit, Data: map[string]any{"message": "fix: rotate api key", "sha": "abc123"}}
 	Default.Event(&commit, Minimal)

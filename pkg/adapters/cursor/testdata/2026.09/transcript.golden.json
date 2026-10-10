@@ -786,6 +786,84 @@
     "v": 1,
     "ts": "2026-08-06T05:35:00.004Z",
     "received_at": "2026-08-06T06:00:00Z",
+    "kind": "tool.start",
+    "agent": {
+      "name": "cursor"
+    },
+    "collector": "transcript",
+    "session_id": "cursor:cv-7",
+    "actor_id": "cursor:cv-7",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "input_summary": "TodoWrite",
+      "tool": "other",
+      "tool_call_id": "cv-7@2595.0",
+      "tool_raw": "TodoWrite"
+    },
+    "dedup_key": "cursor:cv-7:t2595:tool0:start"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-08-06T05:35:00.004Z",
+    "received_at": "2026-08-06T06:00:00Z",
+    "kind": "tool.end",
+    "agent": {
+      "name": "cursor"
+    },
+    "collector": "transcript",
+    "session_id": "cursor:cv-7",
+    "actor_id": "cursor:cv-7",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "ok": true,
+      "tool": "other",
+      "tool_call_id": "cv-7@2595.0"
+    },
+    "dedup_key": "cursor:cv-7:t2595:tool0:end"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-08-06T05:35:00.004Z",
+    "received_at": "2026-08-06T06:00:00Z",
+    "kind": "session.update",
+    "agent": {
+      "name": "cursor"
+    },
+    "collector": "transcript",
+    "session_id": "cursor:cv-7",
+    "actor_id": "cursor:cv-7",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "plan_done": 0,
+      "plan_items": [
+        {
+          "id": "t1",
+          "status": "in_progress",
+          "text": "Retry the request"
+        },
+        {
+          "id": "t2",
+          "status": "pending",
+          "text": "Report the result"
+        }
+      ],
+      "plan_total": 2
+    },
+    "dedup_key": "cursor:cv-7:t2595:tool0:plan"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-08-06T05:35:00.005Z",
+    "received_at": "2026-08-06T06:00:00Z",
     "kind": "turn.end",
     "agent": {
       "name": "cursor"
@@ -800,7 +878,7 @@
       "error": "Connection lost",
       "status": "error"
     },
-    "dedup_key": "cursor:cv-7:t2595:turnend"
+    "dedup_key": "cursor:cv-7:t2865:turnend"
   },
   {
     "id": "",

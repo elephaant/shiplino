@@ -11,4 +11,5 @@
 {"role":"user","message":{"content":[{"type":"text","text":"<timestamp>Thursday, Aug 6, 2026, 11:05 AM (UTC+5:30)</timestamp>"}]}}
 {"role":"user","message":{"content":[{"type":"text","text":"<user_query>\ntry again\n</user_query>"}]}}
 {"role":"assistant","message":{"content":[{"type":"tool_use","name":"CallDynamicTool","input":{"namespace":"github","toolName":"list_prs","arguments":{},"mcpDetails":{"description":"List pull requests"}}}]}}
+{"role":"assistant","message":{"content":[{"type":"tool_use","name":"TodoWrite","input":{"merge":false,"todos":"[{\"id\":\"t1\",\"content\":\"Retry the request\",\"status\":\"in_progress\"},{\"id\":\"t2\",\"content\":\"Report the result\",\"status\":\"pending\"}]"}}]}}
 {"type":"turn_ended","status":"error","error":"Connection lost"}

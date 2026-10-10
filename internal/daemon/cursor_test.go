@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/elephaant/shiplino/internal/shim"
+	"github.com/elephaant/shiplino/pkg/model"
 )
 
 func TestCursorHooksEndToEnd(t *testing.T) {
@@ -25,8 +26,23 @@ func TestCursorHooksEndToEnd(t *testing.T) {
 	e.poll()
 
 	s := e.session("cursor:cv-1")
-	if s.Turns != 1 || s.ToolCalls != 4 || s.ToolErrors != 1 || s.LinesAdded != 2 || s.LinesRemoved != 1 {
+	if s.Turns != 1 || s.ToolCalls != 6 || s.ToolErrors != 1 || s.LinesAdded != 2 || s.LinesRemoved != 1 {
 		t.Fatalf("session: turns=%d tools=%d errs=%d +%d -%d", s.Turns, s.ToolCalls, s.ToolErrors, s.LinesAdded, s.LinesRemoved)
+	}
+	// A TodoWrite list, then a merge that completes one item and cancels one.
+	if s.PlanTotal != 2 || s.PlanDone != 2 || len(s.PlanItems) != 3 || s.PlanItems[1].Text != "Fix roundTotal" {
+		t.Fatalf("plan: %d/%d %+v", s.PlanDone, s.PlanTotal, s.PlanItems)
+	}
+	// The merge is stored with its counts (what sync sends).
+	var merged model.Event
+	e.st.EachEvent(ctx, func(ev model.Event) error {
+		if ev.Data["plan_merge"] == true {
+			merged = ev
+		}
+		return nil
+	})
+	if merged.Data["plan_total"] != 2.0 || merged.Data["plan_done"] != 2.0 {
+		t.Fatalf("stored merge: %v", merged.Data)
 	}
 	if s.InputTokens != 1200 || s.Usage != "tokens" || s.CostUSD <= 0 || s.AgentVersion != "2026.09.02" {
 		t.Fatalf("usage: in=%d cost=%v version=%q", s.InputTokens, s.CostUSD, s.AgentVersion)
@@ -70,11 +86,14 @@ func TestHooklessCursorSessionFromTranscript(t *testing.T) {
 	e.poll()
 
 	s := e.session("cursor:cv-7")
-	if s.Turns != 3 || s.ToolCalls != 10 || s.ToolErrors != 0 || s.LinesAdded != 7 || s.LinesRemoved != 2 || len(s.Files) != 6 {
+	if s.Turns != 3 || s.ToolCalls != 11 || s.ToolErrors != 0 || s.LinesAdded != 7 || s.LinesRemoved != 2 || len(s.Files) != 6 {
 		t.Fatalf("session: turns=%d tools=%d errs=%d +%d -%d files=%v", s.Turns, s.ToolCalls, s.ToolErrors, s.LinesAdded, s.LinesRemoved, s.Files)
 	}
 	if s.Status != "failed" || s.Usage != "none" || s.Title == "" || !s.StartedAt.Equal(time.Date(2026, 8, 6, 5, 11, 0, 1e6, time.UTC)) {
 		t.Fatalf("session: usage=%s status=%s title=%q started=%v", s.Usage, s.Status, s.Title, s.StartedAt)
+	}
+	if s.PlanTotal != 2 || s.PlanDone != 0 {
+		t.Fatalf("plan from the transcript: %d/%d", s.PlanDone, s.PlanTotal)
 	}
 	sub := e.session("cursor:cv-7/sub:sa-3")
 	if sub.ParentID != "cursor:cv-7" || sub.ToolCalls != 1 || sub.Status != "done" {
@@ -107,8 +126,11 @@ func TestCursorHooksWinOverTranscript(t *testing.T) {
 	e.poll()
 
 	s := e.session("cursor:cv-1")
-	if s.Turns != 1 || s.ToolCalls != 4 || s.LinesAdded != 2 || s.LinesRemoved != 1 {
+	if s.Turns != 1 || s.ToolCalls != 6 || s.LinesAdded != 2 || s.LinesRemoved != 1 {
 		t.Fatalf("session: turns=%d tools=%d +%d -%d", s.Turns, s.ToolCalls, s.LinesAdded, s.LinesRemoved)
+	}
+	if s.PlanTotal != 2 || s.PlanDone != 2 || len(s.PlanItems) != 3 { // the transcript's list is the hooks' too
+		t.Fatalf("plan: %d/%d %+v", s.PlanDone, s.PlanTotal, s.PlanItems)
 	}
 	if _, ok := e.d.transcripts[filepath.Join(home, ".cursor", "projects", "home-dev-shop", "agent-transcripts", "cv-1", "subagents", "sa-3.jsonl")]; !ok {
 		t.Fatal("transcript not discovered")

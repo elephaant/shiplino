@@ -169,6 +169,35 @@ func TestMinimalStripsContentBeforeDisk(t *testing.T) {
 	}
 }
 
+// Todo tools keep ids and statuses at minimal (progress), never the text.
+func TestMinimalKeepsPlanProgress(t *testing.T) {
+	cases := []struct{ name, in, want string }{
+		{"todo list",
+			`{"tool_name":"TodoWrite","tool_input":{"todos":[{"content":"secret step","status":"completed","activeForm":"x"}]},"tool_response":{"newTodos":[{"content":"secret step"}]}}`,
+			`{"tool_input":{"todos":[{"status":"completed"}]},"tool_name":"TodoWrite","tool_response":{}}`},
+		{"task created",
+			`{"tool_name":"TaskCreate","tool_input":{"subject":"secret task","description":"d"},"tool_response":{"task":{"id":"4","subject":"secret task"}}}`,
+			`{"tool_input":{},"tool_name":"TaskCreate","tool_response":{"task":{"id":"4"}}}`},
+		{"task update",
+			`{"tool_name":"TaskUpdate","tool_input":{"taskId":"4","status":"completed","subject":"secret"},"tool_response":{"success":false,"taskId":"4","error":"secret detail"}}`,
+			`{"tool_input":{"status":"completed","taskId":"4"},"tool_name":"TaskUpdate","tool_response":{"error":{},"success":false,"taskId":"4"}}`},
+		{"todos in a string",
+			`{"tool_name":"TodoWrite","tool_input":{"merge":true,"todos":"[{\"id\":\"t1\",\"content\":\"secret\",\"status\":\"pending\"}]"}}`,
+			`{"tool_input":{"merge":true,"todos":[{"id":"t1","status":"pending"}]},"tool_name":"TodoWrite"}`},
+		{"codex plan",
+			`{"tool_name":"update_plan","tool_input":{"explanation":"secret","plan":[{"step":"secret","status":"in_progress"}]},"tool_response":"Plan updated"}`,
+			`{"tool_input":{"plan":[{"status":"in_progress"}]},"tool_name":"update_plan","tool_response":{}}`},
+		{"other tools unchanged",
+			`{"tool_name":"Bash","tool_input":{"command":"secret","status":"x","id":"y"},"tool_response":{"success":true}}`,
+			`{"tool_input":{},"tool_name":"Bash"}`},
+	}
+	for _, c := range cases {
+		if got := string(stripContent([]byte(c.in))); got != c.want {
+			t.Errorf("%s:\n got %s\nwant %s", c.name, got, c.want)
+		}
+	}
+}
+
 func TestRunWindsurfPayload(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("SHIPLINO_HOME", home)

@@ -13,6 +13,7 @@ import {
   GitCommitHorizontal,
   GitPullRequest,
   Hand,
+  ListChecks,
   MessageSquare,
   Play,
   Radio,
@@ -29,6 +30,7 @@ import { AgentDot } from "@/components/common/agent-dot";
 import { Empty } from "@/components/common/empty";
 import { ConversationView } from "@/components/session/conversation-view";
 import { DiffView } from "@/components/session/diff-view";
+import { PlanChecklist } from "@/components/session/plan-checklist";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -119,6 +121,9 @@ function describe(
       return { icon: GitBranch, text: `Pushed ${str(d, "branch")}` };
     case "session.end":
       return { icon: CircleCheck, text: `Session ended (${str(d, "reason")})` };
+    case "session.update":
+      if (d?.plan_total == null) return null;
+      return { icon: ListChecks, text: `Todo list: ${num(d, "plan_done")}/${num(d, "plan_total")} done` };
     default:
       return null;
   }
@@ -293,6 +298,10 @@ function SessionPage() {
           <Stat label="Waited for you" value={formatDuration(session.waiting_ms)} />
         </CardContent>
       </Card>
+
+      {(session.plan_total ?? 0) > 0 && (
+        <PlanChecklist items={session.plan_items ?? []} done={session.plan_done ?? 0} total={session.plan_total ?? 0} />
+      )}
 
       <Tabs defaultValue="timeline">
         <TabsList>

@@ -197,6 +197,34 @@ func TestEngine(t *testing.T) {
 	}
 }
 
+func TestTodoWrite(t *testing.T) {
+	part := func(status string) []byte {
+		return []byte(`{"session_id":"ses_root","hook_event_name":"message.part.updated","part_type":"tool","message_id":"msg_a1",` +
+			`"call_id":"call_todo","tool":"todowrite","status":"` + status + `","started_at":1791626403100,"ended_at":1791626403150,` +
+			`"tool_input":{"todos":[{"id":"1","content":"Fix the total","status":"completed","priority":"high"},` +
+			`{"id":"2","content":"Add a test","status":"pending","priority":"medium"},{"id":"3","content":"Old idea","status":"cancelled","priority":"low"}]}}`)
+	}
+	plans := func(status string) []model.Event {
+		evs, err := Adapter{}.ParseHook(part(status), adapters.HookMeta{ReceivedAt: t0})
+		if err != nil {
+			t.Fatal(err)
+		}
+		var out []model.Event
+		for _, e := range evs {
+			if e.Kind == model.KindSessionUpdate {
+				out = append(out, e)
+			}
+		}
+		return out
+	}
+	if p := plans("completed"); len(p) != 1 || p[0].Data["plan_total"] != 2 || p[0].Data["plan_done"] != 1 || p[0].DedupKey != "opencode:ses_root:call_todo:plan" {
+		t.Errorf("completed todowrite: %+v", p)
+	}
+	if p := plans("error"); len(p) != 0 {
+		t.Errorf("failed todowrite counted: %+v", p)
+	}
+}
+
 func TestParseErrors(t *testing.T) {
 	if _, err := (Adapter{}).ParseHook([]byte(`{"session_id":"s","hook_event_name":"tui.toast.show"}`), adapters.HookMeta{}); !errors.Is(err, adapters.ErrUnknownEvent) {
 		t.Errorf("unknown event: %v", err)

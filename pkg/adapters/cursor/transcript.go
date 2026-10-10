@@ -235,7 +235,44 @@ func (t *transcript) tool(i int, name string, input json.RawMessage) []model.Eve
 	for j, d := range edits {
 		out = append(out, t.event(model.KindFileEdit, fmt.Sprintf("%s:file%d", key, j), d))
 	}
+	if name == "TodoWrite" {
+		if d := planData(input); d != nil {
+			out = append(out, t.event(model.KindSessionUpdate, key+":plan", d))
+		}
+	}
 	return out
+}
+
+// planData reads a TodoWrite call: {todos: [{id, content?, status?}],
+// merge}. With merge the items update the list by id (an update may carry
+// only the status); without it they replace the list. Statuses: pending,
+// in_progress, completed, cancelled. Checked against local Cursor
+// transcripts (2026.09) on 2026-10-10; todos is sometimes JSON in a string.
+func planData(input json.RawMessage) map[string]any {
+	in := toolInput(input)
+	raw := in["todos"]
+	if s := str(raw); s != "" {
+		raw = json.RawMessage(s)
+	}
+	var todos []struct {
+		ID      string `json:"id"`
+		Content string `json:"content"`
+		Status  string `json:"status"`
+	}
+	if json.Unmarshal(raw, &todos) != nil || todos == nil {
+		return nil
+	}
+	var merge bool
+	_ = json.Unmarshal(in["merge"], &merge)
+	items := make([]model.PlanItem, 0, len(todos))
+	for _, t := range todos {
+		status := t.Status
+		if status == "" && !merge {
+			status = model.PlanPending
+		}
+		items = append(items, model.PlanItem{ID: t.ID, Text: t.Content, Status: status})
+	}
+	return model.PlanData(items, merge)
 }
 
 // toolInput decodes a tool's input object (sometimes JSON in a string).

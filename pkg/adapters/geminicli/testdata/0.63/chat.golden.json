@@ -449,5 +449,81 @@
       "reasoning_tokens": 0
     },
     "dedup_key": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001:usage:m6"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:12Z",
+    "received_at": "2026-10-09T10:00:00Z",
+    "kind": "tool.start",
+    "agent": {
+      "name": "gemini-cli"
+    },
+    "collector": "transcript",
+    "session_id": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001",
+    "actor_id": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001",
+    "project": {
+      "cwd": "/home/dev/demo"
+    },
+    "data": {
+      "input_summary": "write_todos",
+      "tool": "other",
+      "tool_call_id": "write_todos_1760004012000_0",
+      "tool_raw": "write_todos"
+    },
+    "dedup_key": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001:tool:write_todos_1760004012000_0:start"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:12Z",
+    "received_at": "2026-10-09T10:00:00Z",
+    "kind": "tool.end",
+    "agent": {
+      "name": "gemini-cli"
+    },
+    "collector": "transcript",
+    "session_id": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001",
+    "actor_id": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001",
+    "project": {
+      "cwd": "/home/dev/demo"
+    },
+    "data": {
+      "ok": true,
+      "tool": "other",
+      "tool_call_id": "write_todos_1760004012000_0"
+    },
+    "dedup_key": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001:tool:write_todos_1760004012000_0:end"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:12Z",
+    "received_at": "2026-10-09T10:00:00Z",
+    "kind": "session.update",
+    "agent": {
+      "name": "gemini-cli"
+    },
+    "collector": "transcript",
+    "session_id": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001",
+    "actor_id": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001",
+    "project": {
+      "cwd": "/home/dev/demo"
+    },
+    "data": {
+      "plan_done": 1,
+      "plan_items": [
+        {
+          "status": "completed",
+          "text": "Add the route"
+        },
+        {
+          "status": "pending",
+          "text": "Add a test"
+        }
+      ],
+      "plan_total": 2
+    },
+    "dedup_key": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001:tool:write_todos_1760004012000_0:plan"
   }
 ]

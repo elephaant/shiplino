@@ -24,7 +24,8 @@ const Name = "claude-code"
 //	Stop                turn.end (ok)
 //	StopFailure         turn.end (error)
 //	PreToolUse          tool.start
-//	PostToolUse         tool.end (ok) + file.read | file.edit | shell.exec | mcp.call
+//	PostToolUse         tool.end (ok) + file.read | file.edit | shell.exec | mcp.call,
+//	                    or session.update (plan) for TodoWrite, TaskCreate, TaskUpdate
 //	PostToolUseFailure  tool.end (failed) + shell.exec for Bash
 //	PermissionDenied    tool.end (denied)
 //	PermissionRequest   waiting.start (permission)
@@ -32,7 +33,10 @@ const Name = "claude-code"
 //	SubagentStart/Stop  subagent.start / subagent.end
 //	PreCompact/PostCompact compact
 //
-// Other known events (TaskCreated, CwdChanged, …) are ignored for now.
+// Other known events (CwdChanged, …) are ignored for now. TaskCreated and
+// TaskCompleted fire before the change and another hook can still block
+// it, so the todo list comes from the PostToolUse of the task tools,
+// which reports what happened (checked 2026-10-10).
 // Unrecognized events return adapters.ErrUnknownEvent.
 
 func init() { adapters.Register(Adapter{}) }
@@ -412,6 +416,18 @@ func (b builder) toolEnd(ok bool, errMsg string) []model.Event {
 		} else {
 			derived(model.KindFileEdit, "file", fileEdit(in.FilePath, "modify", lines(in.Content), 0, ""))
 		}
+	case tool == "TodoWrite" || tool == "TaskCreate" || tool == "TaskUpdate":
+		if d := b.plan(); d != nil {
+			e := b.base(model.KindSessionUpdate, d)
+			if tool != "TodoWrite" && b.p.AgentID != "" {
+				// The task list belongs to the session; subagents share it.
+				e.ActorID, e.ParentActor, e.ActorType = b.sid, "", ""
+			}
+			if b.p.ToolUseID != "" {
+				e.DedupKey = b.toolKey("plan")
+			}
+			out = append(out, e)
+		}
 	case strings.HasPrefix(tool, "mcp__"):
 		server, name := splitMCP(tool)
 		d := map[string]any{"server": server, "tool": name, "ok": ok}
@@ -421,6 +437,76 @@ func (b builder) toolEnd(ok bool, errMsg string) []model.Event {
 		derived(model.KindMCPCall, "mcp", d)
 	}
 	return out
+}
+
+// plan reads a successful todo tool call (shapes from the Agent SDK tool
+// reference, checked 2026-10-10) into plan data, or nil:
+//
+//	TodoWrite   input {todos: [{content, status, activeForm}]}: the whole list
+//	TaskCreate  output {task: {id, subject}}: a new pending task
+//	TaskUpdate  input {taskId, status?, subject?}, output {success, taskId,
+//	            statusChange?: {from, to}}: one task changed or deleted
+//
+// The model may send id or task_id for taskId; Claude Code accepts them.
+func (b builder) plan() map[string]any {
+	switch b.p.ToolName {
+	case "TodoWrite":
+		var in struct {
+			Todos []struct {
+				Content string `json:"content"`
+				Status  string `json:"status"`
+			} `json:"todos"`
+		}
+		if json.Unmarshal(b.p.ToolInput, &in) != nil || in.Todos == nil {
+			return nil
+		}
+		items := make([]model.PlanItem, 0, len(in.Todos))
+		for _, t := range in.Todos {
+			items = append(items, model.PlanItem{Text: t.Content, Status: t.Status})
+		}
+		return model.PlanData(items, false)
+	case "TaskCreate":
+		var out struct {
+			Task struct {
+				ID      string `json:"id"`
+				Subject string `json:"subject"`
+			} `json:"task"`
+		}
+		if json.Unmarshal(b.p.ToolResponse, &out) != nil || out.Task.ID == "" {
+			return nil
+		}
+		return model.PlanData([]model.PlanItem{{ID: out.Task.ID, Text: out.Task.Subject, Status: model.PlanPending}}, true)
+	case "TaskUpdate":
+		var in struct {
+			TaskID  string `json:"taskId"`
+			ID      string `json:"id"`
+			TaskID2 string `json:"task_id"`
+			Status  string `json:"status"`
+			Subject string `json:"subject"`
+		}
+		var out struct {
+			Success      *bool  `json:"success"`
+			TaskID       string `json:"taskId"`
+			StatusChange *struct {
+				To string `json:"to"`
+			} `json:"statusChange"`
+		}
+		_ = json.Unmarshal(b.p.ToolInput, &in)
+		_ = json.Unmarshal(b.p.ToolResponse, &out)
+		if out.Success != nil && !*out.Success {
+			return nil
+		}
+		id := firstNonEmpty(out.TaskID, in.TaskID, in.ID, in.TaskID2)
+		status := in.Status
+		if out.StatusChange != nil && out.StatusChange.To != "" {
+			status = out.StatusChange.To
+		}
+		if id == "" || status == "" && in.Subject == "" {
+			return nil
+		}
+		return model.PlanData([]model.PlanItem{{ID: id, Text: in.Subject, Status: status}}, true)
+	}
+	return nil
 }
 
 // NormalizeTool maps a Claude Code tool name to a normalized tool name.

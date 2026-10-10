@@ -96,6 +96,15 @@ func (r *Redactor) Event(e *model.Event, level Level) {
 		if e.Kind == model.KindToolEnd {
 			delete(d, "error") // tool errors carry output text
 		}
+		// Todo items keep their id and status (so updates still count)
+		// but not their text.
+		if items, ok := d["plan_items"].([]any); ok {
+			for _, it := range items {
+				if m, ok := it.(map[string]any); ok {
+					delete(m, "text")
+				}
+			}
+		}
 	}
 	if _, ok := d["patch"]; ok {
 		switch {
