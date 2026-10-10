@@ -235,3 +235,30 @@ func TestMinimalStripsGeminiCLIContent(t *testing.T) {
 		t.Errorf("paths and event types must survive: %s", raw)
 	}
 }
+
+func TestMinimalStripsOpenCodeContent(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("SHIPLINO_HOME", home)
+	os.WriteFile(filepath.Join(home, spool.MinimalMarker), nil, 0o600)
+	b, err := os.ReadFile(filepath.Join("..", "..", "pkg", "adapters", "opencode", "testdata", "v1.18", "hooks.jsonl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, p := range strings.Split(strings.TrimSpace(string(b)), "\n") {
+		Run([]string{"--agent", "opencode"}, strings.NewReader(p))
+	}
+	raw, err := os.ReadFile(spool.SessionFile(spool.Dir(home), "opencode", "ses_root"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, leaked := range []string{"fix the cart total", "npm test", "Math.round", "export const x", "Round half up", "git push", "Overloaded", "Fix cart total rounding", "roundTotal"} {
+		if strings.Contains(string(raw), leaked) {
+			t.Errorf("%q reached the spool at minimal level", leaked)
+		}
+	}
+	for _, kept := range []string{`"filePath":"/home/dev/shop/src/cart.ts"`, `"exit_code":1`, `"cost":0.0456`, `"deletions":4`} {
+		if !strings.Contains(string(raw), kept) {
+			t.Errorf("%s dropped: %s", kept, raw)
+		}
+	}
+}

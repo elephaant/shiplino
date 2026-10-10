@@ -75,6 +75,10 @@ Cursor's hooks carry no documented token counts. When its `afterAgentResponse` h
 
 Aider writes a usage line to its chat history after each response: `Tokens: 2.1k sent, 512 received. Cost: $0.01 message, $0.05 session.` Shiplino uses Aider's own **session total** as the reported cost. Aider rounds token counts above 1,000 (`2.1k`), so the token figures are approximate (`tokens_rounded`). Cached prompt tokens are stored as cache reads/writes, not input. When Aider doesn't know a model's price it prints no cost, and the session shows tokens only.
 
+## OpenCode
+
+OpenCode prices every response itself, from its own model catalog, and Shiplino's plugin passes that through: each completed assistant message becomes one usage record with OpenCode's tokens and `cost_usd` (`cost_source: reported`). OpenCode reports input without cached tokens and output without reasoning tokens; Shiplino stores reasoning as output too (`reasoning_tokens` keeps the split). A session whose priced responses were all priced by OpenCode shows `cost_source: reported`. OpenCode reports $0 for models it has no price for and for some subscription providers; those responses are priced from Shiplino's table instead (API-equivalent), or stay unpriced, and the session then shows `computed`.
+
 ## How others do it
 
 - **Transcript-only tools** sum transcript usage × a price table. They're simple and per-response, but they miss background calls and fees, as measured above.

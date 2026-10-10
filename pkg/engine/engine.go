@@ -61,6 +61,9 @@ type Session struct {
 
 	// TreeCostUSD is CostUSD plus every descendant subagent's CostUSD.
 	TreeCostUSD float64 `json:"tree_cost_usd"`
+	// TreeAgentCostUSD is the part of TreeCostUSD the agent priced itself:
+	// per-response costs it reports (cost_source "reported", e.g. OpenCode).
+	TreeAgentCostUSD float64 `json:"tree_agent_cost_usd,omitempty"`
 	// ReportedCostUSD is the agent's own cost accounting attributed to this
 	// session (root sessions only). It includes calls the transcript never
 	// shows, so when present it is the better figure.
@@ -169,7 +172,7 @@ func (s *Session) FilesChanged() int { return len(s.Files) }
 // Rev identifies the engine's folding rules. Bump it whenever Apply would
 // produce different sessions from the same events (a new field, a fix);
 // the daemon then rebuilds stored sessions from their events once.
-const Rev = 6
+const Rev = 7
 
 // Engine folds events into sessions. It is not safe for concurrent use;
 // the daemon feeds it from a single goroutine.
@@ -361,9 +364,13 @@ func (e *Engine) Apply(ev model.Event) []*Session {
 		s.CacheWriteTokens += int64(num(ev.Data, "cache_write_tokens"))
 		if c, ok := ev.Data["cost_usd"].(float64); ok && c > 0 {
 			s.CostUSD += c
+			agent := str(ev.Data, "cost_source") == "reported"
 			// Roll the cost up the actor tree.
 			for a := s; a != nil; a = e.sessions[a.ParentID] {
 				a.TreeCostUSD += c
+				if agent {
+					a.TreeAgentCostUSD += c
+				}
 				a.updateBestCost()
 				if a != s {
 					changed = append(changed, a)
@@ -626,6 +633,9 @@ func (s *Session) updateBestCost() {
 		s.BestCostUSD, s.CostSource = reported, "reported"
 	case s.TreeCostUSD > 0:
 		s.BestCostUSD, s.CostSource = s.TreeCostUSD, "computed"
+		if s.TreeAgentCostUSD >= s.TreeCostUSD { // every response priced by the agent
+			s.CostSource = "reported"
+		}
 	}
 }
 

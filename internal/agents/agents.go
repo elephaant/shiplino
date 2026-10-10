@@ -16,6 +16,7 @@ import (
 	"github.com/elephaant/shiplino/pkg/adapters/copilotcli"
 	"github.com/elephaant/shiplino/pkg/adapters/cursor"
 	"github.com/elephaant/shiplino/pkg/adapters/geminicli"
+	"github.com/elephaant/shiplino/pkg/adapters/opencode"
 	"github.com/elephaant/shiplino/pkg/adapters/windsurf"
 )
 
@@ -153,6 +154,24 @@ var All = []Hooks{
 			return r.Changed, err
 		},
 		Installed: geminicli.Installed,
+	},
+	{
+		// A plugin file rather than hook config: OpenCode has no command hooks.
+		Name: "OpenCode", ID: opencode.Name,
+		Detect: func(ctx context.Context, home string) (bool, string, string) {
+			d := opencode.Detect(ctx, home)
+			return d.Installed, d.Version, d.PluginPath
+		},
+		Install: func(path, bin, _, backup string) (bool, int, error) {
+			r, err := opencode.Install(path, bin, backup)
+			return r.Changed, len(r.Events), err
+		},
+		Uninstall: func(path, backup string) (bool, error) {
+			r, err := opencode.Uninstall(path, backup)
+			return r.Changed, err
+		},
+		Installed: opencode.Installed,
+		Note:      opencode.RestartNote,
 	},
 }
 

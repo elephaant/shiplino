@@ -51,3 +51,27 @@ func TestUsageNone(t *testing.T) {
 		t.Fatalf("empty session: %q", u)
 	}
 }
+
+// Per-response costs the agent priced itself (OpenCode) roll up like
+// computed ones, and the session says "reported" while every priced
+// response is the agent's.
+func TestAgentPricedResponses(t *testing.T) {
+	e := New(nil, nil)
+	sub := func(sec int, data map[string]any) model.Event {
+		x := ev(sec, model.KindUsage, data)
+		x.ActorID, x.ParentActor = sid+"/sub:a", sid
+		return x
+	}
+	e.Apply(ev(0, model.KindUsage, map[string]any{"input_tokens": 10.0, "cost_usd": 0.25, "cost_source": "reported"}))
+	e.Apply(sub(1, map[string]any{"input_tokens": 10.0, "cost_usd": 0.5, "cost_source": "reported"}))
+	if s := e.Get(sid); s.BestCostUSD != 0.75 || s.CostSource != "reported" {
+		t.Fatalf("all agent-priced: %v %q", s.BestCostUSD, s.CostSource)
+	}
+	e.Apply(sub(2, map[string]any{"input_tokens": 10.0, "cost_usd": 0.25, "cost_source": "computed"}))
+	if s := e.Get(sid); s.BestCostUSD != 1 || s.CostSource != "computed" {
+		t.Fatalf("mixed: %v %q", s.BestCostUSD, s.CostSource)
+	}
+	if s := e.Get(sid + "/sub:a"); s.CostSource != "computed" || s.TreeAgentCostUSD != 0.5 {
+		t.Fatalf("subagent: %+v", s)
+	}
+}

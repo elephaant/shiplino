@@ -1,0 +1,1185 @@
+[
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T10:00:01Z",
+    "received_at": "2026-10-10T10:00:00Z",
+    "kind": "session.start",
+    "agent": {
+      "name": "opencode",
+      "version": "1.18.35",
+      "surface": "cli"
+    },
+    "collector": "hook",
+    "session_id": "opencode:ses_root",
+    "actor_id": "opencode:ses_root",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "source": "new",
+      "title": "New session - 2026-10-10T10:00:00.000Z"
+    },
+    "dedup_key": "opencode:ses_root:session.start"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T10:00:02Z",
+    "received_at": "2026-10-10T10:00:01Z",
+    "kind": "turn.start",
+    "agent": {
+      "name": "opencode",
+      "version": "1.18.35",
+      "surface": "cli"
+    },
+    "collector": "hook",
+    "session_id": "opencode:ses_root",
+    "actor_id": "opencode:ses_root",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "agent": "build",
+      "prompt": "fix the cart total rounding",
+      "prompt_chars": 27
+    },
+    "dedup_key": "opencode:ses_root:turn:msg_u1"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T10:00:03Z",
+    "received_at": "2026-10-10T10:00:02Z",
+    "kind": "session.update",
+    "agent": {
+      "name": "opencode",
+      "version": "1.18.35",
+      "surface": "cli"
+    },
+    "collector": "hook",
+    "session_id": "opencode:ses_root",
+    "actor_id": "opencode:ses_root",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "title": "Fix cart total rounding",
+      "title_source": "agent"
+    },
+    "dedup_key": "opencode:ses_root:session.update:env-02"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T10:00:03.1Z",
+    "received_at": "2026-10-10T10:00:03Z",
+    "kind": "tool.start",
+    "agent": {
+      "name": "opencode",
+      "version": "1.18.35",
+      "surface": "cli"
+    },
+    "collector": "hook",
+    "session_id": "opencode:ses_root",
+    "actor_id": "opencode:ses_root",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "input_summary": "/home/dev/shop/src/cart.ts",
+      "tool": "read",
+      "tool_call_id": "toolu_read1",
+      "tool_raw": "read"
+    },
+    "dedup_key": "opencode:ses_root:toolu_read1:start"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T10:00:03.1Z",
+    "received_at": "2026-10-10T10:00:04Z",
+    "kind": "tool.start",
+    "agent": {
+      "name": "opencode",
+      "version": "1.18.35",
+      "surface": "cli"
+    },
+    "collector": "hook",
+    "session_id": "opencode:ses_root",
+    "actor_id": "opencode:ses_root",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "input_summary": "/home/dev/shop/src/cart.ts",
+      "tool": "read",
+      "tool_call_id": "toolu_read1",
+      "tool_raw": "read"
+    },
+    "dedup_key": "opencode:ses_root:toolu_read1:start"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T10:00:03.15Z",
+    "received_at": "2026-10-10T10:00:04Z",
+    "kind": "tool.end",
+    "agent": {
+      "name": "opencode",
+      "version": "1.18.35",
+      "surface": "cli"
+    },
+    "collector": "hook",
+    "session_id": "opencode:ses_root",
+    "actor_id": "opencode:ses_root",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "duration_ms": 50,
+      "ok": true,
+      "tool": "read",
+      "tool_call_id": "toolu_read1"
+    },
+    "dedup_key": "opencode:ses_root:toolu_read1:end"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T10:00:03.15Z",
+    "received_at": "2026-10-10T10:00:04Z",
+    "kind": "file.read",
+    "agent": {
+      "name": "opencode",
+      "version": "1.18.35",
+      "surface": "cli"
+    },
+    "collector": "hook",
+    "session_id": "opencode:ses_root",
+    "actor_id": "opencode:ses_root",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "path": "/home/dev/shop/src/cart.ts"
+    },
+    "dedup_key": "opencode:ses_root:toolu_read1:file"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T10:00:04Z",
+    "received_at": "2026-10-10T10:00:05Z",
+    "kind": "tool.start",
+    "agent": {
+      "name": "opencode",
+      "version": "1.18.35",
+      "surface": "cli"
+    },
+    "collector": "hook",
+    "session_id": "opencode:ses_root",
+    "actor_id": "opencode:ses_root",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "input_summary": "npm test",
+      "tool": "shell",
+      "tool_call_id": "toolu_bash1",
+      "tool_raw": "bash"
+    },
+    "dedup_key": "opencode:ses_root:toolu_bash1:start"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T10:00:04Z",
+    "received_at": "2026-10-10T10:00:06Z",
+    "kind": "tool.start",
+    "agent": {
+      "name": "opencode",
+      "version": "1.18.35",
+      "surface": "cli"
+    },
+    "collector": "hook",
+    "session_id": "opencode:ses_root",
+    "actor_id": "opencode:ses_root",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "input_summary": "npm test",
+      "tool": "shell",
+      "tool_call_id": "toolu_bash1",
+      "tool_raw": "bash"
+    },
+    "dedup_key": "opencode:ses_root:toolu_bash1:start"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T10:00:06.2Z",
+    "received_at": "2026-10-10T10:00:06Z",
+    "kind": "tool.end",
+    "agent": {
+      "name": "opencode",
+      "version": "1.18.35",
+      "surface": "cli"
+    },
+    "collector": "hook",
+    "session_id": "opencode:ses_root",
+    "actor_id": "opencode:ses_root",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "duration_ms": 2200,
+      "ok": true,
+      "tool": "shell",
+      "tool_call_id": "toolu_bash1"
+    },
+    "dedup_key": "opencode:ses_root:toolu_bash1:end"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T10:00:06.2Z",
+    "received_at": "2026-10-10T10:00:06Z",
+    "kind": "shell.exec",
+    "agent": {
+      "name": "opencode",
+      "version": "1.18.35",
+      "surface": "cli"
+    },
+    "collector": "hook",
+    "session_id": "opencode:ses_root",
+    "actor_id": "opencode:ses_root",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "command": "npm test",
+      "cwd": "/home/dev/shop",
+      "duration_ms": 2200,
+      "exit_code": 1,
+      "tool_call_id": "toolu_bash1"
+    },
+    "dedup_key": "opencode:ses_root:toolu_bash1:shell"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T10:00:08Z",
+    "received_at": "2026-10-10T10:00:07Z",
+    "kind": "waiting.start",
+    "agent": {
+      "name": "opencode",
+      "version": "1.18.35",
+      "surface": "cli"
+    },
+    "collector": "hook",
+    "session_id": "opencode:ses_root",
+    "actor_id": "opencode:ses_root",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "message": "edit src/cart.ts",
+      "permission": "edit",
+      "reason": "permission",
+      "tool_call_id": "toolu_edit1"
+    },
+    "dedup_key": "opencode:ses_root:waiting:per_1"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T10:00:09Z",
+    "received_at": "2026-10-10T10:00:08Z",
+    "kind": "waiting.end",
+    "agent": {
+      "name": "opencode",
+      "version": "1.18.35",
+      "surface": "cli"
+    },
+    "collector": "hook",
+    "session_id": "opencode:ses_root",
+    "actor_id": "opencode:ses_root",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "resolution": "once"
+    },
+    "dedup_key": "opencode:ses_root:waiting:per_1:end"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T10:00:07Z",
+    "received_at": "2026-10-10T10:00:09Z",
+    "kind": "tool.start",
+    "agent": {
+      "name": "opencode",
+      "version": "1.18.35",
+      "surface": "cli"
+    },
+    "collector": "hook",
+    "session_id": "opencode:ses_root",
+    "actor_id": "opencode:ses_root",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "input_summary": "/home/dev/shop/src/cart.ts",
+      "tool": "edit",
+      "tool_call_id": "toolu_edit1",
+      "tool_raw": "edit"
+    },
+    "dedup_key": "opencode:ses_root:toolu_edit1:start"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T10:00:07.1Z",
+    "received_at": "2026-10-10T10:00:09Z",
+    "kind": "tool.end",
+    "agent": {
+      "name": "opencode",
+      "version": "1.18.35",
+      "surface": "cli"
+    },
+    "collector": "hook",
+    "session_id": "opencode:ses_root",
+    "actor_id": "opencode:ses_root",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "duration_ms": 100,
+      "ok": true,
+      "tool": "edit",
+      "tool_call_id": "toolu_edit1"
+    },
+    "dedup_key": "opencode:ses_root:toolu_edit1:end"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T10:00:07.1Z",
+    "received_at": "2026-10-10T10:00:09Z",
+    "kind": "file.edit",
+    "agent": {
+      "name": "opencode",
+      "version": "1.18.35",
+      "surface": "cli"
+    },
+    "collector": "hook",
+    "session_id": "opencode:ses_root",
+    "actor_id": "opencode:ses_root",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "lines_added": 1,
+      "lines_removed": 1,
+      "lines_source": "agent",
+      "op": "modify",
+      "patch": "@@ -11,3 +11,3 @@\n export function roundTotal(t: number) {\n-  return Math.round(t)\n+  return Math.round(t * 100) / 100\n }\n",
+      "patch_source": "agent",
+      "path": "/home/dev/shop/src/cart.ts"
+    },
+    "dedup_key": "opencode:ses_root:toolu_edit1:file:0"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T10:00:08Z",
+    "received_at": "2026-10-10T10:00:10Z",
+    "kind": "tool.start",
+    "agent": {
+      "name": "opencode",
+      "version": "1.18.35",
+      "surface": "cli"
+    },
+    "collector": "hook",
+    "session_id": "opencode:ses_root",
+    "actor_id": "opencode:ses_root",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "input_summary": "/home/dev/shop/src/cart.test.ts",
+      "tool": "write",
+      "tool_call_id": "toolu_write1",
+      "tool_raw": "write"
+    },
+    "dedup_key": "opencode:ses_root:toolu_write1:start"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T10:00:08.05Z",
+    "received_at": "2026-10-10T10:00:10Z",
+    "kind": "tool.end",
+    "agent": {
+      "name": "opencode",
+      "version": "1.18.35",
+      "surface": "cli"
+    },
+    "collector": "hook",
+    "session_id": "opencode:ses_root",
+    "actor_id": "opencode:ses_root",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "duration_ms": 50,
+      "ok": true,
+      "tool": "write",
+      "tool_call_id": "toolu_write1"
+    },
+    "dedup_key": "opencode:ses_root:toolu_write1:end"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T10:00:08.05Z",
+    "received_at": "2026-10-10T10:00:10Z",
+    "kind": "file.edit",
+    "agent": {
+      "name": "opencode",
+      "version": "1.18.35",
+      "surface": "cli"
+    },
+    "collector": "hook",
+    "session_id": "opencode:ses_root",
+    "actor_id": "opencode:ses_root",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "lines_added": 3,
+      "lines_removed": 0,
+      "lines_source": "computed",
+      "op": "create",
+      "path": "/home/dev/shop/src/cart.test.ts"
+    },
+    "dedup_key": "opencode:ses_root:toolu_write1:file:0"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T10:00:09Z",
+    "received_at": "2026-10-10T10:00:11Z",
+    "kind": "tool.start",
+    "agent": {
+      "name": "opencode",
+      "version": "1.18.35",
+      "surface": "cli"
+    },
+    "collector": "hook",
+    "session_id": "opencode:ses_root",
+    "actor_id": "opencode:ses_root",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "tool": "edit",
+      "tool_call_id": "toolu_patch1",
+      "tool_raw": "apply_patch"
+    },
+    "dedup_key": "opencode:ses_root:toolu_patch1:start"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T10:00:09.2Z",
+    "received_at": "2026-10-10T10:00:11Z",
+    "kind": "tool.end",
+    "agent": {
+      "name": "opencode",
+      "version": "1.18.35",
+      "surface": "cli"
+    },
+    "collector": "hook",
+    "session_id": "opencode:ses_root",
+    "actor_id": "opencode:ses_root",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "duration_ms": 200,
+      "ok": true,
+      "tool": "edit",
+      "tool_call_id": "toolu_patch1"
+    },
+    "dedup_key": "opencode:ses_root:toolu_patch1:end"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T10:00:09.2Z",
+    "received_at": "2026-10-10T10:00:11Z",
+    "kind": "file.edit",
+    "agent": {
+      "name": "opencode",
+      "version": "1.18.35",
+      "surface": "cli"
+    },
+    "collector": "hook",
+    "session_id": "opencode:ses_root",
+    "actor_id": "opencode:ses_root",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "lines_added": 1,
+      "lines_removed": 1,
+      "lines_source": "agent",
+      "op": "modify",
+      "patch": "@@ -1,1 +1,1 @@\n-export const x = 1\n+export const x = 2\n",
+      "patch_source": "agent",
+      "path": "/home/dev/shop/src/util.ts"
+    },
+    "dedup_key": "opencode:ses_root:toolu_patch1:file:0"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T10:00:09.2Z",
+    "received_at": "2026-10-10T10:00:11Z",
+    "kind": "file.edit",
+    "agent": {
+      "name": "opencode",
+      "version": "1.18.35",
+      "surface": "cli"
+    },
+    "collector": "hook",
+    "session_id": "opencode:ses_root",
+    "actor_id": "opencode:ses_root",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "lines_added": 0,
+      "lines_removed": 4,
+      "lines_source": "agent",
+      "op": "delete",
+      "path": "/home/dev/shop/src/old.ts"
+    },
+    "dedup_key": "opencode:ses_root:toolu_patch1:file:1"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T10:00:10Z",
+    "received_at": "2026-10-10T10:00:12Z",
+    "kind": "tool.start",
+    "agent": {
+      "name": "opencode",
+      "version": "1.18.35",
+      "surface": "cli"
+    },
+    "collector": "hook",
+    "session_id": "opencode:ses_root",
+    "actor_id": "opencode:ses_root",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "input_summary": "Check tests",
+      "tool": "task",
+      "tool_call_id": "toolu_task1",
+      "tool_raw": "task"
+    },
+    "dedup_key": "opencode:ses_root:toolu_task1:start"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T10:00:14Z",
+    "received_at": "2026-10-10T10:00:13Z",
+    "kind": "subagent.start",
+    "agent": {
+      "name": "opencode",
+      "version": "1.18.35",
+      "surface": "cli"
+    },
+    "collector": "hook",
+    "session_id": "opencode:ses_root",
+    "actor_id": "opencode:ses_root",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "agent_type": "explore",
+      "child_session_id": "opencode:ses_root/sub:ses_child",
+      "status": "running"
+    },
+    "dedup_key": "opencode:ses_root/sub:ses_child:subagent.start"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T10:00:14Z",
+    "received_at": "2026-10-10T10:00:13Z",
+    "kind": "session.update",
+    "agent": {
+      "name": "opencode",
+      "version": "1.18.35",
+      "surface": "cli"
+    },
+    "collector": "hook",
+    "session_id": "opencode:ses_root",
+    "actor_id": "opencode:ses_root/sub:ses_child",
+    "parent_actor": "opencode:ses_root",
+    "actor_type": "explore",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "title": "Check tests (@explore subagent)",
+      "title_source": "agent"
+    },
+    "dedup_key": "opencode:ses_root/sub:ses_child:session.update:env-13"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T10:00:15Z",
+    "received_at": "2026-10-10T10:00:14Z",
+    "kind": "turn.start",
+    "agent": {
+      "name": "opencode",
+      "version": "1.18.35",
+      "surface": "cli"
+    },
+    "collector": "hook",
+    "session_id": "opencode:ses_root",
+    "actor_id": "opencode:ses_root/sub:ses_child",
+    "parent_actor": "opencode:ses_root",
+    "actor_type": "explore",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "agent": "explore",
+      "prompt": "Find the cart tests",
+      "prompt_chars": 19
+    },
+    "dedup_key": "opencode:ses_root/sub:ses_child:turn:msg_c1"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T10:00:11Z",
+    "received_at": "2026-10-10T10:00:15Z",
+    "kind": "tool.start",
+    "agent": {
+      "name": "opencode",
+      "version": "1.18.35",
+      "surface": "cli"
+    },
+    "collector": "hook",
+    "session_id": "opencode:ses_root",
+    "actor_id": "opencode:ses_root/sub:ses_child",
+    "parent_actor": "opencode:ses_root",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "input_summary": "/home/dev/shop/src",
+      "tool": "search",
+      "tool_call_id": "toolu_grep1",
+      "tool_raw": "grep"
+    },
+    "dedup_key": "opencode:ses_root/sub:ses_child:toolu_grep1:start"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T10:00:11.04Z",
+    "received_at": "2026-10-10T10:00:15Z",
+    "kind": "tool.end",
+    "agent": {
+      "name": "opencode",
+      "version": "1.18.35",
+      "surface": "cli"
+    },
+    "collector": "hook",
+    "session_id": "opencode:ses_root",
+    "actor_id": "opencode:ses_root/sub:ses_child",
+    "parent_actor": "opencode:ses_root",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "duration_ms": 40,
+      "ok": true,
+      "tool": "search",
+      "tool_call_id": "toolu_grep1"
+    },
+    "dedup_key": "opencode:ses_root/sub:ses_child:toolu_grep1:end"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T10:00:12Z",
+    "received_at": "2026-10-10T10:00:16Z",
+    "kind": "usage",
+    "agent": {
+      "name": "opencode",
+      "version": "1.18.35",
+      "surface": "cli"
+    },
+    "collector": "hook",
+    "session_id": "opencode:ses_root",
+    "actor_id": "opencode:ses_root/sub:ses_child",
+    "parent_actor": "opencode:ses_root",
+    "actor_type": "explore",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "cache_read_tokens": 7000,
+      "cache_write_tokens": 500,
+      "cost_source": "reported",
+      "cost_usd": 0.0123,
+      "finish": "stop",
+      "input_tokens": 1200,
+      "message_id": "msg_c2",
+      "model": "claude-haiku-4-5",
+      "output_tokens": 300,
+      "provider": "anthropic",
+      "reasoning_tokens": 0
+    },
+    "dedup_key": "opencode:ses_root/sub:ses_child:usage:msg_c2"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T10:00:18Z",
+    "received_at": "2026-10-10T10:00:17Z",
+    "kind": "subagent.end",
+    "agent": {
+      "name": "opencode",
+      "version": "1.18.35",
+      "surface": "cli"
+    },
+    "collector": "hook",
+    "session_id": "opencode:ses_root",
+    "actor_id": "opencode:ses_root",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "child_session_id": "opencode:ses_root/sub:ses_child",
+      "status": "done"
+    },
+    "dedup_key": "opencode:ses_root/sub:ses_child:subagent.end:env-17"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T10:00:10Z",
+    "received_at": "2026-10-10T10:00:18Z",
+    "kind": "tool.start",
+    "agent": {
+      "name": "opencode",
+      "version": "1.18.35",
+      "surface": "cli"
+    },
+    "collector": "hook",
+    "session_id": "opencode:ses_root",
+    "actor_id": "opencode:ses_root",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "input_summary": "Check tests",
+      "tool": "task",
+      "tool_call_id": "toolu_task1",
+      "tool_raw": "task"
+    },
+    "dedup_key": "opencode:ses_root:toolu_task1:start"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T10:00:12.1Z",
+    "received_at": "2026-10-10T10:00:18Z",
+    "kind": "tool.end",
+    "agent": {
+      "name": "opencode",
+      "version": "1.18.35",
+      "surface": "cli"
+    },
+    "collector": "hook",
+    "session_id": "opencode:ses_root",
+    "actor_id": "opencode:ses_root",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "duration_ms": 2100,
+      "ok": true,
+      "tool": "task",
+      "tool_call_id": "toolu_task1"
+    },
+    "dedup_key": "opencode:ses_root:toolu_task1:end"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T10:00:13Z",
+    "received_at": "2026-10-10T10:00:19Z",
+    "kind": "tool.start",
+    "agent": {
+      "name": "opencode",
+      "version": "1.18.35",
+      "surface": "cli"
+    },
+    "collector": "hook",
+    "session_id": "opencode:ses_root",
+    "actor_id": "opencode:ses_root",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "input_summary": "https://example.com/rounding",
+      "tool": "web",
+      "tool_call_id": "toolu_fetch1",
+      "tool_raw": "webfetch"
+    },
+    "dedup_key": "opencode:ses_root:toolu_fetch1:start"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T10:00:13.3Z",
+    "received_at": "2026-10-10T10:00:19Z",
+    "kind": "tool.end",
+    "agent": {
+      "name": "opencode",
+      "version": "1.18.35",
+      "surface": "cli"
+    },
+    "collector": "hook",
+    "session_id": "opencode:ses_root",
+    "actor_id": "opencode:ses_root",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "duration_ms": 300,
+      "error": "network unreachable",
+      "ok": false,
+      "tool": "web",
+      "tool_call_id": "toolu_fetch1"
+    },
+    "dedup_key": "opencode:ses_root:toolu_fetch1:end"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T10:00:21Z",
+    "received_at": "2026-10-10T10:00:20Z",
+    "kind": "waiting.start",
+    "agent": {
+      "name": "opencode",
+      "version": "1.18.35",
+      "surface": "cli"
+    },
+    "collector": "hook",
+    "session_id": "opencode:ses_root",
+    "actor_id": "opencode:ses_root",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "message": "Round half up or half even?",
+      "reason": "question",
+      "tool_call_id": "toolu_q1"
+    },
+    "dedup_key": "opencode:ses_root:waiting:que_1"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T10:00:22Z",
+    "received_at": "2026-10-10T10:00:21Z",
+    "kind": "waiting.end",
+    "agent": {
+      "name": "opencode",
+      "version": "1.18.35",
+      "surface": "cli"
+    },
+    "collector": "hook",
+    "session_id": "opencode:ses_root",
+    "actor_id": "opencode:ses_root",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "resolution": "answered"
+    },
+    "dedup_key": "opencode:ses_root:waiting:que_1:end"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T10:00:14Z",
+    "received_at": "2026-10-10T10:00:22Z",
+    "kind": "usage",
+    "agent": {
+      "name": "opencode",
+      "version": "1.18.35",
+      "surface": "cli"
+    },
+    "collector": "hook",
+    "session_id": "opencode:ses_root",
+    "actor_id": "opencode:ses_root",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "cache_read_tokens": 25000,
+      "cache_write_tokens": 2000,
+      "cost_source": "reported",
+      "cost_usd": 0.0456,
+      "finish": "tool-calls",
+      "input_tokens": 2000,
+      "message_id": "msg_a1",
+      "model": "claude-sonnet-4-5",
+      "output_tokens": 1000,
+      "provider": "anthropic",
+      "reasoning_tokens": 200
+    },
+    "dedup_key": "opencode:ses_root:usage:msg_a1"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T10:00:15Z",
+    "received_at": "2026-10-10T10:00:23Z",
+    "kind": "usage",
+    "agent": {
+      "name": "opencode",
+      "version": "1.18.35",
+      "surface": "cli"
+    },
+    "collector": "hook",
+    "session_id": "opencode:ses_root",
+    "actor_id": "opencode:ses_root",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "cache_read_tokens": 0,
+      "cache_write_tokens": 0,
+      "cost_source": "computed",
+      "cost_usd": 0.0045,
+      "finish": "stop",
+      "input_tokens": 1000,
+      "message_id": "msg_a2",
+      "model": "claude-sonnet-4-5",
+      "output_tokens": 100,
+      "provider": "github-copilot",
+      "reasoning_tokens": 0
+    },
+    "dedup_key": "opencode:ses_root:usage:msg_a2"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T10:00:16Z",
+    "received_at": "2026-10-10T10:00:24Z",
+    "kind": "usage",
+    "agent": {
+      "name": "opencode",
+      "version": "1.18.35",
+      "surface": "cli"
+    },
+    "collector": "hook",
+    "session_id": "opencode:ses_root",
+    "actor_id": "opencode:ses_root",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "cache_read_tokens": 0,
+      "cache_write_tokens": 0,
+      "cost_source": "unpriced",
+      "finish": "stop",
+      "input_tokens": 500,
+      "message_id": "msg_a3",
+      "model": "big-pickle",
+      "output_tokens": 50,
+      "provider": "opencode",
+      "reasoning_tokens": 0
+    },
+    "dedup_key": "opencode:ses_root:usage:msg_a3"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T10:00:26Z",
+    "received_at": "2026-10-10T10:00:25Z",
+    "kind": "waiting.start",
+    "agent": {
+      "name": "opencode",
+      "version": "1.18.35",
+      "surface": "cli"
+    },
+    "collector": "hook",
+    "session_id": "opencode:ses_root",
+    "actor_id": "opencode:ses_root",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "message": "git push",
+      "permission": "bash",
+      "reason": "permission",
+      "tool_call_id": "toolu_push"
+    },
+    "dedup_key": "opencode:ses_root:waiting:per_old"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T10:00:27Z",
+    "received_at": "2026-10-10T10:00:26Z",
+    "kind": "waiting.end",
+    "agent": {
+      "name": "opencode",
+      "version": "1.18.35",
+      "surface": "cli"
+    },
+    "collector": "hook",
+    "session_id": "opencode:ses_root",
+    "actor_id": "opencode:ses_root",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "resolution": "reject"
+    },
+    "dedup_key": "opencode:ses_root:waiting:per_old:end"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T10:00:29Z",
+    "received_at": "2026-10-10T10:00:28Z",
+    "kind": "error",
+    "agent": {
+      "name": "opencode",
+      "version": "1.18.35",
+      "surface": "cli"
+    },
+    "collector": "hook",
+    "session_id": "opencode:ses_root",
+    "actor_id": "opencode:ses_root",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "message": "Overloaded",
+      "name": "APIError"
+    },
+    "dedup_key": "opencode:ses_root:error:env-28"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T10:00:30Z",
+    "received_at": "2026-10-10T10:00:29Z",
+    "kind": "compact",
+    "agent": {
+      "name": "opencode",
+      "version": "1.18.35",
+      "surface": "cli"
+    },
+    "collector": "hook",
+    "session_id": "opencode:ses_root",
+    "actor_id": "opencode:ses_root",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "phase": "post"
+    },
+    "dedup_key": "opencode:ses_root:compact:env-29"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T10:00:31Z",
+    "received_at": "2026-10-10T10:00:30Z",
+    "kind": "turn.end",
+    "agent": {
+      "name": "opencode",
+      "version": "1.18.35",
+      "surface": "cli"
+    },
+    "collector": "hook",
+    "session_id": "opencode:ses_root",
+    "actor_id": "opencode:ses_root",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "status": "ok"
+    },
+    "dedup_key": "opencode:ses_root:turn.end:env-30"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T10:00:32Z",
+    "received_at": "2026-10-10T10:00:31Z",
+    "kind": "session.update",
+    "agent": {
+      "name": "opencode",
+      "version": "1.18.35",
+      "surface": "cli"
+    },
+    "collector": "hook",
+    "session_id": "opencode:ses_prev",
+    "actor_id": "opencode:ses_prev",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "title": "Earlier work",
+      "title_source": "agent"
+    },
+    "dedup_key": "opencode:ses_prev:session.update:env-31"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T10:00:33Z",
+    "received_at": "2026-10-10T10:00:32Z",
+    "kind": "session.end",
+    "agent": {
+      "name": "opencode",
+      "version": "1.18.35",
+      "surface": "cli"
+    },
+    "collector": "hook",
+    "session_id": "opencode:ses_prev",
+    "actor_id": "opencode:ses_prev",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "reason": "deleted",
+      "status": "ended"
+    },
+    "dedup_key": "opencode:ses_prev:session.end:env-32"
+  }
+]
