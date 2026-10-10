@@ -43,6 +43,49 @@ jobs:
       - run: npm run check
       - run: npm run build
 
+  sdk-ts:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: sdk/ts
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: sdk/ts/package-lock.json
+      - name: Build the daemon for the integration test
+        run: go build -o "$RUNNER_TEMP/shiplino" ./cmd/shiplino
+        working-directory: .
+      - run: npm ci --no-audit --no-fund
+      - run: npm test
+        env:
+          SHIPLINO_BIN: ${{ runner.temp }}/shiplino
+
+  sdk-python:
+    strategy:
+      matrix:
+        python: ["3.9", "3.13"]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Build the daemon for the integration test
+        run: go build -o "$RUNNER_TEMP/shiplino" ./cmd/shiplino
+      - run: python -W error::ResourceWarning -m unittest discover -s tests -v
+        working-directory: sdk/python
+        env:
+          SHIPLINO_BIN: ${{ runner.temp }}/shiplino
+
   release-config:
     runs-on: ubuntu-latest
     steps:

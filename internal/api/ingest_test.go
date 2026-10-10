@@ -14,6 +14,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/elephaant/shiplino/pkg/model"
 	"github.com/elephaant/shiplino/pkg/otlp"
@@ -241,5 +242,31 @@ func TestOTLPReceiver(t *testing.T) {
 	_, b = f.get(t, "/api/v1/status", bearer)
 	if !strings.Contains(string(b), `"otlp_logs":{"records":16`) {
 		t.Errorf("status: %s", b)
+	}
+}
+
+func TestIngestPricesUsage(t *testing.T) {
+	ts := time.Date(2026, 10, 10, 10, 0, 0, 0, time.UTC)
+	cases := []struct {
+		name       string
+		data       map[string]any
+		wantSource string
+		wantCost   float64 // -1: any positive cost
+	}{
+		{"tokens only", map[string]any{"model": "claude-opus-5-5", "input_tokens": 1000.0, "output_tokens": 200.0}, "computed", -1},
+		{"reported cost kept", map[string]any{"model": "claude-opus-5-5", "input_tokens": 1000.0, "cost_usd": 0.25, "cost_source": "reported"}, "reported", 0.25},
+		{"unknown model", map[string]any{"model": "my-local-model", "input_tokens": 1000.0}, "unpriced", 0},
+		{"no model", map[string]any{"input_tokens": 1000.0}, "", 0},
+		{"cost report", map[string]any{"report": true, "total_cost_usd": 1.0, "model": "claude-opus-5-5"}, "", 0},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			priceUsage(c.data, ts)
+			src, _ := c.data["cost_source"].(string)
+			cost, _ := c.data["cost_usd"].(float64)
+			if src != c.wantSource || (c.wantCost < 0 && cost <= 0) || (c.wantCost >= 0 && cost != c.wantCost) {
+				t.Errorf("got %+v", c.data)
+			}
+		})
 	}
 }
