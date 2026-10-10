@@ -169,6 +169,52 @@ func TestDetect(t *testing.T) {
 	}
 }
 
+// The transcript hook makes Windsurf write whole conversations to disk.
+func TestNoTranscriptHook(t *testing.T) {
+	for _, ev := range Events {
+		if strings.Contains(ev, "transcript") {
+			t.Fatalf("registers %s", ev)
+		}
+	}
+}
+
+func TestDetectJetBrains(t *testing.T) {
+	cases := []struct {
+		name  string
+		setup func(home string)
+		want  bool
+	}{
+		{"nothing", func(string) {}, false},
+		{"only the Windsurf editor", func(h string) { os.MkdirAll(filepath.Join(h, ".codeium", "windsurf"), 0o700) }, false},
+		{"another plugin", func(h string) {
+			os.MkdirAll(filepath.Join(h, ".local", "share", "JetBrains", "IntelliJIdea2026.2", "python"), 0o700)
+		}, false},
+		{"hooks file", func(h string) {
+			os.MkdirAll(filepath.Join(h, ".codeium"), 0o700)
+			os.WriteFile(filepath.Join(h, ".codeium", "hooks.json"), []byte("{}"), 0o600)
+		}, true},
+		{"linux plugin", func(h string) {
+			os.MkdirAll(filepath.Join(h, ".local", "share", "JetBrains", "PyCharm2026.2", "codeium"), 0o700)
+		}, true},
+		{"macos plugin", func(h string) {
+			os.MkdirAll(filepath.Join(h, "Library", "Application Support", "JetBrains", "GoLand2026.2", "plugins", "Windsurf"), 0o700)
+		}, true},
+		{"windows plugin", func(h string) {
+			os.MkdirAll(filepath.Join(h, "AppData", "Roaming", "JetBrains", "WebStorm2026.2", "plugins", "codeium-intellij"), 0o700)
+		}, true},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			home := t.TempDir()
+			c.setup(home)
+			d := DetectJetBrains(home)
+			if d.Installed != c.want || d.HooksPath != filepath.Join(home, ".codeium", "hooks.json") {
+				t.Fatalf("%+v, want installed=%v", d, c.want)
+			}
+		})
+	}
+}
+
 // ours returns Shiplino's handlers by event.
 func ours(t *testing.T, b []byte) map[string][]map[string]any {
 	t.Helper()

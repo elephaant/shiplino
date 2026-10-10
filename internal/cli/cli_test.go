@@ -223,8 +223,45 @@ func TestSetupWindsurf(t *testing.T) {
 	if ok, cmd, _ := windsurf.Installed(hooks); !ok || !strings.Contains(cmd, e.binPath()) || !strings.Contains(out.String(), "restart Windsurf") {
 		t.Fatalf("installed=%v cmd=%q\n%s", ok, cmd, out)
 	}
+	jb := filepath.Join(e.userHome, ".codeium", "hooks.json")
+	if _, err := os.Stat(jb); err == nil {
+		t.Fatal("JetBrains config written without the plugin")
+	}
 	uninstall(context.Background(), e, nil)
 	if ok, _, _ := windsurf.Installed(hooks); ok {
 		t.Fatal("windsurf hooks still present")
+	}
+}
+
+// The JetBrains plugin has its own hooks.json; setup, doctor and
+// uninstall handle it beside the editor's.
+func TestSetupWindsurfJetBrains(t *testing.T) {
+	e, out := testEnv(t)
+	os.MkdirAll(filepath.Join(e.userHome, ".codeium", "windsurf"), 0o700)
+	os.MkdirAll(filepath.Join(e.userHome, ".local", "share", "JetBrains", "PyCharm2026.2", "codeium"), 0o700)
+	jb := filepath.Join(e.userHome, ".codeium", "hooks.json")
+	os.WriteFile(jb, []byte(`{"hooks":{"post_write_code":[{"command":"bash /home/dev/fmt.sh"}]}}`), 0o600)
+	if code := setup(context.Background(), e, []string{"--no-service"}); code != 0 {
+		t.Fatalf("setup exit %d:\n%s", code, out)
+	}
+	for _, p := range []string{jb, filepath.Join(e.userHome, ".codeium", "windsurf", "hooks.json")} {
+		if ok, cmd, _ := windsurf.Installed(p); !ok || !strings.Contains(cmd, e.binPath()) {
+			t.Fatalf("%s: installed=%v cmd=%q\n%s", p, ok, cmd, out)
+		}
+	}
+	if !strings.Contains(out.String(), "Windsurf (JetBrains)") || !strings.Contains(out.String(), "restart the IDE") {
+		t.Fatalf("output:\n%s", out)
+	}
+
+	out.Reset()
+	doctor(context.Background(), e, nil)
+	if !strings.Contains(out.String(), "Windsurf (JetBrains)") || strings.Contains(out.String(), "hooks missing") {
+		t.Fatalf("doctor:\n%s", out)
+	}
+
+	uninstall(context.Background(), e, nil)
+	b, _ := os.ReadFile(jb)
+	if ok, _, _ := windsurf.Installed(jb); ok || !strings.Contains(string(b), "fmt.sh") {
+		t.Fatalf("after uninstall:\n%s", b)
 	}
 }
