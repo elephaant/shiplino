@@ -3,6 +3,7 @@ package update
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 )
 
@@ -21,6 +22,9 @@ type Checker struct {
 	FirstDelay             time.Duration // 0 = 1 minute after start
 	// Updater installs when set (auto_install); nil only notifies.
 	Updater *Updater
+	// HookTest checks an installed binary as a hook (HookTest); a failure
+	// rolls the install back.
+	HookTest func(ctx context.Context, bin string) error
 	// Installed is called after a successful install; the daemon then
 	// restarts into the new binary.
 	Installed func(Result)
@@ -80,6 +84,20 @@ func (c *Checker) once(ctx context.Context) bool {
 		_ = SaveState(c.Home, st)
 		c.logf("auto-update to %s failed: %v", newer, err)
 		return false
+	}
+	// Never break the agent: the new binary must pass the hook test
+	// before the daemon restarts into it, or the old one goes back.
+	if c.HookTest != nil {
+		if err := c.HookTest(ctx, c.Updater.Target); err != nil {
+			st.InstallError = fmt.Sprintf("%s failed the hook test (%v), so %s was put back", newer, err, c.Current)
+			if _, rerr := c.Updater.Rollback(ctx); rerr != nil {
+				st.InstallError += "; putting it back failed too: " + rerr.Error()
+			}
+			st.SkipAuto = newer // don't try this version again by itself
+			_ = SaveState(c.Home, st)
+			c.logf("auto-update: %s", st.InstallError)
+			return false
+		}
 	}
 	c.logf("updated %s → %s (signature %s)", res.From, res.To, res.Signature)
 	if c.Installed != nil {

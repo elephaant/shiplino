@@ -13,12 +13,25 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/elephaant/shiplino/internal/spool"
 )
 
 func TestMain(m *testing.M) {
 	// The test binary doubles as a fake shiplino for RunVersion.
 	if v := os.Getenv("SHIPLINO_TEST_FAKE_VERSION"); v != "" && len(os.Args) > 1 && os.Args[1] == "version" {
 		fmt.Println("shiplino", v)
+		os.Exit(0)
+	}
+	// ...and as a hook: good writes the spool line, chatty prints.
+	if mode := os.Getenv("SHIPLINO_TEST_FAKE_HOOK"); mode != "" && len(os.Args) > 1 && os.Args[1] == "hook" {
+		if mode == "chatty" {
+			fmt.Println("hello model")
+			os.Exit(0)
+		}
+		f := spool.SessionFile(spool.Dir(os.Getenv("SHIPLINO_HOME")), "shiplino-selftest", "selftest")
+		os.MkdirAll(filepath.Dir(f), 0o700)
+		os.WriteFile(f, []byte("{}\n"), 0o600)
 		os.Exit(0)
 	}
 	os.Exit(m.Run())
@@ -339,6 +352,62 @@ func TestStateAndChecker(t *testing.T) {
 	if st := LoadState(home); st.Error == "" || st.Latest != "0.2.0" {
 		t.Fatalf("after failure: %+v", st)
 	}
+}
+
+func TestHookTest(t *testing.T) {
+	self, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	home := t.TempDir()
+	t.Setenv("SHIPLINO_TEST_FAKE_HOOK", "good")
+	if err := HookTest(context.Background(), home, self); err != nil {
+		t.Fatalf("good hook: %v", err)
+	}
+	if entries, _ := os.ReadDir(spool.Dir(home)); len(entries) != 0 {
+		t.Fatalf("hook test left spool data: %v", entries)
+	}
+	t.Setenv("SHIPLINO_TEST_FAKE_HOOK", "chatty")
+	if err := HookTest(context.Background(), home, self); err == nil || !strings.Contains(err.Error(), "printed output") {
+		t.Fatalf("chatty hook: %v", err)
+	}
+}
+
+func TestAutoInstallRollsBackWhenTheHookBreaks(t *testing.T) {
+	home := t.TempDir()
+	s := newServer(t, release(t, "v0.2.0", "fake shiplino 0.2.0"))
+	u := installed(t, s, "linux", "0.1.0", "fake shiplino 0.1.0")
+	src := s.source()
+	restarted, tested := false, ""
+	c := &Checker{Home: home, Current: "0.1.0", Source: &src, Updater: u,
+		HookTest: func(_ context.Context, bin string) error {
+			tested = read(t, bin)
+			return errors.New("hook printed output")
+		},
+		Installed: func(Result) { restarted = true },
+	}
+	if c.once(context.Background()) || restarted {
+		t.Fatal("restarted into a binary that failed the hook test")
+	}
+	if tested != "fake shiplino 0.2.0" {
+		t.Fatalf("hook test ran on %q, not the new binary", tested)
+	}
+	if read(t, u.Target) != "fake shiplino 0.1.0" {
+		t.Fatal("old binary not put back")
+	}
+	st := LoadState(home)
+	if st.SkipAuto != "0.2.0" || !strings.Contains(st.InstallError, "failed the hook test") || st.Newer("0.1.0") != "0.2.0" {
+		t.Fatalf("state %+v", st)
+	}
+	// Not retried by itself the next day.
+	tested = ""
+	if c.once(context.Background()) || tested != "" || read(t, u.Target) != "fake shiplino 0.1.0" {
+		t.Fatal("retried a version that broke the hook")
+	}
+	if st := LoadState(home); !strings.Contains(st.InstallError, "failed the hook test") {
+		t.Fatalf("failure forgotten after the next check: %+v", st)
+	}
+	assertClean(t, filepath.Dir(u.Target))
 }
 
 func TestCheckerWaitsForADayBetweenChecks(t *testing.T) {

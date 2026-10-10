@@ -50,7 +50,7 @@ require_signature = false
 
 With `check = true` the daemon checks a minute after it starts and then once a day (restarts don't reset the clock). A newer release shows up in `shiplino doctor`, `shiplino status` and a banner in Settings. Nothing is installed.
 
-With `auto_install = true` the daemon installs the release itself, with the same verification, and restarts into it. It only does this when it runs `~/.shiplino/bin/shiplino` and no package manager owns it. If you roll back, that version isn't installed automatically again; a newer one is.
+With `auto_install = true` the daemon installs the release itself, with the same verification, runs the same hook test as `shiplino update`, and restarts into it. If the new binary fails the hook test, the old one is put back before anything restarts, the failure shows in `shiplino doctor` and Settings, and that version isn't installed automatically again (`shiplino update` still can, with the same test). It only does this when it runs `~/.shiplino/bin/shiplino` and no package manager owns it. If you roll back, that version isn't installed automatically again; a newer one is.
 
 `shiplino update` and `shiplino update --check` work whatever these settings say, because you asked.
 

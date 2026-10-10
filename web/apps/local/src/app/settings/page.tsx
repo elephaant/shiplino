@@ -274,7 +274,7 @@ export default function SettingsPage() {
           {s.update.install_error && (
             <CardContent>
               <p className="text-status-waiting text-xs">
-                Installing it automatically failed: {s.update.install_error}
+                Installing it automatically failed: {s.update.install_error}. Your agents kept running the old version.
               </p>
             </CardContent>
           )}

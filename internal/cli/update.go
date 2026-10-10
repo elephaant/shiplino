@@ -201,6 +201,9 @@ func updateChecks(e *env, cfg config.Config) []check {
 		c.warn, c.detail, c.fixHint = true, fmt.Sprintf("%s is available (you have %s)", newer, e.version), "shiplino update"
 		if st.InstallError != "" {
 			c.detail += "; installing it automatically failed: " + st.InstallError
+			if st.SkipAuto == newer {
+				c.detail += " (it won't be retried automatically)"
+			}
 		}
 	case st.Error != "" && cfg.UpdateChecks():
 		c.warn, c.detail, c.fixHint = true, "last check failed: "+st.Error, "shiplino update --check"

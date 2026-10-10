@@ -80,6 +80,9 @@ func Check(ctx context.Context, home string, src *Source, channel, current strin
 	default:
 		st.Latest, st.URL = rel.Version.String(), rel.URL
 	}
+	if st.Latest == prev.Latest {
+		st.InstallError = prev.InstallError // still the same release
+	}
 	if serr := SaveState(home, st); err == nil {
 		err = serr
 	}

@@ -230,6 +230,7 @@ func updateChecker(home, version string, cfg config.Config, logger *log.Logger, 
 		return chk
 	}
 	chk.Updater = &update.Updater{Source: src, Target: bin, Current: version, RequireSignature: cfg.Update.RequireSignature}
+	chk.HookTest = func(ctx context.Context, bin string) error { return update.HookTest(ctx, home, bin) }
 	chk.Installed = func(update.Result) { restart() }
 	return chk
 }
