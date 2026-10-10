@@ -61,7 +61,7 @@ Read more: [How it works](docs/how-it-works.md).
 | GitHub Copilot CLI | hooks (`~/.copilot/hooks/shiplino.json`; no token usage yet) |
 | Cline, OpenCode | planned |
 | Aider, any CLI agent | `shiplino wrap -- <command>` + git (Aider: prompts, tokens, cost and edits from its chat history) |
-| Custom agents (Agent SDK, LangGraph, …) | HTTP, OTLP, SDKs |
+| Custom agents (Agent SDK, LangGraph, …) | [TypeScript and Python SDKs](sdk/), the [ingest API](docs/ingest.md) or OpenTelemetry |
 
 Want another agent? Open an issue, or read [Adding an agent adapter](docs/adding-an-adapter.md).
 
