@@ -37,6 +37,8 @@ type Model struct {
 	LongContext *LongContext `json:"long_context,omitempty"`
 	// FastMultiplier scales every rate in fast mode (0 = no fast mode).
 	FastMultiplier float64 `json:"fast_multiplier,omitempty"`
+	// FlexMultiplier scales every rate on the flex/batch tier (0 = n/a).
+	FlexMultiplier float64 `json:"flex_multiplier,omitempty"`
 	// USGeoMultiplier scales every rate for US-only inference (0 = n/a).
 	USGeoMultiplier float64 `json:"us_geo_multiplier,omitempty"`
 }
@@ -48,10 +50,11 @@ type Fees struct {
 
 // Table is a price table.
 type Table struct {
-	Checked string  `json:"checked"`
-	Source  string  `json:"source"`
-	Fees    Fees    `json:"fees"`
-	Models  []Model `json:"models"`
+	Checked string   `json:"checked"`
+	Source  string   `json:"source"`
+	Sources []string `json:"sources,omitempty"`
+	Fees    Fees     `json:"fees"`
+	Models  []Model  `json:"models"`
 }
 
 // Usage is the token usage of one model request.
@@ -62,7 +65,7 @@ type Usage struct {
 	CacheWrite5m int64
 	CacheWrite1h int64
 	WebSearches  int64  // server-side web searches ($ per 1,000)
-	Speed        string // "fast" for fast mode; anything else is standard
+	Speed        string // "fast" (fast mode / priority) or "flex"; anything else is standard
 	InferenceGeo string // "us" for US-only inference; anything else is global
 }
 
@@ -109,7 +112,7 @@ func (t *Table) Lookup(model string) (*Model, bool) {
 		if !strings.HasPrefix(model, m.ID) {
 			continue
 		}
-		if rest := model[len(m.ID):]; rest != "" && !strings.ContainsAny(rest[:1], "-@[:") {
+		if rest := model[len(m.ID):]; rest != "" && !suffixOK(rest) {
 			continue
 		}
 		if best == nil || len(m.ID) > len(best.ID) {
@@ -117,6 +120,19 @@ func (t *Table) Lookup(model string) (*Model, bool) {
 		}
 	}
 	return best, best != nil
+}
+
+// suffixOK accepts what may follow a known id in the same model: a date
+// ("-20251001", "-2026-01-15"), a variant tag ("[1m]") or a provider
+// version ("@…", ":…"). "-mini" and the like are different models.
+func suffixOK(rest string) bool {
+	switch rest[0] {
+	case '@', '[', ':':
+		return true
+	case '-':
+		return len(rest) > 1 && rest[1] >= '0' && rest[1] <= '9'
+	}
+	return false
 }
 
 // Cost returns the USD cost of u on model, and false if the model is unknown.
@@ -130,8 +146,11 @@ func (t *Table) Cost(model string, u Usage) (float64, bool) {
 		r = lc.Rates
 	}
 	mult := 1.0
-	if u.Speed == "fast" && m.FastMultiplier > 0 {
+	switch {
+	case u.Speed == "fast" && m.FastMultiplier > 0:
 		mult *= m.FastMultiplier
+	case u.Speed == "flex" && m.FlexMultiplier > 0:
+		mult *= m.FlexMultiplier
 	}
 	if u.InferenceGeo == "us" && m.USGeoMultiplier > 0 {
 		mult *= m.USGeoMultiplier

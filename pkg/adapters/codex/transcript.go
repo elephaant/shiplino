@@ -117,12 +117,14 @@ func (Adapter) ParseTranscriptLine(raw []byte, meta adapters.TranscriptMeta) ([]
 		var t struct {
 			Settings struct {
 				Model string `json:"model"`
+				Tier  string `json:"service_tier"`
 			} `json:"thread_settings"`
 		}
 		_ = json.Unmarshal(l.Payload, &t)
 		if t.Settings.Model != "" {
 			st["model"] = t.Settings.Model
 		}
+		st["tier"] = t.Settings.Tier
 		return nil, nil
 	}
 	if sub == "task_started" {
@@ -153,7 +155,7 @@ func (Adapter) ParseTranscriptLine(raw []byte, meta adapters.TranscriptMeta) ([]
 			"model": st["model"], "message_id": r.ResponseID, "input_tokens": uncached, "output_tokens": u.Output,
 			"cache_read_tokens": u.Cached, "cache_write_tokens": u.CacheWrite, "reasoning_tokens": u.Reasoning,
 		}
-		if cost, ok := pricing.Default().Cost(st["model"], pricing.Usage{Input: uncached, Output: u.Output, CacheRead: u.Cached, CacheWrite5m: u.CacheWrite}); ok {
+		if cost, ok := pricing.Default().Cost(st["model"], pricing.Usage{Input: uncached, Output: u.Output, CacheRead: u.Cached, CacheWrite5m: u.CacheWrite, Speed: speed(st["tier"])}); ok {
 			data["cost_usd"], data["cost_source"] = cost, "computed"
 		} else {
 			data["cost_source"] = "unpriced"
@@ -376,4 +378,15 @@ func compactMap(m map[string]any) map[string]any {
 		}
 	}
 	return m
+}
+
+// speed maps Codex's service tier to a pricing speed.
+func speed(tier string) string {
+	switch tier {
+	case "priority", "fast":
+		return "fast"
+	case "flex":
+		return "flex"
+	}
+	return ""
 }

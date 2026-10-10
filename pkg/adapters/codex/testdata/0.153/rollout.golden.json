@@ -67,7 +67,8 @@
     "data": {
       "cache_read_tokens": 12032,
       "cache_write_tokens": 0,
-      "cost_source": "unpriced",
+      "cost_source": "computed",
+      "cost_usd": 0.0418764,
       "input_tokens": 19495,
       "message_id": "resp_1",
       "model": "gpt-5.6-terra",
@@ -360,7 +361,8 @@
     "data": {
       "cache_read_tokens": 31000,
       "cache_write_tokens": 0,
-      "cost_source": "unpriced",
+      "cost_source": "computed",
+      "cost_usd": 0.0142,
       "input_tokens": 1000,
       "message_id": "resp_2",
       "model": "gpt-5.6-terra",
