@@ -5,6 +5,7 @@ package daemon
 
 import (
 	"context"
+	"github.com/elephaant/shiplino/internal/budget"
 	"os"
 	"path/filepath"
 	"testing"
@@ -42,6 +43,14 @@ func TestAdmin(t *testing.T) {
 	a.Resume()
 	if v := a.Settings(ctx).(SettingsView); v.Paused {
 		t.Fatal("still paused")
+	}
+	if v := a.Settings(ctx).(SettingsView); len(v.Budget.Spends) != 0 {
+		t.Fatalf("no budgets configured: %+v", v.Budget)
+	}
+	a.budget = budget.New(budget.Config{DailyUSD: 10, Digest: "18:00"}, e.st, func(context.Context, notify.Note) error { return nil })
+	a.cfg.Budget.Digest = "18:00"
+	if v := a.Settings(ctx).(SettingsView); len(v.Budget.Spends) != 1 || v.Budget.Spends[0].LimitUSD != 10 || v.Budget.Digest != "18:00" {
+		t.Fatalf("budget view: %+v", v.Budget)
 	}
 	if err := a.TestNotification(ctx); err != nil || len(sent) != 1 {
 		t.Fatalf("notify: %v %v", err, sent)

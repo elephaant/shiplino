@@ -5,6 +5,7 @@ package daemon
 
 import (
 	"context"
+	"github.com/elephaant/shiplino/internal/budget"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -27,6 +28,7 @@ type admin struct {
 	port    int
 	send    func(context.Context, notify.Note) error
 	sync    *cloudsync.Uploader // nil in tests
+	budget  *budget.Watcher     // nil when no budget or digest is set
 }
 
 // SettingsView is what GET /api/v1/settings returns.
@@ -44,6 +46,13 @@ type SettingsView struct {
 	Agents       []agents.Status `json:"agents"`
 	Health       Health          `json:"health"`
 	Sync         *cloudsync.View `json:"sync,omitempty"`
+	Budget       BudgetView      `json:"budget"`
+}
+
+// BudgetView is the budget part of SettingsView.
+type BudgetView struct {
+	Spends []budget.Spend `json:"spends"`
+	Digest string         `json:"digest,omitempty"`
 }
 
 // NotifyView is the notification part of SettingsView.
@@ -81,6 +90,12 @@ func (a *admin) Settings(ctx context.Context) any {
 	if a.sync != nil {
 		sv := a.sync.View(ctx)
 		v.Sync = &sv
+	}
+	v.Budget = BudgetView{Digest: a.cfg.Budget.Digest, Spends: []budget.Spend{}}
+	if a.budget != nil {
+		if spends, err := a.budget.Status(ctx); err == nil {
+			v.Budget.Spends = spends
+		}
 	}
 	v.Paused, v.PausedUntil = spool.PausedUntil(a.home, time.Now())
 	for _, f := range []string{"shiplino.db", "shiplino.db-wal"} {

@@ -16,6 +16,7 @@ import {
   Radio,
   Server,
   Shield,
+  Wallet,
 } from "lucide-react";
 import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -352,6 +353,39 @@ export default function SettingsPage() {
       </Card>
 
       {s.sync && <SyncCard sync={s.sync} />}
+
+      <Card id="budgets" className="scroll-mt-16 gap-3">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Wallet className="size-4" aria-hidden /> Budgets
+          </CardTitle>
+          <CardDescription>
+            {s.budget.spends.length === 0
+              ? "No spend limits set."
+              : "Spend at list prices, counted on the day a session started. You're notified at 80% and when a budget is reached."}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {s.budget.spends.map((b) => {
+            const pct = b.limit_usd > 0 ? Math.min(100, (b.spent_usd / b.limit_usd) * 100) : 0;
+            const tone = pct >= 100 ? "bg-status-failed" : pct >= 80 ? "bg-status-waiting" : "bg-primary/70";
+            return (
+              <Row key={b.scope} label={b.label}>
+                <div className="flex items-center gap-3">
+                  <div className="h-1.5 flex-1 rounded-full bg-foreground/10" aria-hidden>
+                    <div className={`h-full rounded-full ${tone}`} style={{ width: `${pct}%` }} />
+                  </div>
+                  <span className="shrink-0 font-mono text-xs tabular-nums">
+                    ${b.spent_usd.toFixed(2)} of ${b.limit_usd.toFixed(2)}
+                  </span>
+                </div>
+              </Row>
+            );
+          })}
+          <Row label="Daily digest">{s.budget.digest ? `At ${s.budget.digest}` : "Off"}</Row>
+          <div className="pt-2">{restartNote}</div>
+        </CardContent>
+      </Card>
 
       <Card className="gap-3">
         <CardHeader>

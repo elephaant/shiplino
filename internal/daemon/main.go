@@ -6,6 +6,7 @@ package daemon
 import (
 	"context"
 	"errors"
+	"github.com/elephaant/shiplino/internal/budget"
 	"log"
 	"net"
 	"os"
@@ -84,11 +85,16 @@ func Main(ctx context.Context, version string) error {
 	// goroutine reading committed rows, so it never slows recording.
 	uploader := cloudsync.NewUploader(home, st, logger, version)
 	go uploader.Run(ctx)
+	var budgets *budget.Watcher
+	if bc := (budget.Config{DailyUSD: cfg.Budget.DailyUSD, MonthlyUSD: cfg.Budget.MonthlyUSD, Projects: cfg.Budget.Projects, Digest: cfg.Budget.Digest}); bc.Enabled() {
+		budgets = budget.New(bc, st, nil)
+		go budgets.Run(ctx)
+	}
 	apiErr := make(chan error, 1)
 	go func() {
 		srv := api.New(st, hub, token, version, logger)
 		srv.Status = func() any { return d.Health() }
-		srv.Admin = &admin{d: d, home: home, cfg: cfg, version: version, sync: uploader, port: ln.Addr().(*net.TCPAddr).Port, send: notify.Send}
+		srv.Admin = &admin{d: d, home: home, cfg: cfg, version: version, sync: uploader, budget: budgets, port: ln.Addr().(*net.TCPAddr).Port, send: notify.Send}
 		srv.Ingest = d
 		srv.DevOrigin = os.Getenv("SHIPLINO_DEV_ORIGIN")
 		apiErr <- srv.Serve(ctx, ln)

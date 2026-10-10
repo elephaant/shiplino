@@ -24,6 +24,16 @@ type Config struct {
 	Redaction    Redaction `toml:"redaction"`
 	Notify       Notify    `toml:"notify"`
 	Sync         Sync      `toml:"sync"`
+	Budget       Budget    `toml:"budget"`
+}
+
+// Budget sets spend limits (USD at list prices; 0 means none) and the
+// daily digest time ("18:00", local; "" is off).
+type Budget struct {
+	DailyUSD   float64            `toml:"daily_usd"`
+	MonthlyUSD float64            `toml:"monthly_usd"`
+	Digest     string             `toml:"digest"`
+	Projects   map[string]float64 `toml:"projects"`
 }
 
 // Notify controls desktop notifications. Unset fields use the defaults
@@ -62,6 +72,19 @@ func Load(home string) (Config, error) {
 	}
 	if _, err := redact.ParseLevel(c.CaptureLevel); err != nil {
 		return c, fmt.Errorf("%s: %w", Path(home), err)
+	}
+	if c.Budget.DailyUSD < 0 || c.Budget.MonthlyUSD < 0 {
+		return c, fmt.Errorf("%s: budget amounts can't be negative", Path(home))
+	}
+	for k, v := range c.Budget.Projects {
+		if v <= 0 {
+			return c, fmt.Errorf("%s: budget.projects.%s must be more than 0", Path(home), k)
+		}
+	}
+	if c.Budget.Digest != "" {
+		if _, err := time.Parse("15:04", c.Budget.Digest); err != nil {
+			return c, fmt.Errorf("%s: budget.digest: want a time like \"18:00\"", Path(home))
+		}
 	}
 	if c.Notify.MinTurn != "" {
 		if d, err := time.ParseDuration(c.Notify.MinTurn); err != nil || d < 0 {
@@ -131,6 +154,18 @@ waiting = true      # an agent is waiting on you (after 3s, so quick answers don
 finished = true     # a turn finished...
 min_turn = "30s"    # ...that ran at least this long
 failed = true       # a session failed
+
+[budget]
+# Spend limits in USD at list prices (0 = none). You're notified at 80%
+# and when a budget is reached. Spend counts on the day a session started.
+daily_usd = 0
+monthly_usd = 0
+# A summary of the day's agent work at this local time, e.g. "18:00" ("" = off).
+digest = ""
+
+[budget.projects]
+# Daily limits per project, by name or id, e.g.:
+# api = 20
 
 ` + syncHeader + `enabled = false
 capture_level = "minimal"
