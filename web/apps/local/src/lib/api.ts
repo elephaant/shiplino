@@ -142,6 +142,8 @@ export interface InsightTotals {
   lines_removed: number;
   commits: number;
   prs: number;
+  /** PRs whose GitHub state is merged (0 without the GitHub integration). */
+  prs_merged: number;
   input_tokens: number;
   output_tokens: number;
   cache_read_tokens: number;
