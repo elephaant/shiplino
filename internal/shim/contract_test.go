@@ -194,6 +194,38 @@ func TestContractWindsurfEvents(t *testing.T) {
 	}
 }
 
+// Every Cline event Shiplino registers, in both payload dialects (the
+// extension's and the CLI/SDK's), through the real binary. Cline reads
+// JSON on stdout as {cancel, contextModification}.
+func TestContractClineEvents(t *testing.T) {
+	home := t.TempDir()
+	ext := `"clineVersion":"3.40.0","timestamp":"1791619200000","taskId":"c1","workspaceRoots":["/home/dev/shop"],"userId":"u","model":{"provider":"unknown","slug":"unknown"}`
+	sdk := `"clineVersion":"","timestamp":"2026-10-10T08:00:00Z","taskId":"c1","sessionContext":{"rootSessionId":"c1"},"workspaceRoots":["/home/dev/shop"],"userId":"u","agent_id":"a1","parent_agent_id":null`
+	payloads := []string{
+		`{` + ext + `,"hookName":"TaskStart","taskStart":{"taskMetadata":{"taskId":"c1","ulid":"","initialTask":"hi"}}}`,
+		`{` + ext + `,"hookName":"UserPromptSubmit","userPromptSubmit":{"prompt":"hi","attachments":[]}}`,
+		`{` + ext + `,"hookName":"PostToolUse","postToolUse":{"toolName":"run_commands","parameters":{"commands":"[\"ls\"]"},"result":"a","success":true,"executionTimeMs":5}}`,
+		`{` + ext + `,"hookName":"TaskComplete","taskComplete":{"taskMetadata":{"taskId":"c1","result":"done"}}}`,
+		`{` + ext + `,"hookName":"TaskCancel","taskCancel":{"taskMetadata":{"taskId":"c1"}}}`,
+		`{` + sdk + `,"hookName":"agent_start","taskStart":{"taskMetadata":{}}}`,
+		`{` + sdk + `,"hookName":"agent_resume","taskResume":{"taskMetadata":{},"previousState":{}}}`,
+		`{` + sdk + `,"hookName":"prompt_submit","userPromptSubmit":{"prompt":"hi","attachments":[]}}`,
+		`{` + sdk + `,"hookName":"tool_result","iteration":1,"tool_result":{"id":"t1","name":"read_files","input":{"files":[{"path":"/home/dev/shop/a.ts"}]},"output":[],"durationMs":3},"postToolUse":{"toolName":"read_files","parameters":{},"result":"","success":true,"executionTimeMs":3}}`,
+		`{` + sdk + `,"hookName":"agent_end","iteration":2,"turn":{"outputText":"done","status":"completed"},"taskComplete":{"taskMetadata":{}}}`,
+		`{` + sdk + `,"hookName":"agent_abort","reason":"aborted","taskCancel":{"taskMetadata":{}}}`,
+		`{` + sdk + `,"hookName":"agent_error","iteration":2,"error":{"name":"Error","message":"boom"}}`,
+		`{` + sdk + `,"hookName":"session_shutdown","reason":"session_disposed"}`,
+	}
+	for _, in := range payloads {
+		if out, code := runHook(t, baseEnv(home), []byte(in), "--agent", "cline"); out != "" || code != 0 {
+			t.Errorf("%.80s: exit=%d output=%q", in, code, out)
+		}
+	}
+	if lines, err := os.ReadFile(spool.SessionFile(spool.Dir(home), "cline", "c1")); err != nil || strings.Count(string(lines), "\n") != len(payloads) {
+		t.Errorf("spool: %v\n%s", err, lines)
+	}
+}
+
 // Many hook processes for one session at once must produce one valid line each.
 func TestContractConcurrentProcesses(t *testing.T) {
 	home := t.TempDir()

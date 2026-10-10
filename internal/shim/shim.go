@@ -48,11 +48,13 @@ func Run(args []string, stdin io.Reader) {
 			SessionIDCamel string `json:"sessionId"`     // Copilot CLI
 			HookEventName  string `json:"hook_event_name"`
 			ActionName     string `json:"agent_action_name"` // Windsurf
+			TaskID         string `json:"taskId"`            // Cline
+			HookName       string `json:"hookName"`          // Cline
 		}
 		_ = json.Unmarshal(in, &probe)
-		session = firstNonEmpty(probe.SessionID, probe.ConversationID, probe.TrajectoryID, probe.SessionIDCamel)
+		session = firstNonEmpty(probe.SessionID, probe.ConversationID, probe.TrajectoryID, probe.SessionIDCamel, probe.TaskID)
 		if env.Event == "" {
-			env.Event = firstNonEmpty(probe.HookEventName, probe.ActionName)
+			env.Event = firstNonEmpty(probe.HookEventName, probe.ActionName, probe.HookName)
 		}
 		if _, err := os.Stat(filepath.Join(home, spool.MinimalMarker)); err == nil {
 			in = stripContent(in)
@@ -132,7 +134,20 @@ var contentKeys = []string{"prompt", "tool_response", "last_assistant_message", 
 	// Gemini CLI
 	"prompt_response", "details", "llm_request", "llm_response",
 	// OpenCode (Shiplino's plugin)
-	"diff", "file_patches", "patterns"}
+	"diff", "file_patches", "patterns",
+	// Cline (prompts, task text, final answers, pre-tool input)
+	"userPromptSubmit", "taskStart", "taskResume", "taskComplete", "taskCancel", "turn", "preToolUse", "tool_call"}
+
+// keepClineTool are the fields of Cline's postToolUse and tool_result
+// allowed at minimal: names, ids, timing and status, plus the input
+// (parameters/input) cut down to keepClineInput. Never the result, output
+// or error text.
+var keepClineTool = map[string]bool{"toolName": true, "success": true, "executionTimeMs": true, "parameters": true,
+	"id": true, "name": true, "durationMs": true, "startedAt": true, "endedAt": true, "input": true}
+
+// keepClineInput are Cline tool input fields allowed at minimal: paths
+// (read_files takes {files: [{path, start_line, end_line}]}).
+var keepClineInput = map[string]bool{"path": true, "files": true, "paths": true, "file_paths": true}
 
 // keepInput are tool_input fields allowed at minimal (file paths only).
 var keepInput = map[string]bool{"file_path": true, "notebook_path": true, "path": true, "dir_path": true, "filePath": true}
@@ -175,9 +190,41 @@ func stripContent(in []byte) []byte {
 		b, _ := json.Marshal(ti)
 		m[key] = b
 	}
+	for _, key := range []string{"postToolUse", "tool_result"} {
+		if raw, ok := m[key]; ok {
+			m[key] = keepOnly(raw, keepClineTool, func(k string, v json.RawMessage) json.RawMessage {
+				if k == "parameters" || k == "input" {
+					return keepOnly(v, keepClineInput, nil)
+				}
+				return v
+			})
+		}
+	}
 	out, err := json.Marshal(m)
 	if err != nil {
 		return []byte("{}")
 	}
 	return out
+}
+
+// keepOnly keeps the keep fields of a JSON object, each passed through
+// sub when set. Anything that isn't an object becomes {}.
+func keepOnly(raw json.RawMessage, keep map[string]bool, sub func(string, json.RawMessage) json.RawMessage) json.RawMessage {
+	var obj map[string]json.RawMessage
+	if json.Unmarshal(raw, &obj) != nil {
+		return json.RawMessage("{}")
+	}
+	for k, v := range obj {
+		switch {
+		case !keep[k]:
+			delete(obj, k)
+		case sub != nil:
+			obj[k] = sub(k, v)
+		}
+	}
+	b, err := json.Marshal(obj)
+	if err != nil {
+		return json.RawMessage("{}")
+	}
+	return b
 }
