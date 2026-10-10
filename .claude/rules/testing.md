@@ -20,7 +20,7 @@ Agents change their hooks and transcript formats often. Tests exist to catch sil
 | Concurrency | many processes appending to one session file; shuffled event order gives the same final state; 50 sessions × 4 subagents load | `internal/…`, `bench/` |
 | Performance | shim p99 < 8 ms, ingest > 20k events/s, board query < 30 ms | `bench/` |
 | E2E replay | recorded multi-agent sessions → shim → daemon → API → assert board state | `testdata/e2e/` |
-| UI | Vitest components, Playwright for board/drag/search | `web/` |
+| UI | Vitest components; Playwright against the real binary for board/drag/live/search (`make e2e`) | `web/`, `web/e2e/` |
 
 Rules:
 - Update golden files deliberately (`-update` flag). Review the diff and never regenerate blindly.
