@@ -5,6 +5,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+- Insights: **Share week** creates a 1200×630 PNG of your last 7 days (sessions, agent-hours, tokens, API-equivalent cost, top agents, PRs merged, streak, busiest day) in light or dark, drawn in your browser. Download it or copy it to the clipboard; nothing is uploaded. It shows totals and agent names only, and project names are opt-in. The Insights API adds `prs_merged`. (#123)
+- `shiplino report [--since 7d] [--agent X] [--project P] [--json]`: a read-only usage summary from your agents' own transcripts, with no setup needed. It shows sessions, active time, tokens, API-equivalent cost (reported vs computed), top projects and models, plan limits and failures, and it writes nothing to disk. The JSON schema is in docs/report.md. (#119)
+- Token usage and cost for Cline and GitHub Copilot CLI. Cline's comes from its own task files, which it rewrites in place: SDK `*.messages.json` and the classic extension's `ui_messages.json`, with Cline's own cost as reported. Copilot CLI's comes from its session log's shutdown totals, priced from Copilot's AI credits; tokens appear when the session ends, and `shiplino doctor` says so. The daemon can now read whole-file JSON transcripts (`adapters.DocumentParser`). (#139)
+- `shiplino update` installs the newest release after verifying it: HTTPS only, the archive's SHA-256, and the Sigstore signature for that exact tag when cosign is installed. It never downgrades. The binary is swapped atomically (rename-aside on Windows), the hook self-test runs again (a failure rolls back), the daemon restarts, and `shiplino update --rollback` switches back. `--check` only reports. Daily checks (`[update] check`) and `auto_install` are opt-in; auto-install runs the same hook test and never retries a version that failed it. The default channel follows the installed version. Homebrew, Scoop, winget, Nix and Snap installs are pointed to their own upgrade command. (#76)
+
+### Fixed
+- A daemon crash ("concurrent map writes") when a subagent transcript was both named by a hook and found next to its session; each transcript file is now read once per pass. (#148)
+- Codex: sessions that Codex Desktop imported from other agents (Claude Code, Cursor) are no longer recorded as duplicate Codex sessions. The original agent's record is used, `shiplino doctor` shows how many were skipped, and a store migration removes ones already stored. (#146)
+
 ## [0.1.0-alpha.3] - 2026-10-10
 
 Plan limits, todo progress, failure analytics, a local conversation tab, phone and team notifications, evidence badges, safer setup and a demo mode. Cloud sync now sends metadata only, and Shiplino is now Apache-2.0.
