@@ -10,6 +10,7 @@ An adapter connects one agent to Shiplino. It lives in `pkg/adapters/<agent>/`.
 | `install.go` | Add (and remove) our hook entries in the agent's **user-level** config. Must be idempotent |
 | `parse.go` | Convert native hook payloads into [events](event-format.md) |
 | `transcript.go` | (optional) Tail the agent's own session files for tokens and anything hooks miss |
+| `conversation.go` | (optional) `ConversationReader`: read prompts, replies and tool calls back from those files on demand, for the session's Conversation tab. Nothing it reads is stored |
 | `testdata/<agent-version>/` | Real, **redacted** payloads + expected events (golden files) |
 
 ## Rules (CI enforces them)

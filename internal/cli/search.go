@@ -66,14 +66,16 @@ func search(ctx context.Context, e *env, args []string) int {
 	return 0
 }
 
-// export writes sessions as CSV or JSON to stdout or --out.
+// export writes sessions as CSV or JSON, or one session's conversation as
+// Markdown (--session), to stdout or --out.
 func export(ctx context.Context, e *env, args []string) int {
 	format, args := flagValue(args, "--format")
 	project, args := flagValue(args, "--project")
 	since, args := flagValue(args, "--since")
 	out, args := flagValue(args, "--out")
-	if len(args) > 0 {
-		fmt.Fprintln(e.errOut, "usage: shiplino export [--format csv|json] [--project <id>] [--since 7d] [--out file]")
+	session, args := flagValue(args, "--session")
+	if len(args) > 0 || (session != "" && (project != "" || since != "" || (format != "" && format != "md"))) {
+		fmt.Fprintln(e.errOut, "usage: shiplino export [--format csv|json] [--project <id>] [--since 7d] [--out file]\n       shiplino export --session <id> [--format md] [--out file]")
 		return 2
 	}
 	if format == "" {
@@ -88,6 +90,10 @@ func export(ctx context.Context, e *env, args []string) int {
 		return 1
 	}
 	path := "/api/v1/export?" + url.Values{"format": {format}, "project": {project}, "since": {since}}.Encode()
+	if session != "" {
+		// Read on demand from the agent's transcript by the daemon; nothing new is stored.
+		path = "/api/v1/sessions/" + url.PathEscape(session) + "/conversation?format=md"
+	}
 	req, _ := http.NewRequestWithContext(ctx, "GET", c.base+path, nil)
 	req.Header.Set("Authorization", "Bearer "+c.token)
 	hc := c.http

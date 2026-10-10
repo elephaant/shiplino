@@ -50,7 +50,8 @@ func Main(ctx context.Context, version string) error {
 	if err != nil {
 		return err
 	}
-	d.SetPrivacy(cfg.Level(), cfg.Redactor())
+	level, redactor := cfg.Level(), cfg.Redactor()
+	d.SetPrivacy(level, redactor)
 	// The hook strips content itself at minimal, so prompts never reach
 	// the spool on disk; it checks for this marker (no config parsing).
 	marker := filepath.Join(home, spool.MinimalMarker)
@@ -115,6 +116,8 @@ func Main(ctx context.Context, version string) error {
 		srv.Admin = &admin{d: d, home: home, cfg: cfg, version: version, sync: uploader, budget: budgets, github: prs, port: ln.Addr().(*net.TCPAddr).Port, send: notify.Send}
 		srv.Ingest = d
 		srv.DevOrigin = os.Getenv("SHIPLINO_DEV_ORIGIN")
+		srv.Level, srv.Redactor = level, redactor
+		srv.UserHome, _ = os.UserHomeDir()
 		apiErr <- srv.Serve(ctx, ln)
 		cancel() // if the API dies, stop the daemon too
 	}()
