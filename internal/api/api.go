@@ -19,6 +19,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/elephaant/shiplino/internal/store"
@@ -46,10 +47,16 @@ type Server struct {
 	Status func() any
 	// Admin, if set, backs the settings endpoints.
 	Admin Admin
+	// Ingest, if set, stores events from /api/v1/ingest and the OTLP
+	// receiver (/v1/logs).
+	Ingest Ingester
 	// DevOrigin, if set (e.g. "http://localhost:3000"), is the one extra
 	// origin allowed to call the API with credentials, for `next dev`.
 	// Empty in normal use: the API is strictly same-origin.
 	DevOrigin string
+
+	ingestMu    sync.Mutex
+	ingestStats IngestStats
 }
 
 // New returns a server reading from st and pushing hub updates.
@@ -89,6 +96,10 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("POST /api/v1/resume", s.auth(s.resume))
 	mux.Handle("POST /api/v1/notify/test", s.auth(s.testNotification))
 	mux.Handle("POST /api/v1/backfill", s.auth(s.backfill))
+	mux.Handle("POST /api/v1/ingest", s.auth(s.ingest))
+	mux.Handle("POST /v1/logs", s.auth(s.otlpLogs))
+	mux.Handle("POST /v1/metrics", s.auth(s.otlpCount(func(c *IngestStats) { c.OTLPMetrics++ })))
+	mux.Handle("POST /v1/traces", s.auth(s.otlpCount(func(c *IngestStats) { c.OTLPTraces++ })))
 	return securityHeaders(localHostOnly(s.devCORS(mux)))
 }
 
@@ -185,6 +196,9 @@ func (s *Server) status(w http.ResponseWriter, r *http.Request) {
 	out := map[string]any{"version": s.version}
 	if s.Status != nil {
 		out["daemon"] = s.Status()
+	}
+	if s.Ingest != nil {
+		out["ingest"] = s.IngestStats()
 	}
 	writeJSON(w, http.StatusOK, out)
 }

@@ -7,7 +7,7 @@ Shiplino shows what each agent session **would cost at the provider's public API
 | Source | What it is | Covers | Granularity |
 |--------|-----------|--------|-------------|
 | **Computed** | Tokens from the agent's transcript × the bundled price table (`pkg/pricing/prices.json`) | Every model response the agent writes to its transcript, including subagents | Per response, live |
-| **Reported** | The agent's own cost accounting, when it writes one (Claude Code records a running total per process) | Everything the agent paid for, including calls that never appear in the transcript | Periodic |
+| **Reported** | The agent's own cost accounting, when it writes one (Claude Code records a running total per process, and can also export per-request cost over [OpenTelemetry](ingest.md)) | Everything the agent paid for, including calls that never appear in the transcript | Periodic |
 
 Each session shows the **reported** figure when the agent provides one, and otherwise the **computed** one. The UI says which (`cost_source`). Per-response computed costs stay available for timelines and per-model breakdowns.
 
@@ -36,6 +36,7 @@ Details that matter:
 - **Some models have a long-context tier.** Example: Claude Haiku 5.5 charges higher rates for the whole request when its prompt, cache tokens included, is over 100,000 tokens.
 - **Model ids** are matched through provider prefixes, date suffixes and variant tags (`us.anthropic.…`, `…-20251001`, `…[1m]`).
 - **Unknown models** are shown as *unpriced* rather than guessed.
+- **Announced price changes are dated.** A model can list rates that apply from a given day (00:00 UTC). Each response is priced at the rates in effect when it was made, so history keeps its old price after a change.
 
 ## How accurate is it?
 
@@ -59,6 +60,12 @@ For billing, the source of truth is your provider's console or usage and cost AP
 - **Cost:** tokens × OpenAI's list prices (gpt-5.6-terra, gpt-5.6-luna, gpt-5.5, gpt-5.3-codex; checked 2026-10-10). A response whose prompt is over 272K tokens uses the long-context rates. Fast (priority) and flex tiers use their multipliers when Codex records the service tier. Models OpenAI doesn't list (e.g. `codex-auto-review`) stay unpriced.
 - **On a ChatGPT plan, Codex isn't billed per token.** The figure is then an API-equivalent cost: useful for comparing work, not money you spent.
 
+## Gemini CLI
+
+- **Tokens** come from the `tokens` of each response in Gemini CLI's chat recordings, one per API response, counted once per message id. The Gemini API includes cached tokens in its input count, so Shiplino stores the uncached part as input and the cached part as cache reads. Thinking tokens are billed as output and tool-use prompt tokens as input.
+- **Cost:** tokens × the Gemini API's paid-tier Standard list prices (checked 2026-10-10). A prompt over 200K tokens uses the long-context rates on models that have them. Gemini 3.6 and 3.8 Flash list higher rates from 2027-01-01; responses from that day on use them.
+- **With a Google sign-in (free tier or a Code Assist plan), Gemini CLI isn't billed per token.** The figure is then an API-equivalent cost.
+
 ## Cursor
 
 Cursor's hooks carry no documented token counts. When its `afterAgentResponse` hook includes them (interactive sessions), Shiplino records them and prices them from the bundled table. Otherwise a Cursor session shows activity but no tokens or cost. Cursor's own usage dashboard is the source for what you were charged.
@@ -71,7 +78,7 @@ Aider writes a usage line to its chat history after each response: `Tokens: 2.1k
 
 - **Transcript-only tools** sum transcript usage × a price table. They're simple and per-response, but they miss background calls and fees, as measured above.
 - **The agent's built-in cost view** (e.g. Claude Code's session cost) uses its own accounting. It's complete for that agent, but it's session-level and only covers that one agent.
-- **OpenTelemetry export** (where the agent supports it) sends per-request cost and token metrics. It's accurate and live, but it needs telemetry turned on in the agent's environment. Shiplino's OTLP receiver can take these in.
+- **OpenTelemetry export** (where the agent supports it) sends per-request cost and token metrics. It's accurate and live, but it needs telemetry turned on in the agent's environment. Shiplino's OTLP receiver takes these in and compares them with the transcript figures, never adding the two (see [Sending events to Shiplino](ingest.md#how-telemetry-and-transcripts-fit-together)).
 - **The provider's billing API** is authoritative, but organization-level and delayed, with no per-session or per-task breakdown.
 
 Shiplino combines the first two automatically, with no setup, and keeps the source visible.

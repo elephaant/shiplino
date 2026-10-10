@@ -8,6 +8,7 @@ package agents
 import (
 	"context"
 	"errors"
+	"path/filepath"
 	"strings"
 
 	"github.com/elephaant/shiplino/pkg/adapters/claudecode"
@@ -100,6 +101,25 @@ var All = []Hooks{
 		},
 		Installed: windsurf.Installed,
 		Note:      windsurf.Note,
+	},
+	{
+		// Same agent and hooks, another config file: the JetBrains plugin.
+		// Its backups get their own folder (both files are hooks.json).
+		Name: "Windsurf (JetBrains)", ID: windsurf.Name,
+		Detect: func(_ context.Context, home string) (bool, string, string) {
+			d := windsurf.DetectJetBrains(home)
+			return d.Installed, d.Version, d.HooksPath
+		},
+		Install: func(path, bin, _, backup string) (bool, int, error) {
+			r, err := windsurf.Install(path, bin, filepath.Join(backup, "jetbrains"))
+			return r.Changed, len(r.Events), err
+		},
+		Uninstall: func(path, backup string) (bool, error) {
+			r, err := windsurf.Uninstall(path, filepath.Join(backup, "jetbrains"))
+			return r.Changed, err
+		},
+		Installed: windsurf.Installed,
+		Note:      windsurf.NoteJetBrains,
 	},
 	{
 		Name: "Copilot CLI", ID: copilotcli.Name,

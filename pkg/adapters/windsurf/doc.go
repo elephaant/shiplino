@@ -6,8 +6,9 @@
 //
 // Hooks, checked against https://docs.windsurf.com/windsurf/cascade/hooks
 // (now served as the Devin Desktop "Cascade Hooks" page) on 2026-10-10:
-// the user-level file is ~/.codeium/windsurf/hooks.json (the JetBrains
-// plugin uses ~/.codeium/hooks.json and isn't handled yet), shaped
+// the user-level file is ~/.codeium/windsurf/hooks.json for the Windsurf
+// editor and ~/.codeium/hooks.json for the JetBrains plugin (same events
+// and payloads; both are handled), shaped
 // {"hooks": {event: [{command, powershell?, show_output?,
 // working_directory?}]}}. `command` runs via `bash -c`; on Windows
 // `powershell` runs via `powershell -Command`. There is no timeout or
@@ -29,9 +30,13 @@
 //	post_mcp_tool_use        tool.start + tool.end + mcp.call
 //
 // Never registered: pre_read_code, pre_write_code, pre_run_command and
-// pre_mcp_tool_use (they exist to block), post_cascade_response_with_transcript
-// (it makes Windsurf write full transcripts to ~/.windsurf/transcripts) and
-// post_setup_worktree (it runs inside a new worktree to set it up).
+// pre_mcp_tool_use (they exist to block) and post_setup_worktree (it runs
+// inside a new worktree to set it up). post_cascade_response_with_transcript
+// is deliberately left out for privacy: registering it makes Windsurf write
+// the whole conversation (file contents, command output, tool arguments) to
+// ~/.windsurf/transcripts/, files that wouldn't exist without Shiplino and
+// that Shiplino doesn't own or clean up. Observing must not create new
+// copies of the user's code on disk.
 //
 // Windsurf has no session start/end hooks, no subagents, and reports no
 // tool call ids, durations, exit codes or token usage in hooks. Its own

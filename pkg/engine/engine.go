@@ -65,6 +65,15 @@ type Session struct {
 	// session (root sessions only). It includes calls the transcript never
 	// shows, so when present it is the better figure.
 	ReportedCostUSD float64 `json:"reported_cost_usd,omitempty"`
+	// Telemetry is the per-request usage the agent exported itself over
+	// OpenTelemetry (background calls included). It describes the same API
+	// requests as transcript usage and the agent's running total, so it is
+	// compared with them and never added to them.
+	Telemetry *Telemetry `json:"telemetry,omitempty"`
+	// TokensSource is "telemetry" while the token counts come from
+	// Telemetry because the session has no direct (transcript, hook or
+	// ingested) usage yet. Direct usage replaces them as soon as it arrives.
+	TokensSource string `json:"tokens_source,omitempty"`
 	// BestCostUSD and CostSource are what to display: "reported" or "computed".
 	BestCostUSD float64 `json:"best_cost_usd"`
 	CostSource  string  `json:"cost_source,omitempty"`
@@ -85,6 +94,20 @@ type Session struct {
 	// HookSeen is set once the session has events from the agent's hooks.
 	// Activity then comes from hooks; the transcript adds usage and titles.
 	HookSeen bool `json:"hook_seen,omitempty"`
+	// ActivitySource is the collector of the session's first activity
+	// event (turns, tools). Telemetry activity only fills sessions that
+	// nothing else covers.
+	ActivitySource string `json:"activity_source,omitempty"`
+}
+
+// Telemetry sums the usage records an agent exported over OpenTelemetry.
+type Telemetry struct {
+	Requests         int     `json:"requests"`
+	InputTokens      int64   `json:"input_tokens"`
+	OutputTokens     int64   `json:"output_tokens"`
+	CacheReadTokens  int64   `json:"cache_read_tokens"`
+	CacheWriteTokens int64   `json:"cache_write_tokens"`
+	CostUSD          float64 `json:"cost_usd"`
 }
 
 // Link is an external object the session produced, e.g. a pull request.
@@ -114,7 +137,7 @@ func (s *Session) FilesChanged() int { return len(s.Files) }
 // Rev identifies the engine's folding rules. Bump it whenever Apply would
 // produce different sessions from the same events (a new field, a fix);
 // the daemon then rebuilds stored sessions from their events once.
-const Rev = 3
+const Rev = 4
 
 // Engine folds events into sessions. It is not safe for concurrent use;
 // the daemon feeds it from a single goroutine.
@@ -158,6 +181,9 @@ func (e *Engine) Apply(ev model.Event) []*Session {
 	}
 	if ev.Collector == model.CollectorHook {
 		s.HookSeen = true
+	}
+	if activityKinds[ev.Kind] && s.ActivitySource == "" {
+		s.ActivitySource = string(ev.Collector)
 	}
 	if ev.Project != nil {
 		// A session stays in the project it started in (doc: edge cases).
@@ -279,6 +305,14 @@ func (e *Engine) Apply(ev model.Event) []*Session {
 			s.updateBestCost()
 			break
 		}
+		if ev.Collector == model.CollectorOTLP {
+			s.addTelemetry(ev)
+			break
+		}
+		if s.TokensSource == "telemetry" { // direct usage replaces the stand-in
+			s.InputTokens, s.OutputTokens, s.CacheReadTokens, s.CacheWriteTokens = 0, 0, 0, 0
+			s.TokensSource = ""
+		}
 		s.InputTokens += int64(num(ev.Data, "input_tokens"))
 		s.OutputTokens += int64(num(ev.Data, "output_tokens"))
 		s.CacheReadTokens += int64(num(ev.Data, "cache_read_tokens"))
@@ -369,23 +403,34 @@ func (e *Engine) MarkIdle(now time.Time) []*Session {
 	return out
 }
 
-// Redundant reports whether ev is transcript-derived activity for a
-// session whose hooks already report that activity. Transcript and hook
-// ids for the same tool call can differ, so both would double count.
+// activityKinds are what hooks, transcripts and telemetry all describe,
+// each with ids of their own.
+var activityKinds = map[model.Kind]bool{
+	model.KindSessionStart: true, model.KindTurnStart: true, model.KindTurnEnd: true,
+	model.KindToolStart: true, model.KindToolEnd: true, model.KindShellExec: true,
+	model.KindFileEdit: true, model.KindMCPCall: true,
+}
+
+// Redundant reports whether ev is activity that another source already
+// reports for its session: transcript activity once hooks are seen, and
+// telemetry (OTLP) activity once hooks or transcripts are. Their ids for
+// the same tool call or turn can differ, so both would double count.
 // Usage, cost reports and titles are never redundant.
 func (e *Engine) Redundant(ev model.Event) bool {
-	if ev.Collector != model.CollectorTranscript {
-		return false
-	}
-	switch ev.Kind {
-	case model.KindSessionStart, model.KindTurnStart, model.KindTurnEnd,
-		model.KindToolStart, model.KindToolEnd, model.KindShellExec,
-		model.KindFileEdit, model.KindMCPCall:
-	default:
+	if !activityKinds[ev.Kind] {
 		return false
 	}
 	s := e.sessions[ev.SessionID]
-	return s != nil && s.HookSeen
+	if s == nil {
+		return false
+	}
+	switch ev.Collector {
+	case model.CollectorTranscript:
+		return s.HookSeen
+	case model.CollectorOTLP:
+		return s.HookSeen || (s.ActivitySource != "" && s.ActivitySource != string(model.CollectorOTLP))
+	}
+	return false
 }
 
 func (e *Engine) ensure(id string, ev model.Event) *Session {
@@ -487,12 +532,48 @@ func (s *Session) addLink(l Link) {
 	s.Links = append(s.Links, l)
 }
 
-// updateBestCost picks the figure to display. The agent's own report
+// addTelemetry folds one OTLP usage record into Telemetry. Its tokens
+// stand in for the session's own counts only until direct usage arrives.
+// Its model only fills an empty one: telemetry includes background calls
+// to small models, which aren't the session's model.
+func (s *Session) addTelemetry(ev model.Event) {
+	t := s.Telemetry
+	if t == nil {
+		t = &Telemetry{}
+		s.Telemetry = t
+	}
+	t.Requests++
+	t.InputTokens += int64(num(ev.Data, "input_tokens"))
+	t.OutputTokens += int64(num(ev.Data, "output_tokens"))
+	t.CacheReadTokens += int64(num(ev.Data, "cache_read_tokens"))
+	t.CacheWriteTokens += int64(num(ev.Data, "cache_write_tokens"))
+	if c, ok := ev.Data["cost_usd"].(float64); ok && c > 0 {
+		t.CostUSD += c
+	}
+	if s.TokensSource == "telemetry" || s.InputTokens+s.OutputTokens+s.CacheReadTokens+s.CacheWriteTokens == 0 {
+		s.InputTokens, s.OutputTokens = t.InputTokens, t.OutputTokens
+		s.CacheReadTokens, s.CacheWriteTokens = t.CacheReadTokens, t.CacheWriteTokens
+		s.TokensSource = "telemetry"
+	}
+	if m := str(ev.Data, "model"); !strings.HasPrefix(m, "<") {
+		setIfEmpty(&s.Model, m)
+	}
+	s.updateBestCost()
+}
+
+// updateBestCost picks the figure to display. The agent's own accounting
+// (its running total, or the per-request cost it exports as telemetry)
 // covers background calls the transcript lacks, so it wins when larger.
+// Both agent figures count the same calls: the larger is used, never
+// their sum.
 func (s *Session) updateBestCost() {
+	reported := s.ReportedCostUSD
+	if s.Telemetry != nil {
+		reported = max(reported, s.Telemetry.CostUSD)
+	}
 	switch {
-	case s.ReportedCostUSD > 0 && s.ReportedCostUSD >= s.TreeCostUSD:
-		s.BestCostUSD, s.CostSource = s.ReportedCostUSD, "reported"
+	case reported > 0 && reported >= s.TreeCostUSD:
+		s.BestCostUSD, s.CostSource = reported, "reported"
 	case s.TreeCostUSD > 0:
 		s.BestCostUSD, s.CostSource = s.TreeCostUSD, "computed"
 	}

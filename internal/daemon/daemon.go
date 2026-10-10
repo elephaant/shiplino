@@ -805,11 +805,18 @@ func (d *Daemon) parseLine(line []byte, ref string) (events []model.Event, blob 
 // commit stores events (already redacted), applies the new ones and
 // saves the cursors, all in one transaction. On failure the in-memory
 // state is rebuilt from disk.
-func (d *Daemon) commit(ctx context.Context, events []model.Event, cursors []store.Cursor) (err error) {
+func (d *Daemon) commit(ctx context.Context, events []model.Event, cursors []store.Cursor) error {
+	_, err := d.commitCount(ctx, events, cursors)
+	return err
+}
+
+// commitCount is commit, also returning how many events were new (not
+// duplicates and not redundant with another source).
+func (d *Daemon) commitCount(ctx context.Context, events []model.Event, cursors []store.Cursor) (stored int64, err error) {
 	start := time.Now()
 	tx, err := d.st.Begin(ctx)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	defer func() {
 		if err != nil {
@@ -821,7 +828,6 @@ func (d *Daemon) commit(ctx context.Context, events []model.Event, cursors []sto
 	}()
 
 	changed := map[string]*engine.Session{}
-	var stored int64
 	for _, e := range events {
 		if d.eng.Redundant(e) {
 			continue
@@ -834,13 +840,15 @@ func (d *Daemon) commit(ctx context.Context, events []model.Event, cursors []sto
 		}
 		isNew, err := tx.InsertEvent(ctx, e)
 		if err != nil {
-			return err
+			return 0, err
 		}
 		if !isNew {
 			continue
 		}
 		stored++
-		if p, ok := e.Data["transcript_path"].(string); ok && p != "" {
+		// Only the agent itself (its hooks) says which files to tail, not
+		// events posted over the network API.
+		if p, ok := e.Data["transcript_path"].(string); ok && p != "" && e.Collector != model.CollectorHTTP && e.Collector != model.CollectorOTLP {
 			d.addTranscript(p, e.Agent.Name)
 		}
 		for _, s := range d.eng.Apply(e) {
@@ -850,22 +858,22 @@ func (d *Daemon) commit(ctx context.Context, events []model.Event, cursors []sto
 	list := make([]*engine.Session, 0, len(changed))
 	for _, s := range changed {
 		if err := tx.PutSession(ctx, s); err != nil {
-			return err
+			return 0, err
 		}
 		if p, ok := d.projects.byID[s.ProjectID]; ok && s.ParentID == "" {
 			if err := tx.PutProject(ctx, p, s.LastEventAt); err != nil {
-				return err
+				return 0, err
 			}
 		}
 		list = append(list, s)
 	}
 	for _, c := range cursors {
 		if err := tx.PutCursor(ctx, c); err != nil {
-			return err
+			return 0, err
 		}
 	}
 	if err := tx.Commit(); err != nil {
-		return err
+		return 0, err
 	}
 	for _, c := range cursors {
 		d.offsets[c.Source] = c.Offset
@@ -877,7 +885,7 @@ func (d *Daemon) commit(ctx context.Context, events []model.Event, cursors []sto
 	if d.OnChange != nil && len(list) > 0 {
 		d.OnChange(list)
 	}
-	return nil
+	return stored, nil
 }
 
 // maybeReap deletes a fully processed spool file that has been idle for

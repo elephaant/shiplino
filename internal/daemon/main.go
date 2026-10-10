@@ -89,6 +89,7 @@ func Main(ctx context.Context, version string) error {
 		srv := api.New(st, hub, token, version, logger)
 		srv.Status = func() any { return d.Health() }
 		srv.Admin = &admin{d: d, home: home, cfg: cfg, version: version, sync: uploader, port: ln.Addr().(*net.TCPAddr).Port, send: notify.Send}
+		srv.Ingest = d
 		srv.DevOrigin = os.Getenv("SHIPLINO_DEV_ORIGIN")
 		apiErr <- srv.Serve(ctx, ln)
 		cancel() // if the API dies, stop the daemon too

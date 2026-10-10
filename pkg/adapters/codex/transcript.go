@@ -155,7 +155,7 @@ func (Adapter) ParseTranscriptLine(raw []byte, meta adapters.TranscriptMeta) ([]
 			"model": st["model"], "message_id": r.ResponseID, "input_tokens": uncached, "output_tokens": u.Output,
 			"cache_read_tokens": u.Cached, "cache_write_tokens": u.CacheWrite, "reasoning_tokens": u.Reasoning,
 		}
-		if cost, ok := pricing.Default().Cost(st["model"], pricing.Usage{Input: uncached, Output: u.Output, CacheRead: u.Cached, CacheWrite5m: u.CacheWrite, Speed: speed(st["tier"])}); ok {
+		if cost, ok := pricing.Default().Cost(st["model"], pricing.Usage{Input: uncached, Output: u.Output, CacheRead: u.Cached, CacheWrite5m: u.CacheWrite, Speed: speed(st["tier"]), At: lineTime(meta, l)}); ok {
 			data["cost_usd"], data["cost_source"] = cost, "computed"
 		} else {
 			data["cost_source"] = "unpriced"
@@ -280,10 +280,7 @@ func items(st map[string]string, meta adapters.TranscriptMeta, l line, raw json.
 // event builds a transcript event with a dedup key that is stable across
 // re-reads and shared with hook events where both describe the same thing.
 func event(st map[string]string, meta adapters.TranscriptMeta, l line, kind model.Kind, data map[string]any, key string) model.Event {
-	ts := meta.ReceivedAt
-	if t, err := time.Parse(time.RFC3339Nano, l.Timestamp); err == nil {
-		ts = t
-	}
+	ts := lineTime(meta, l)
 	sid := model.SessionID(Name, st["session"])
 	e := model.Event{
 		ID: model.NewULID(ts), V: model.SchemaVersion, TS: ts.UTC(), ReceivedAt: meta.ReceivedAt.UTC(),
@@ -297,6 +294,14 @@ func event(st map[string]string, meta adapters.TranscriptMeta, l line, kind mode
 		e.Raw = &model.RawRef{Ref: meta.Ref}
 	}
 	return e
+}
+
+// lineTime is when a rollout line was written, or when it was read.
+func lineTime(meta adapters.TranscriptMeta, l line) time.Time {
+	if t, err := time.Parse(time.RFC3339Nano, l.Timestamp); err == nil {
+		return t
+	}
+	return meta.ReceivedAt
 }
 
 // TranscriptRoots implements adapters.TranscriptDiscoverer: rollouts are

@@ -5,3 +5,4 @@
 - [Adding an agent adapter](adding-an-adapter.md): contributor guide
 - [How cost is calculated](cost.md): sources, formula, accuracy and limits
 - [Sync protocol](sync-protocol.md): opt-in cloud sync, exactly what is sent and how to audit it
+- [Sending events to Shiplino](ingest.md): the ingest endpoint for custom agents, and the OTLP receiver
