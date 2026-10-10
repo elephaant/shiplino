@@ -21,6 +21,7 @@ import (
 	"github.com/elephaant/shiplino/internal/agents"
 	"github.com/elephaant/shiplino/internal/api"
 	"github.com/elephaant/shiplino/internal/config"
+	"github.com/elephaant/shiplino/internal/integrations/github"
 	"github.com/elephaant/shiplino/internal/notify"
 	"github.com/elephaant/shiplino/internal/service"
 	"github.com/elephaant/shiplino/internal/spool"
@@ -337,6 +338,13 @@ func doctor(ctx context.Context, e *env, args []string) int {
 			for _, a := range names {
 				checks = append(checks, check{ok: true, name: "Last event", detail: fmt.Sprintf("%s %s", a, ago(last[a]))})
 			}
+		}
+	}
+	if c, err := config.Load(e.home); err == nil && c.Integrations.GitHub.Enabled {
+		if _, source, err := github.Token(ctx); err != nil {
+			checks = append(checks, check{ok: true, warn: true, name: "GitHub", detail: "pull request state is on, but there's no token", fixHint: "run `gh auth login`, or set GITHUB_TOKEN for the daemon"})
+		} else {
+			checks = append(checks, check{ok: true, name: "GitHub", detail: "pull request state on (token from " + source + ")"})
 		}
 	}
 	if c, err := config.Load(e.home); err == nil {

@@ -85,11 +85,28 @@ func (s *Server) getBoard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	cards := board.Build(sessions, overrides, cal, now())
+	s.withPRState(r, cards)
 	out := map[string]any{"project": p, "columns": board.Layout(board.FilterSprint(cards, n)), "current_sprint": cal.Number(now())}
 	if n > 0 {
 		out["sprint"] = cal.Get(n)
 	}
 	writeJSON(w, http.StatusOK, out)
+}
+
+// withPRState adds the GitHub integration's pull request state (when it's
+// on) to the cards' PR links.
+func (s *Server) withPRState(r *http.Request, cards []board.Card) {
+	prs, err := s.st.PRs(r.Context())
+	if err != nil || len(prs) == 0 {
+		return
+	}
+	for i := range cards {
+		for j, l := range cards[i].Links {
+			if pr, ok := prs[l.URL]; l.Kind == "pr" && ok {
+				cards[i].Links[j].State, cards[i].Links[j].Checks, cards[i].Links[j].Review, cards[i].Links[j].Title = pr.State, pr.Checks, pr.Review, pr.Title
+			}
+		}
+	}
 }
 
 type cardPatch struct {

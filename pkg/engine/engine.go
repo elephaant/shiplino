@@ -123,6 +123,13 @@ type Link struct {
 	Ref     string `json:"ref,omitempty"` // branch for pushes, sha for commits
 	Action  string `json:"action,omitempty"`
 	Message string `json:"message,omitempty"` // commit subject
+
+	// Pull request state, filled in by the API from the GitHub
+	// integration when it's on (never by the engine).
+	State  string `json:"state,omitempty"`  // open | draft | merged | closed
+	Checks string `json:"checks,omitempty"` // success | failure | pending
+	Review string `json:"review,omitempty"` // approved | changes_requested
+	Title  string `json:"title,omitempty"`
 }
 
 // setTitle applies the precedence rule: the agent's own title always
@@ -162,7 +169,7 @@ func (s *Session) FilesChanged() int { return len(s.Files) }
 // Rev identifies the engine's folding rules. Bump it whenever Apply would
 // produce different sessions from the same events (a new field, a fix);
 // the daemon then rebuilds stored sessions from their events once.
-const Rev = 5
+const Rev = 6
 
 // Engine folds events into sessions. It is not safe for concurrent use;
 // the daemon feeds it from a single goroutine.
@@ -390,6 +397,10 @@ func (e *Engine) Apply(ev model.Event) []*Session {
 
 	case model.KindGitPR:
 		s.addLink(Link{Kind: "pr", URL: str(ev.Data, "url"), Number: num(ev.Data, "number"), Action: str(ev.Data, "action")})
+		// A merged PR is shipped work, like a commit: Review → Done.
+		if str(ev.Data, "action") == "merged" && s.Status == StatusReview {
+			s.Status = StatusDone
+		}
 
 	case model.KindGitPush:
 		s.addLink(Link{Kind: "push", Ref: str(ev.Data, "branch")})

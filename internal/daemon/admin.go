@@ -6,6 +6,7 @@ package daemon
 import (
 	"context"
 	"github.com/elephaant/shiplino/internal/budget"
+	"github.com/elephaant/shiplino/internal/integrations/github"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -29,6 +30,7 @@ type admin struct {
 	send    func(context.Context, notify.Note) error
 	sync    *cloudsync.Uploader // nil in tests
 	budget  *budget.Watcher     // nil when no budget or digest is set
+	github  *github.Poller      // nil unless the GitHub integration is on
 }
 
 // SettingsView is what GET /api/v1/settings returns.
@@ -47,6 +49,7 @@ type SettingsView struct {
 	Health       Health          `json:"health"`
 	Sync         *cloudsync.View `json:"sync,omitempty"`
 	Budget       BudgetView      `json:"budget"`
+	GitHub       *github.Status  `json:"github,omitempty"`
 }
 
 // BudgetView is the budget part of SettingsView.
@@ -90,6 +93,10 @@ func (a *admin) Settings(ctx context.Context) any {
 	if a.sync != nil {
 		sv := a.sync.View(ctx)
 		v.Sync = &sv
+	}
+	if a.github != nil {
+		st := a.github.Status()
+		v.GitHub = &st
 	}
 	v.Budget = BudgetView{Digest: a.cfg.Budget.Digest, Spends: []budget.Spend{}}
 	if a.budget != nil {

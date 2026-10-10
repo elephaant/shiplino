@@ -20,11 +20,33 @@ import (
 
 // Config is the user's settings. Zero values mean defaults.
 type Config struct {
-	CaptureLevel string    `toml:"capture_level"`
-	Redaction    Redaction `toml:"redaction"`
-	Notify       Notify    `toml:"notify"`
-	Sync         Sync      `toml:"sync"`
-	Budget       Budget    `toml:"budget"`
+	CaptureLevel string       `toml:"capture_level"`
+	Redaction    Redaction    `toml:"redaction"`
+	Notify       Notify       `toml:"notify"`
+	Sync         Sync         `toml:"sync"`
+	Budget       Budget       `toml:"budget"`
+	Integrations Integrations `toml:"integrations"`
+}
+
+// Integrations are opt-in connections to outside services.
+type Integrations struct {
+	GitHub GitHub `toml:"github"`
+}
+
+// GitHub shows pull request state on cards. It calls api.github.com with
+// the GitHub CLI's token (or GH_TOKEN / GITHUB_TOKEN), so it's off by default.
+type GitHub struct {
+	Enabled bool   `toml:"enabled"`
+	Poll    string `toml:"poll"` // how often open PRs are checked, e.g. "5m"
+}
+
+// GitHubPoll returns the poll interval (5 minutes by default, at least 1).
+func (c Config) GitHubPoll() time.Duration {
+	d, err := time.ParseDuration(c.Integrations.GitHub.Poll)
+	if err != nil || d < time.Minute {
+		return 5 * time.Minute
+	}
+	return d
 }
 
 // Budget sets spend limits (USD at list prices; 0 means none) and the
@@ -166,6 +188,13 @@ digest = ""
 [budget.projects]
 # Daily limits per project, by name or id, e.g.:
 # api = 20
+
+[integrations.github]
+# Show pull request state (open, merged, CI checks, reviews) on cards.
+# Calls api.github.com with your GitHub CLI login (or GH_TOKEN), so it's off
+# by default. Only PRs of recent sessions are checked.
+enabled = false
+poll = "5m"
 
 ` + syncHeader + `enabled = false
 capture_level = "minimal"

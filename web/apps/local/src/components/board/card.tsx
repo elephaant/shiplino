@@ -4,18 +4,9 @@
 "use client";
 
 import { cn } from "cn";
-import {
-  FileText,
-  GitBranch,
-  GitCommitHorizontal,
-  GitPullRequest,
-  Pin,
-  RotateCcw,
-  Search,
-  SquarePen,
-  Terminal,
-} from "lucide-react";
+import { FileText, GitBranch, GitCommitHorizontal, Pin, RotateCcw, Search, SquarePen, Terminal } from "lucide-react";
 import { AgentDot } from "@/components/common/agent-dot";
+import { PRBadge } from "@/components/common/pr-badge";
 import { Badge } from "@/components/ui/badge";
 import type { BoardCard } from "@/lib/api";
 import { formatCost, formatDuration, noUsageReason } from "@/lib/format";
@@ -146,16 +137,7 @@ export function CardView({ card, dragging, onOpen }: { card: BoardCard; dragging
             </span>
           )}
           {prs.map((p) => (
-            <a
-              key={p.url}
-              href={p.url}
-              target="_blank"
-              rel="noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              className="flex items-center gap-0.5 rounded bg-secondary px-1 text-secondary-foreground hover:underline"
-            >
-              <GitPullRequest className="size-3" aria-hidden />#{p.number}
-            </a>
+            <PRBadge key={p.url} pr={p} />
           ))}
           {commits.length > 0 && (
             <span

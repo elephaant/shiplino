@@ -15,6 +15,10 @@ export interface Link {
   number?: number;
   ref?: string;
   action?: string;
+  state?: "open" | "draft" | "merged" | "closed";
+  checks?: "success" | "failure" | "pending";
+  review?: "approved" | "changes_requested";
+  title?: string;
 }
 
 export interface Session {
