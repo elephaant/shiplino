@@ -86,6 +86,8 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("GET /api/v1/overview", s.auth(s.overview))
 	mux.Handle("GET /api/v1/sessions/{id}", s.auth(s.getSession))
 	mux.Handle("GET /api/v1/sessions/{id}/events", s.auth(s.listEvents))
+	mux.Handle("GET /api/v1/sessions/{id}/files", s.auth(s.sessionFiles))
+	mux.Handle("GET /api/v1/timeline", s.auth(s.timeline))
 	mux.Handle("GET /api/v1/live", s.auth(s.live))
 	mux.Handle("GET /api/v1/status", s.auth(s.status))
 	mux.Handle("GET /api/v1/search", s.auth(s.search))

@@ -309,6 +309,50 @@ export interface BoardResponse {
   sprint?: Sprint;
 }
 
+export type SegmentState = "running" | "waiting" | "idle";
+
+export interface Segment {
+  start: string;
+  end: string;
+  state: SegmentState;
+}
+
+export interface TimelineRow {
+  id: string;
+  parent_id?: string;
+  root_id: string;
+  depth: number;
+  agent: string;
+  actor_type?: string;
+  title?: string;
+  status: Status;
+  project_id?: string;
+  started_at: string;
+  ended_at?: string;
+  cost_usd: number;
+  segments: Segment[];
+}
+
+export interface Timeline {
+  from: string;
+  to: string;
+  now: string;
+  rows: TimelineRow[];
+}
+
+export interface FileSummary {
+  path: string;
+  op: string;
+  edits: number;
+  lines_added: number;
+  lines_removed: number;
+  /** Edits that have a stored diff. */
+  patches: number;
+  omitted?: string;
+  actors: string[];
+  last_at: string;
+}
+
 export interface AgentEvent {
   id: string;
   ts: string;

@@ -186,6 +186,50 @@ func TestEventMinimal(t *testing.T) {
 	}
 }
 
+func TestEventPatch(t *testing.T) {
+	patch := "@@ -1,1 +1,1 @@\n-x\n+API_TOKEN=abc123\n"
+	edit := func(path, p string) *model.Event {
+		return ev(model.KindFileEdit, map[string]any{"path": path, "op": "modify", "lines_added": 1, "lines_removed": 1, "patch": p, "patch_source": "agent"})
+	}
+	big := "@@ @@\n" + strings.Repeat("+"+strings.Repeat("z", 99)+"\n", 2000) // ~200 KB
+
+	tests := []struct {
+		name      string
+		e         *model.Event
+		level     Level
+		wantPatch bool
+		check     func(d map[string]any) bool
+	}{
+		{"standard keeps and redacts", edit("/app/a.go", patch), Standard, true, func(d map[string]any) bool {
+			p := d["patch"].(string)
+			return strings.Contains(p, Marker("secret_assignment")) && !strings.Contains(p, "abc123")
+		}},
+		{"full keeps", edit("/app/a.go", patch), Full, true, nil},
+		{"minimal drops", edit("/app/a.go", patch), Minimal, false, func(d map[string]any) bool {
+			return d["patch_source"] == nil && d["lines_added"] == 1 && d["path"] == "/app/a.go"
+		}},
+		{"secret file drops", edit("/app/.env.local", patch), Full, false, func(d map[string]any) bool {
+			return d["patch_omitted"] == "secret_file"
+		}},
+		{"capped at a line boundary", edit("/app/a.go", big), Standard, true, func(d map[string]any) bool {
+			p := d["patch"].(string)
+			return len(p) <= MaxPatchBytes && strings.HasSuffix(p, "\n") && d["patch_truncated"] == true
+		}},
+		{"small not truncated", edit("/app/a.go", patch), Full, true, func(d map[string]any) bool {
+			return d["patch_truncated"] == nil
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			Default.Event(tt.e, tt.level)
+			_, has := tt.e.Data["patch"]
+			if has != tt.wantPatch || (tt.check != nil && !tt.check(tt.e.Data)) {
+				t.Fatalf("data: %.300v", tt.e.Data)
+			}
+		})
+	}
+}
+
 func TestEventFullKeepsLengthButRedacts(t *testing.T) {
 	long := strings.Repeat("y", 5000) + " " + ghToken
 	e := ev(model.KindTurnStart, map[string]any{"prompt": long})

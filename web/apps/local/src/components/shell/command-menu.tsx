@@ -5,6 +5,7 @@
 
 import {
   ChartColumn,
+  ChartGantt,
   Download,
   FileCode,
   GitCommit,
@@ -136,6 +137,9 @@ export function CommandMenu() {
                   <CommandGroup heading="Go to">
                     <CommandItem onSelect={() => go("/")}>
                       <LayoutDashboard /> Overview
+                    </CommandItem>
+                    <CommandItem onSelect={() => go("/timeline/")}>
+                      <ChartGantt /> Timeline
                     </CommandItem>
                     <CommandItem onSelect={() => go("/insights")}>
                       <ChartColumn /> Insights
