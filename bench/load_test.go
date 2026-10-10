@@ -289,6 +289,8 @@ func waitFor(timeout time.Duration, cond func() bool) bool {
 	return true
 }
 
+// payload is a Claude Code hook payload. Strings are quoted with %q, which
+// is valid JSON for paths too (Windows backslashes).
 func payload(session, cwd, event, extra string) string {
 	return fmt.Sprintf(`{"session_id":%q,"cwd":%q,"hook_event_name":%q%s}`, session, cwd, event, extra)
 }
@@ -350,7 +352,7 @@ func TestLoad(t *testing.T) {
 					n := 0
 					for time.Since(start) < sh.dur {
 						tu := fmt.Sprintf("tu-%s-%s-%d", sess, agent, n)
-						input := fmt.Sprintf(`,"agent_id":%q,"agent_type":"worker","tool_name":"Read","tool_input":{"file_path":"%s/src/f%d.ts"},"tool_use_id":%q`, agent, cwd, n%7, tu)
+						input := fmt.Sprintf(`,"agent_id":%q,"agent_type":"worker","tool_name":"Read","tool_input":{"file_path":%q},"tool_use_id":%q`, agent, filepath.Join(cwd, "src", fmt.Sprintf("f%d.ts", n%7)), tu)
 						for _, ev := range []string{"PreToolUse", "PostToolUse"} {
 							now := time.Now()
 							byChange.sent(id, now)
