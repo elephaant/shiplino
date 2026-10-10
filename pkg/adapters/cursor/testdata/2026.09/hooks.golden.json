@@ -512,8 +512,180 @@
   {
     "id": "",
     "v": 1,
+    "ts": "2026-10-09T10:00:13.997Z",
+    "received_at": "2026-10-09T10:00:14Z",
+    "kind": "tool.start",
+    "agent": {
+      "name": "cursor",
+      "version": "2026.09.02"
+    },
+    "collector": "hook",
+    "session_id": "cursor:cv-1",
+    "actor_id": "cursor:cv-1",
+    "turn_id": "g-2",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "input_summary": "TodoWrite",
+      "tool": "other",
+      "tool_call_id": "tu-todo1",
+      "tool_raw": "TodoWrite"
+    },
+    "dedup_key": "cursor:cv-1:tu-todo1:start"
+  },
+  {
+    "id": "",
+    "v": 1,
     "ts": "2026-10-09T10:00:14Z",
     "received_at": "2026-10-09T10:00:14Z",
+    "kind": "tool.end",
+    "agent": {
+      "name": "cursor",
+      "version": "2026.09.02"
+    },
+    "collector": "hook",
+    "session_id": "cursor:cv-1",
+    "actor_id": "cursor:cv-1",
+    "turn_id": "g-2",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "duration_ms": 3,
+      "ok": true,
+      "tool": "other",
+      "tool_call_id": "tu-todo1"
+    },
+    "dedup_key": "cursor:cv-1:tu-todo1:end"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:14Z",
+    "received_at": "2026-10-09T10:00:14Z",
+    "kind": "session.update",
+    "agent": {
+      "name": "cursor",
+      "version": "2026.09.02"
+    },
+    "collector": "hook",
+    "session_id": "cursor:cv-1",
+    "actor_id": "cursor:cv-1",
+    "turn_id": "g-2",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "plan_done": 1,
+      "plan_items": [
+        {
+          "id": "t1",
+          "status": "completed",
+          "text": "Find the rounding bug"
+        },
+        {
+          "id": "t2",
+          "status": "in_progress",
+          "text": "Fix roundTotal"
+        },
+        {
+          "id": "t3",
+          "status": "pending",
+          "text": "Add a regression test"
+        }
+      ],
+      "plan_total": 3
+    },
+    "dedup_key": "cursor:cv-1:tu-todo1:plan"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:14.998Z",
+    "received_at": "2026-10-09T10:00:15Z",
+    "kind": "tool.start",
+    "agent": {
+      "name": "cursor",
+      "version": "2026.09.02"
+    },
+    "collector": "hook",
+    "session_id": "cursor:cv-1",
+    "actor_id": "cursor:cv-1",
+    "turn_id": "g-2",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "input_summary": "TodoWrite",
+      "tool": "other",
+      "tool_call_id": "tu-todo2",
+      "tool_raw": "TodoWrite"
+    },
+    "dedup_key": "cursor:cv-1:tu-todo2:start"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:15Z",
+    "received_at": "2026-10-09T10:00:15Z",
+    "kind": "tool.end",
+    "agent": {
+      "name": "cursor",
+      "version": "2026.09.02"
+    },
+    "collector": "hook",
+    "session_id": "cursor:cv-1",
+    "actor_id": "cursor:cv-1",
+    "turn_id": "g-2",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "duration_ms": 2,
+      "ok": true,
+      "tool": "other",
+      "tool_call_id": "tu-todo2"
+    },
+    "dedup_key": "cursor:cv-1:tu-todo2:end"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:15Z",
+    "received_at": "2026-10-09T10:00:15Z",
+    "kind": "session.update",
+    "agent": {
+      "name": "cursor",
+      "version": "2026.09.02"
+    },
+    "collector": "hook",
+    "session_id": "cursor:cv-1",
+    "actor_id": "cursor:cv-1",
+    "turn_id": "g-2",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "plan_items": [
+        {
+          "id": "t2",
+          "status": "completed"
+        },
+        {
+          "id": "t3",
+          "status": "cancelled"
+        }
+      ],
+      "plan_merge": true
+    },
+    "dedup_key": "cursor:cv-1:tu-todo2:plan"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:16Z",
+    "received_at": "2026-10-09T10:00:16Z",
     "kind": "turn.end",
     "agent": {
       "name": "cursor",
@@ -534,8 +706,8 @@
   {
     "id": "",
     "v": 1,
-    "ts": "2026-10-09T10:00:15Z",
-    "received_at": "2026-10-09T10:00:15Z",
+    "ts": "2026-10-09T10:00:17Z",
+    "received_at": "2026-10-09T10:00:17Z",
     "kind": "session.end",
     "agent": {
       "name": "cursor",
@@ -552,6 +724,6 @@
       "reason": "user_close",
       "status": "ended"
     },
-    "dedup_key": "cursor:cv-1:session.end:env-15"
+    "dedup_key": "cursor:cv-1:session.end:env-17"
   }
 ]

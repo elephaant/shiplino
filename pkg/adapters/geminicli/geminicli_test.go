@@ -96,8 +96,13 @@ func TestHooksGolden(t *testing.T) {
 		t.Errorf("shell: %+v", sh)
 	}
 	ends := k[model.KindToolEnd]
-	if len(ends) != 6 || ends[0].Data["ok"] != false || ends[1].Data["ok"] != true || ends[4].Data["ok"] != false {
+	if len(ends) != 8 || ends[0].Data["ok"] != false || ends[1].Data["ok"] != true || ends[4].Data["ok"] != false || ends[7].Data["ok"] != false {
 		t.Errorf("tool ends: %+v", ends)
+	}
+	// Only the write_todos call that succeeded is a plan; cancelled items
+	// don't count, blocked ones do.
+	if pl := k[model.KindSessionUpdate]; len(pl) != 1 || pl[0].Data["plan_total"] != 3 || pl[0].Data["plan_done"] != 1 {
+		t.Errorf("plan: %+v", pl)
 	}
 	edits := k[model.KindFileEdit]
 	if len(edits) != 2 ||
@@ -203,8 +208,9 @@ func TestChatGolden(t *testing.T) {
 	if usage[3].Data["cost_source"] != "unpriced" {
 		t.Errorf("unknown model priced: %+v", usage[3].Data)
 	}
-	if ti := k[model.KindSessionUpdate]; len(ti) != 1 || ti[0].Data["title"] != "Add a health endpoint" {
-		t.Errorf("title: %+v", ti)
+	if ti := k[model.KindSessionUpdate]; len(ti) != 2 || ti[0].Data["title"] != "Add a health endpoint" ||
+		ti[1].Data["plan_total"] != 2 || ti[1].Data["plan_done"] != 1 {
+		t.Errorf("title and plan: %+v", ti)
 	}
 	// The tool call is recorded when it finishes (twice, same keys); the
 	// cancelled replace ends not ok and edits nothing.
@@ -212,7 +218,7 @@ func TestChatGolden(t *testing.T) {
 	for _, e := range k[model.KindToolEnd] {
 		tools[e.DedupKey] = e.Data["ok"].(bool)
 	}
-	if len(tools) != 3 || tools["gemini-cli:gs1a2b3c-0000-4000-8000-000000000001:tool:replace_1760004007000_0:end"] {
+	if len(tools) != 4 || tools["gemini-cli:gs1a2b3c-0000-4000-8000-000000000001:tool:replace_1760004007000_0:end"] {
 		t.Errorf("tool ends: %v", tools)
 	}
 	if sh := k[model.KindShellExec]; len(sh) == 0 || sh[0].Data["exit_code"] != 1 || sh[0].Data["tool_call_id"] != "run_shell_command_1760004001000_0" {

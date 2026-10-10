@@ -39,9 +39,11 @@ func ParseLevel(s string) (Level, error) {
 const MaxPatchBytes = 64 << 10
 
 const (
-	maxPrompt  = 2000
-	maxSummary = 500
-	maxError   = 500
+	maxPlanID     = 256 // todo item ids longer than this are dropped at minimal
+	maxPlanStatus = 16
+	maxPrompt     = 2000
+	maxSummary    = 500
+	maxError      = 500
 )
 
 // pathTools are tools whose input summary is a file path (allowed at
@@ -96,6 +98,9 @@ func (r *Redactor) Event(e *model.Event, level Level) {
 		if e.Kind == model.KindToolEnd {
 			delete(d, "error") // tool errors carry output text
 		}
+		if _, ok := d["plan_items"]; ok {
+			d["plan_items"] = minimalPlan(d["plan_items"])
+		}
 	}
 	if _, ok := d["patch"]; ok {
 		switch {
@@ -130,6 +135,26 @@ func (r *Redactor) Event(e *model.Event, level Level) {
 			d[k] = r.value(s)
 		}
 	}
+}
+
+// minimalPlan rebuilds todo items at minimal as {id, status} only: the
+// id hashed (as the shim does) so updates still match, the status a
+// short string. Anything else, text included, is dropped.
+func minimalPlan(v any) []any {
+	list, _ := v.([]any)
+	out := make([]any, 0, len(list))
+	for _, it := range list {
+		m, _ := it.(map[string]any)
+		item := map[string]any{}
+		if id, ok := m["id"].(string); ok && id != "" && len(id) <= maxPlanID {
+			item["id"] = model.HashPlanID(id)
+		}
+		if s, ok := m["status"].(string); ok && s != "" && len(s) <= maxPlanStatus {
+			item["status"] = s
+		}
+		out = append(out, item)
+	}
+	return out
 }
 
 // value redacts every string inside nested maps and lists (data sent by

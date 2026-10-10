@@ -266,6 +266,88 @@
     "v": 1,
     "ts": "2026-10-09T10:00:08Z",
     "received_at": "2026-10-09T10:00:08Z",
+    "kind": "tool.end",
+    "agent": {
+      "name": "codex"
+    },
+    "collector": "hook",
+    "session_id": "codex:th-1",
+    "actor_id": "codex:th-1",
+    "turn_id": "tu-1",
+    "project": {
+      "cwd": "/home/dev/demo"
+    },
+    "data": {
+      "ok": true,
+      "tool": "other",
+      "tool_call_id": "call_plan1"
+    },
+    "dedup_key": "codex:th-1:call_plan1:end"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:08Z",
+    "received_at": "2026-10-09T10:00:08Z",
+    "kind": "session.update",
+    "agent": {
+      "name": "codex"
+    },
+    "collector": "hook",
+    "session_id": "codex:th-1",
+    "actor_id": "codex:th-1",
+    "turn_id": "tu-1",
+    "project": {
+      "cwd": "/home/dev/demo"
+    },
+    "data": {
+      "plan_done": 1,
+      "plan_items": [
+        {
+          "status": "completed",
+          "text": "Add the route"
+        },
+        {
+          "status": "in_progress",
+          "text": "Add a test"
+        },
+        {
+          "status": "pending",
+          "text": "Update the README"
+        }
+      ],
+      "plan_total": 3
+    },
+    "dedup_key": "codex:th-1:call_plan1:plan"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:09Z",
+    "received_at": "2026-10-09T10:00:09Z",
+    "kind": "tool.end",
+    "agent": {
+      "name": "codex"
+    },
+    "collector": "hook",
+    "session_id": "codex:th-1",
+    "actor_id": "codex:th-1",
+    "turn_id": "tu-1",
+    "project": {
+      "cwd": "/home/dev/demo"
+    },
+    "data": {
+      "ok": true,
+      "tool": "other",
+      "tool_call_id": "call_plan2"
+    },
+    "dedup_key": "codex:th-1:call_plan2:end"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:10Z",
+    "received_at": "2026-10-09T10:00:10Z",
     "kind": "turn.end",
     "agent": {
       "name": "codex"
@@ -286,8 +368,8 @@
   {
     "id": "",
     "v": 1,
-    "ts": "2026-10-09T10:00:09Z",
-    "received_at": "2026-10-09T10:00:09Z",
+    "ts": "2026-10-09T10:00:11Z",
+    "received_at": "2026-10-09T10:00:11Z",
     "kind": "turn.end",
     "agent": {
       "name": "codex"
@@ -307,8 +389,8 @@
   {
     "id": "",
     "v": 1,
-    "ts": "2026-10-09T10:00:10Z",
-    "received_at": "2026-10-09T10:00:10Z",
+    "ts": "2026-10-09T10:00:12Z",
+    "received_at": "2026-10-09T10:00:12Z",
     "kind": "session.end",
     "agent": {
       "name": "codex"
@@ -323,6 +405,6 @@
       "reason": "other",
       "status": "ended"
     },
-    "dedup_key": "codex:th-1:session.end:env-10"
+    "dedup_key": "codex:th-1:session.end:env-12"
   }
 ]

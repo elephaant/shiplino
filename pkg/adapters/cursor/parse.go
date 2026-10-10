@@ -11,7 +11,8 @@
 //	sessionStart / sessionEnd   session.start / session.end
 //	beforeSubmitPrompt          turn.start (prompt); output is optional
 //	stop                        turn.end
-//	postToolUse                 tool.start + tool.end (+ shell.exec)
+//	postToolUse                 tool.start + tool.end (+ shell.exec, or
+//	                            session.update for TodoWrite: the todo list)
 //	postToolUseFailure          tool.start + tool.end (failed)
 //	afterFileEdit               file.edit
 //	afterMCPExecution           mcp.call
@@ -267,6 +268,13 @@ func (b builder) tool(ok bool) []model.Event {
 		sh := b.base(model.KindShellExec, d)
 		b.keyed(&sh, p.ToolUseID+":shell", p.ToolUseID)
 		out = append(out, sh)
+	}
+	if p.ToolName == "TodoWrite" && ok {
+		if d := planData(p.ToolInput); d != nil {
+			pl := b.base(model.KindSessionUpdate, d)
+			b.keyed(&pl, p.ToolUseID+":plan", p.ToolUseID)
+			out = append(out, pl)
+		}
 	}
 	return out
 }

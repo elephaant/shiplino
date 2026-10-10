@@ -164,6 +164,8 @@ type Card struct {
 	LinesRemoved   int           `json:"lines_removed"`
 	Links          []engine.Link `json:"links,omitempty"`
 	Subagents      []Subagent    `json:"subagents,omitempty"`
+	PlanTotal      int           `json:"plan_total,omitempty"` // the agent's own todo list
+	PlanDone       int           `json:"plan_done,omitempty"`
 	ToolCalls      int           `json:"tool_calls"` // including subagents'
 	ActiveMS       int64         `json:"active_ms"`
 	Sprint         int           `json:"sprint"`
@@ -195,7 +197,7 @@ func Build(sessions []*engine.Session, overrides map[string]Override, cal Calend
 			ProjectID: s.ProjectID, Agent: s.Agent, Model: s.Model, Status: status, Branch: s.Branch, NowDoing: doing,
 			StartedAt: s.StartedAt, LastEventAt: s.LastEventAt, DurationMS: end.Sub(s.StartedAt).Milliseconds(), WaitingMS: s.WaitingMS,
 			CostUSD: s.BestCostUSD, CostSource: s.CostSource, Usage: s.Usage, Files: len(s.Files), LinesAdded: s.LinesAdded, LinesRemoved: s.LinesRemoved,
-			Links: s.Links, ToolCalls: s.ToolCalls, ActiveMS: s.ActiveMS,
+			Links: s.Links, ToolCalls: s.ToolCalls, ActiveMS: s.ActiveMS, PlanTotal: s.PlanTotal, PlanDone: s.PlanDone,
 		}
 		if status == engine.StatusIdle && len(s.Files) == 0 {
 			c.Column = Done // went quiet without changing anything

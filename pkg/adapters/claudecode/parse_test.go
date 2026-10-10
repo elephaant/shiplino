@@ -48,23 +48,25 @@ func parseFixture(t *testing.T, path string) []model.Event {
 }
 
 func TestGoldenSession(t *testing.T) {
-	got := parseFixture(t, filepath.Join("testdata", "2.1", "session.jsonl"))
-	b, err := json.MarshalIndent(got, "", "  ")
-	if err != nil {
-		t.Fatal(err)
-	}
-	golden := filepath.Join("testdata", "2.1", "session.golden.json")
-	if *update {
-		if err := os.WriteFile(golden, append(b, '\n'), 0o644); err != nil {
+	for _, name := range []string{"session", "plan"} {
+		got := parseFixture(t, filepath.Join("testdata", "2.1", name+".jsonl"))
+		b, err := json.MarshalIndent(got, "", "  ")
+		if err != nil {
 			t.Fatal(err)
 		}
-	}
-	want, err := os.ReadFile(golden)
-	if err != nil {
-		t.Fatalf("%v (run go test -update to create it)", err)
-	}
-	if !bytes.Equal(bytes.TrimSpace(want), bytes.TrimSpace(b)) {
-		t.Errorf("events differ from %s; run `go test ./pkg/adapters/claudecode -update` and review the diff", golden)
+		golden := filepath.Join("testdata", "2.1", name+".golden.json")
+		if *update {
+			if err := os.WriteFile(golden, append(b, '\n'), 0o644); err != nil {
+				t.Fatal(err)
+			}
+		}
+		want, err := os.ReadFile(golden)
+		if err != nil {
+			t.Fatalf("%v (run go test -update to create it)", err)
+		}
+		if !bytes.Equal(bytes.TrimSpace(want), bytes.TrimSpace(b)) {
+			t.Errorf("events differ from %s; run `go test ./pkg/adapters/claudecode -update` and review the diff", golden)
+		}
 	}
 }
 

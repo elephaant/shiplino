@@ -3,6 +3,7 @@
 import { cn } from "cn";
 import { FileText, GitBranch, GitCommitHorizontal, Pin, RotateCcw, Search, SquarePen, Terminal } from "lucide-react";
 import { AgentDot } from "@/components/common/agent-dot";
+import { PlanProgress } from "@/components/common/plan-progress";
 import { PRBadge } from "@/components/common/pr-badge";
 import { Badge } from "@/components/ui/badge";
 import type { BoardCard } from "@/lib/api";
@@ -95,6 +96,8 @@ export function CardView({ card, dragging, onOpen }: { card: BoardCard; dragging
           <span className="truncate">{card.now_doing}</span>
         </div>
       )}
+
+      {card.plan_total ? <PlanProgress done={card.plan_done ?? 0} total={card.plan_total} /> : null}
 
       {shown.length > 0 && (
         <ul className="flex flex-col gap-0.5 border-l pl-2">

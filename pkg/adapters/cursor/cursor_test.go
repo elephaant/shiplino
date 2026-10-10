@@ -75,7 +75,7 @@ func TestHookMapping(t *testing.T) {
 		t.Errorf("turn ends: %+v", te)
 	}
 	starts := by[model.KindToolStart]
-	if len(starts) != 5 || !starts[0].TS.Equal(t0.Add(2*time.Second-120*time.Millisecond)) {
+	if len(starts) != 7 || !starts[0].TS.Equal(t0.Add(2*time.Second-120*time.Millisecond)) {
 		t.Errorf("tool starts (placed duration before the end): %+v", starts)
 	}
 	sh := by[model.KindShellExec]
@@ -105,6 +105,12 @@ func TestHookMapping(t *testing.T) {
 	}
 	if m := by[model.KindMCPCall]; len(m) != 1 || m[0].Data["server"] != "linear" {
 		t.Errorf("mcp: %+v", m)
+	}
+	// A TodoWrite replaces the list; with merge it updates items by id
+	// (the daemon counts merges against the list so far).
+	pl := by[model.KindSessionUpdate]
+	if len(pl) != 2 || pl[0].Data["plan_total"] != 3 || pl[0].Data["plan_done"] != 1 || pl[1].Data["plan_merge"] != true || pl[1].Data["plan_total"] != nil {
+		t.Errorf("plan: %+v", pl)
 	}
 	for _, e := range parseFixture(t) {
 		if b, _ := json.Marshal(e); strings.Contains(string(b), "dev@example.com") {

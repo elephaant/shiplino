@@ -111,7 +111,7 @@ func TestTranscriptMapping(t *testing.T) {
 		t.Errorf("turn ends: %v", by[model.KindTurnEnd])
 	}
 	starts, ends := by[model.KindToolStart], by[model.KindToolEnd]
-	if len(starts) != 10 || len(ends) != 10 {
+	if len(starts) != 11 || len(ends) != 11 {
 		t.Fatalf("tools: %d starts, %d ends", len(starts), len(ends))
 	}
 	for i := range starts {
@@ -153,6 +153,10 @@ func TestTranscriptMapping(t *testing.T) {
 	m := by[model.KindMCPCall]
 	if len(m) != 2 || m[0].Data["server"] != "linear" || m[0].Data["tool"] != "get_issue" || m[1].Data["server"] != "github" {
 		t.Errorf("mcp: %+v", m)
+	}
+	// todos given as JSON in a string
+	if pl := by[model.KindSessionUpdate]; len(pl) != 1 || pl[0].Data["plan_total"] != 2 || pl[0].Data["plan_done"] != 0 {
+		t.Errorf("plan: %+v", pl)
 	}
 	keys := map[string]bool{}
 	for _, e := range evs {

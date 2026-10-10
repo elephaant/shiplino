@@ -372,7 +372,34 @@ func (b builder) tool() []model.Event {
 			derived(model.KindFileEdit, "file:"+strconv.Itoa(i), d)
 		}
 	}
+	if p.Tool == "todowrite" && ok {
+		if d := planData(p.Input); d != nil {
+			derived(model.KindSessionUpdate, "plan", d)
+		}
+	}
 	return out
+}
+
+// planData reads a todowrite call: {todos: [{id?, content, status,
+// priority}]}, the whole list (pending | in_progress | completed |
+// cancelled). The tool is in OpenCode releases that ship it; it isn't in
+// the current tools docs (checked 2026-10-10), so this is tolerant.
+func planData(input json.RawMessage) map[string]any {
+	var in struct {
+		Todos []struct {
+			ID      string `json:"id"`
+			Content string `json:"content"`
+			Status  string `json:"status"`
+		} `json:"todos"`
+	}
+	if json.Unmarshal(input, &in) != nil || in.Todos == nil {
+		return nil
+	}
+	items := make([]model.PlanItem, 0, len(in.Todos))
+	for _, t := range in.Todos {
+		items = append(items, model.PlanItem{ID: t.ID, Text: t.Content, Status: t.Status})
+	}
+	return model.PlanData(items, false)
 }
 
 // edits are the file.edit events of a finished edit, write or apply_patch

@@ -35,7 +35,7 @@ Every adapter converts its agent's native hooks and transcripts into this format
 | `compact` | `phase`, `trigger` |
 | `git.commit` / `git.branch` | `sha`, `message`, `files` / `from`, `to`, `action` |
 | `git.push` / `git.pr` | `branch` / `number`, `url`, `action` (as reported by the agent) |
-| `session.update` | metadata the agent reports, e.g. `title` with `title_source: agent` |
+| `session.update` | metadata the agent reports, e.g. `title` with `title_source: agent`; or the agent's own todo list: `plan_items` (`[{id, text, status}]`, status `pending`, `in_progress`, `completed`, `cancelled` or `blocked`; `text` only at capture level standard and full), `plan_merge: true` when the items update the list by id (`deleted` removes one) instead of replacing it, and `plan_total` (items not cancelled) and `plan_done` (completed). The daemon adds the counts to a merge before storing it. Only the counts are synced |
 | `limit` | a plan usage window as the agent reports it: `limit_window` (`5h`, `7d`, …), `window_minutes`, `used_percent`, `limit_reached`, `resets_at`, `limit_id`, `plan_type`, `limit_source: reported` (see [cost.md](cost.md#plan-limits)) |
 | `error`, `note` | `message` |
 

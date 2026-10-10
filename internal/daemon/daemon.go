@@ -861,6 +861,7 @@ func (d *Daemon) commitCount(ctx context.Context, events []model.Event, cursors 
 		if e.Project != nil && e.Project.CWD != "" && e.Project.RepoRoot != "" && (e.Kind == model.KindSessionStart || e.Kind == model.KindTurnStart || d.noCWD(e.SessionID)) {
 			d.git.Watch(e.Project.CWD)
 		}
+		d.eng.AnnotatePlan(&e) // plan merges are stored with their counts
 		isNew, err := tx.InsertEvent(ctx, e)
 		if err != nil {
 			return 0, err

@@ -54,8 +54,18 @@ export interface Session {
   /** "none": settled after doing work without recording any token usage. */
   usage?: "tokens" | "none";
   links?: Link[];
+  /** The agent's own todo list: counts, and items (text only at capture level standard and full). */
+  plan_total?: number;
+  plan_done?: number;
+  plan_items?: PlanItem[];
   waiting_ms: number;
   waiting_since?: string;
+}
+
+export interface PlanItem {
+  id?: string;
+  text?: string;
+  status?: "pending" | "in_progress" | "completed" | "cancelled" | "blocked";
 }
 
 export interface Sprint {
@@ -351,6 +361,8 @@ export interface BoardCard {
   lines_removed: number;
   links?: Link[];
   subagents?: SubagentRow[];
+  plan_total?: number;
+  plan_done?: number;
   tool_calls: number;
   active_ms: number;
   sprint: number;

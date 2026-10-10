@@ -1,0 +1,311 @@
+[
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:00Z",
+    "received_at": "2026-10-09T10:00:00Z",
+    "kind": "tool.end",
+    "agent": {
+      "name": "claude-code"
+    },
+    "collector": "hook",
+    "session_id": "claude-code:sess-0002",
+    "actor_id": "claude-code:sess-0002",
+    "turn_id": "p-1",
+    "project": {
+      "cwd": "/home/dev/demo"
+    },
+    "data": {
+      "ok": true,
+      "tool": "other",
+      "tool_call_id": "toolu_p1"
+    },
+    "dedup_key": "claude-code:sess-0002:toolu_p1:end"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:00Z",
+    "received_at": "2026-10-09T10:00:00Z",
+    "kind": "session.update",
+    "agent": {
+      "name": "claude-code"
+    },
+    "collector": "hook",
+    "session_id": "claude-code:sess-0002",
+    "actor_id": "claude-code:sess-0002",
+    "turn_id": "p-1",
+    "project": {
+      "cwd": "/home/dev/demo"
+    },
+    "data": {
+      "plan_done": 1,
+      "plan_items": [
+        {
+          "status": "completed",
+          "text": "Add the login form"
+        },
+        {
+          "status": "in_progress",
+          "text": "Wire the API"
+        },
+        {
+          "status": "pending",
+          "text": "Write tests"
+        }
+      ],
+      "plan_total": 3
+    },
+    "dedup_key": "claude-code:sess-0002:toolu_p1:plan"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:01Z",
+    "received_at": "2026-10-09T10:00:01Z",
+    "kind": "tool.end",
+    "agent": {
+      "name": "claude-code"
+    },
+    "collector": "hook",
+    "session_id": "claude-code:sess-0002",
+    "actor_id": "claude-code:sess-0002",
+    "turn_id": "p-1",
+    "project": {
+      "cwd": "/home/dev/demo"
+    },
+    "data": {
+      "ok": true,
+      "tool": "other",
+      "tool_call_id": "toolu_p2"
+    },
+    "dedup_key": "claude-code:sess-0002:toolu_p2:end"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:01Z",
+    "received_at": "2026-10-09T10:00:01Z",
+    "kind": "session.update",
+    "agent": {
+      "name": "claude-code"
+    },
+    "collector": "hook",
+    "session_id": "claude-code:sess-0002",
+    "actor_id": "claude-code:sess-0002",
+    "turn_id": "p-1",
+    "project": {
+      "cwd": "/home/dev/demo"
+    },
+    "data": {
+      "plan_items": [
+        {
+          "id": "1",
+          "status": "pending",
+          "text": "Update the docs"
+        }
+      ],
+      "plan_merge": true
+    },
+    "dedup_key": "claude-code:sess-0002:toolu_p2:plan"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:02Z",
+    "received_at": "2026-10-09T10:00:02Z",
+    "kind": "tool.end",
+    "agent": {
+      "name": "claude-code"
+    },
+    "collector": "hook",
+    "session_id": "claude-code:sess-0002",
+    "actor_id": "claude-code:sess-0002",
+    "turn_id": "p-1",
+    "project": {
+      "cwd": "/home/dev/demo"
+    },
+    "data": {
+      "ok": true,
+      "tool": "other",
+      "tool_call_id": "toolu_p3"
+    },
+    "dedup_key": "claude-code:sess-0002:toolu_p3:end"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:02Z",
+    "received_at": "2026-10-09T10:00:02Z",
+    "kind": "session.update",
+    "agent": {
+      "name": "claude-code"
+    },
+    "collector": "hook",
+    "session_id": "claude-code:sess-0002",
+    "actor_id": "claude-code:sess-0002",
+    "turn_id": "p-1",
+    "project": {
+      "cwd": "/home/dev/demo"
+    },
+    "data": {
+      "plan_items": [
+        {
+          "id": "1",
+          "status": "in_progress"
+        }
+      ],
+      "plan_merge": true
+    },
+    "dedup_key": "claude-code:sess-0002:toolu_p3:plan"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:03Z",
+    "received_at": "2026-10-09T10:00:03Z",
+    "kind": "tool.end",
+    "agent": {
+      "name": "claude-code"
+    },
+    "collector": "hook",
+    "session_id": "claude-code:sess-0002",
+    "actor_id": "claude-code:sess-0002/sub:a-7",
+    "parent_actor": "claude-code:sess-0002",
+    "actor_type": "Explore",
+    "turn_id": "p-1",
+    "project": {
+      "cwd": "/home/dev/demo"
+    },
+    "data": {
+      "ok": true,
+      "tool": "other",
+      "tool_call_id": "toolu_p4"
+    },
+    "dedup_key": "claude-code:sess-0002:toolu_p4:end"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:03Z",
+    "received_at": "2026-10-09T10:00:03Z",
+    "kind": "session.update",
+    "agent": {
+      "name": "claude-code"
+    },
+    "collector": "hook",
+    "session_id": "claude-code:sess-0002",
+    "actor_id": "claude-code:sess-0002",
+    "turn_id": "p-1",
+    "project": {
+      "cwd": "/home/dev/demo"
+    },
+    "data": {
+      "plan_items": [
+        {
+          "id": "1",
+          "status": "completed"
+        }
+      ],
+      "plan_merge": true
+    },
+    "dedup_key": "claude-code:sess-0002:toolu_p4:plan"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:04Z",
+    "received_at": "2026-10-09T10:00:04Z",
+    "kind": "tool.end",
+    "agent": {
+      "name": "claude-code"
+    },
+    "collector": "hook",
+    "session_id": "claude-code:sess-0002",
+    "actor_id": "claude-code:sess-0002",
+    "turn_id": "p-1",
+    "project": {
+      "cwd": "/home/dev/demo"
+    },
+    "data": {
+      "ok": true,
+      "tool": "other",
+      "tool_call_id": "toolu_p5"
+    },
+    "dedup_key": "claude-code:sess-0002:toolu_p5:end"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:05Z",
+    "received_at": "2026-10-09T10:00:05Z",
+    "kind": "tool.end",
+    "agent": {
+      "name": "claude-code"
+    },
+    "collector": "hook",
+    "session_id": "claude-code:sess-0002",
+    "actor_id": "claude-code:sess-0002",
+    "turn_id": "p-1",
+    "project": {
+      "cwd": "/home/dev/demo"
+    },
+    "data": {
+      "ok": true,
+      "tool": "other",
+      "tool_call_id": "toolu_p6"
+    },
+    "dedup_key": "claude-code:sess-0002:toolu_p6:end"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:05Z",
+    "received_at": "2026-10-09T10:00:05Z",
+    "kind": "session.update",
+    "agent": {
+      "name": "claude-code"
+    },
+    "collector": "hook",
+    "session_id": "claude-code:sess-0002",
+    "actor_id": "claude-code:sess-0002",
+    "turn_id": "p-1",
+    "project": {
+      "cwd": "/home/dev/demo"
+    },
+    "data": {
+      "plan_items": [
+        {
+          "id": "1",
+          "status": "deleted"
+        }
+      ],
+      "plan_merge": true
+    },
+    "dedup_key": "claude-code:sess-0002:toolu_p6:plan"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:06Z",
+    "received_at": "2026-10-09T10:00:06Z",
+    "kind": "tool.end",
+    "agent": {
+      "name": "claude-code"
+    },
+    "collector": "hook",
+    "session_id": "claude-code:sess-0002",
+    "actor_id": "claude-code:sess-0002",
+    "turn_id": "p-1",
+    "project": {
+      "cwd": "/home/dev/demo"
+    },
+    "data": {
+      "error": "Invalid input",
+      "ok": false,
+      "tool": "other",
+      "tool_call_id": "toolu_p7"
+    },
+    "dedup_key": "claude-code:sess-0002:toolu_p7:end"
+  }
+]

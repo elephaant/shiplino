@@ -248,6 +248,39 @@ func TestParseLevel(t *testing.T) {
 	}
 }
 
+func TestPlanItemsByLevel(t *testing.T) {
+	plan := func() *model.Event {
+		d := model.PlanData([]model.PlanItem{{ID: "1", Text: "Rotate " + ghToken, Status: "completed"}, {ID: "2", Text: "Ship it", Status: "pending"}}, false)
+		return ev(model.KindSessionUpdate, d)
+	}
+	std := plan()
+	Default.Event(std, Standard)
+	if b, _ := json.Marshal(std.Data); strings.Contains(string(b), ghToken) || !strings.Contains(string(b), "Ship it") {
+		t.Fatalf("standard: %s", b)
+	}
+	minimal := plan()
+	Default.Event(minimal, Minimal)
+	b, _ := json.Marshal(minimal.Data)
+	want := `{"plan_done":1,"plan_items":[{"id":"` + model.HashPlanID("1") + `","status":"completed"},{"id":"` +
+		model.HashPlanID("2") + `","status":"pending"}],"plan_total":2}`
+	if string(b) != want {
+		t.Fatalf("minimal:\n got %s\nwant %s", b, want)
+	}
+	// Only {id, status} survive: slug ids are hashed (once), odd values go.
+	odd := ev(model.KindSessionUpdate, map[string]any{"plan_merge": true, "plan_items": []any{
+		map[string]any{"id": "fix-login-race-in-auth", "status": "completed", "note": "secret", "activeForm": "x"},
+		map[string]any{"id": model.HashPlanID("3"), "status": strings.Repeat("s", 40)},
+		map[string]any{"id": map[string]any{"text": "secret"}, "status": 3.0},
+		"secret",
+	}})
+	Default.Event(odd, Minimal)
+	b, _ = json.Marshal(odd.Data["plan_items"])
+	want = `[{"id":"` + model.HashPlanID("fix-login-race-in-auth") + `","status":"completed"},{"id":"` + model.HashPlanID("3") + `"},{},{}]`
+	if string(b) != want || strings.Contains(string(b), "secret") || strings.Contains(string(b), "fix-login") {
+		t.Fatalf("minimal odd items:\n got %s\nwant %s", b, want)
+	}
+}
+
 func TestMinimalMessageOnlyOnWaiting(t *testing.T) {
 	commit := model.Event{Kind: model.KindGitCommit, Data: map[string]any{"message": "fix: rotate api key", "sha": "abc123"}}
 	Default.Event(&commit, Minimal)

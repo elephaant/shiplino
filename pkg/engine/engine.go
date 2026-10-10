@@ -86,6 +86,13 @@ type Session struct {
 
 	Links []Link `json:"links,omitempty"` // PRs and pushes the agent reported
 
+	// The agent's own todo list (see model.PlanData), latest wins.
+	// PlanItems have text only at the standard and full capture levels.
+	PlanTotal int              `json:"plan_total,omitempty"`
+	PlanDone  int              `json:"plan_done,omitempty"`
+	PlanItems []model.PlanItem `json:"plan_items,omitempty"`
+	PlanAt    time.Time        `json:"plan_at,omitzero"`
+
 	LastGitCommitAt time.Time `json:"last_git_commit_at,omitzero"` // agent ran `git commit` itself
 	WaitingMS       int64     `json:"waiting_ms"`
 	// ActiveMS is time spent in turns (prompt to answer), the agent's own
@@ -173,7 +180,7 @@ func (s *Session) FilesChanged() int { return len(s.Files) }
 // Rev identifies the engine's folding rules. Bump it whenever Apply would
 // produce different sessions from the same events (a new field, a fix);
 // the daemon then rebuilds stored sessions from their events once.
-const Rev = 9
+const Rev = 10
 
 // Engine folds events into sessions. It is not safe for concurrent use;
 // the daemon feeds it from a single goroutine.
@@ -390,6 +397,7 @@ func (e *Engine) Apply(ev model.Event) []*Session {
 	case model.KindSessionUpdate:
 		s.setTitle(str(ev.Data, "title"), "agent")
 		setIfEmpty(&s.Model, str(ev.Data, "model"))
+		s.applyPlan(ev)
 
 	case model.KindShellExec:
 		if code, ok := ev.Data["exit_code"]; ok && num(ev.Data, "exit_code") == 0 && code != nil && isGitCommit(str(ev.Data, "command")) {
@@ -488,9 +496,11 @@ var activityKinds = map[model.Kind]bool{
 // reports for its session: transcript activity once hooks are seen, and
 // telemetry (OTLP) activity once hooks or transcripts are. Their ids for
 // the same tool call or turn can differ, so both would double count.
-// Usage, cost reports and titles are never redundant.
+// Todo list updates count as activity: a merge replayed from a transcript
+// could undo a newer list. Usage, cost reports and titles are never
+// redundant.
 func (e *Engine) Redundant(ev model.Event) bool {
-	if !activityKinds[ev.Kind] {
+	if !activityKinds[ev.Kind] && !isPlan(ev) {
 		return false
 	}
 	s := e.sessions[ev.SessionID]
@@ -653,6 +663,65 @@ func (s *Session) updateBestCost() {
 			s.CostSource = "reported"
 		}
 	}
+}
+
+// applyPlan folds a plan update (model.PlanData) into the session. A full
+// list read late (older than the one shown) is ignored.
+func (s *Session) applyPlan(ev model.Event) {
+	items, hasItems := model.PlanItems(ev.Data)
+	_, hasTotal := ev.Data["plan_total"]
+	if !hasItems && !hasTotal {
+		return
+	}
+	if merge, _ := ev.Data["plan_merge"].(bool); merge {
+		s.PlanItems = model.MergePlan(s.PlanItems, items)
+	} else if ev.TS.Before(s.PlanAt) {
+		return
+	} else {
+		s.PlanItems = items
+	}
+	if ev.TS.After(s.PlanAt) {
+		s.PlanAt = ev.TS
+	}
+	s.PlanTotal, s.PlanDone = model.PlanCounts(s.PlanItems)
+	if hasTotal { // the event's own counts: all a synced copy (no items) has
+		s.PlanTotal, s.PlanDone = num(ev.Data, "plan_total"), num(ev.Data, "plan_done")
+	}
+}
+
+func isPlan(ev model.Event) bool {
+	if ev.Kind != model.KindSessionUpdate {
+		return false
+	}
+	_, items := ev.Data["plan_items"]
+	_, total := ev.Data["plan_total"]
+	return items || total
+}
+
+// AnnotatePlan adds plan_total and plan_done to a plan merge, counted
+// against the actor's list so far, so the stored event (and a synced
+// copy, which has no items) carries the counts. Call it before storing
+// the event. It changes no session.
+func (e *Engine) AnnotatePlan(ev *model.Event) {
+	if ev.Kind != model.KindSessionUpdate {
+		return
+	}
+	if merge, _ := ev.Data["plan_merge"].(bool); !merge {
+		return
+	}
+	if _, ok := ev.Data["plan_total"]; ok {
+		return
+	}
+	items, _ := model.PlanItems(ev.Data)
+	actor := ev.ActorID
+	if actor == "" {
+		actor = ev.SessionID
+	}
+	var list []model.PlanItem
+	if s := e.sessions[actor]; s != nil {
+		list = s.PlanItems
+	}
+	ev.Data["plan_total"], ev.Data["plan_done"] = model.PlanCounts(model.MergePlan(list, items))
 }
 
 // ProcessTotals returns the last reported total per agent process.

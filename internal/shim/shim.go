@@ -153,6 +153,136 @@ var keepInput = map[string]bool{"file_path": true, "notebook_path": true, "path"
 // names, never the prompt, response, edits, command or MCP arguments.
 var keepInfo = map[string]bool{"file_path": true, "cwd": true, "mcp_server_name": true, "mcp_tool_name": true}
 
+// Todo list tools keep their progress at minimal: item ids (hashed) and
+// statuses, never the text, and whether the call succeeded. Every kept
+// value is cut by planField; anything else is dropped.
+var (
+	planTools        = map[string]bool{"TodoWrite": true, "TaskCreate": true, "TaskUpdate": true, "update_plan": true, "write_todos": true, "todowrite": true}
+	keepPlanInput    = map[string]bool{"todos": true, "plan": true, "merge": true, "taskId": true, "task_id": true, "id": true, "status": true}
+	keepPlanItem     = map[string]bool{"id": true, "status": true}
+	keepPlanResponse = map[string]bool{"success": true, "taskId": true, "task": true, "statusChange": true, "error": true}
+	keepPlanChange   = map[string]bool{"from": true, "to": true}
+)
+
+const (
+	maxPlanID     = 256 // longer ids are dropped, not hashed
+	maxPlanStatus = 16
+)
+
+func planTool(m map[string]json.RawMessage) bool {
+	var name string
+	if json.Unmarshal(m["tool_name"], &name) != nil {
+		_ = json.Unmarshal(m["tool"], &name) // OpenCode plugin
+	}
+	return planTools[name]
+}
+
+// scalar returns v when it's a JSON string of at most max bytes, a number
+// or a bool; ok is false for anything else (objects, lists, long strings).
+func scalar(v json.RawMessage, max int) (any, bool) {
+	var x any
+	if json.Unmarshal(v, &x) != nil {
+		return nil, false
+	}
+	switch s := x.(type) {
+	case string:
+		return s, len(s) <= max
+	case float64, bool:
+		return s, true
+	}
+	return nil, false
+}
+
+// planField cuts one kept field of a todo tool's input, response or item:
+// ids become a short hash (model.HashPlanID), statuses short strings,
+// flags booleans, a task or status change their own allowed fields, an
+// error only its presence. ok is false when the value must go.
+func planField(k string, v json.RawMessage) (json.RawMessage, bool) {
+	var out any
+	switch k {
+	case "id", "taskId", "task_id":
+		x, ok := scalar(v, maxPlanID)
+		if !ok {
+			return nil, false
+		}
+		switch id := x.(type) {
+		case string:
+			out = model.HashPlanID(id)
+		case float64:
+			out = model.HashPlanID(strings.TrimSpace(string(v)))
+		default:
+			return nil, false
+		}
+	case "status", "from", "to":
+		x, ok := scalar(v, maxPlanStatus)
+		if _, isStr := x.(string); !ok || !isStr {
+			return nil, false
+		}
+		out = x
+	case "merge", "success":
+		x, _ := scalar(v, 0)
+		if _, isBool := x.(bool); !isBool {
+			return nil, false
+		}
+		out = x
+	case "error":
+		return json.RawMessage("{}"), true
+	case "task":
+		return planObject(v, keepPlanItem), true
+	case "statusChange":
+		return planObject(v, keepPlanChange), true
+	case "todos", "plan":
+		return planList(v), true
+	default:
+		return nil, false
+	}
+	b, err := json.Marshal(out)
+	return b, err == nil
+}
+
+// planObject keeps the keep fields of a JSON object, each cut by
+// planField. Anything that isn't an object becomes {}.
+func planObject(raw json.RawMessage, keep map[string]bool) json.RawMessage {
+	var obj map[string]json.RawMessage
+	if json.Unmarshal(raw, &obj) != nil {
+		return json.RawMessage("{}")
+	}
+	for k, v := range obj {
+		cut, ok := planField(k, v)
+		if !keep[k] || !ok {
+			delete(obj, k)
+			continue
+		}
+		obj[k] = cut
+	}
+	b, err := json.Marshal(obj)
+	if err != nil {
+		return json.RawMessage("{}")
+	}
+	return b
+}
+
+// planList keeps the id and status of each todo item (a list, or a list
+// in a JSON string).
+func planList(raw json.RawMessage) json.RawMessage {
+	var s string
+	if json.Unmarshal(raw, &s) == nil {
+		raw = []byte(s)
+	}
+	var items []json.RawMessage
+	if json.Unmarshal(raw, &items) != nil {
+		return json.RawMessage("[]")
+	}
+	for i, it := range items {
+		items[i] = planObject(it, keepPlanItem)
+	}
+	b, err := json.Marshal(items)
+	if err != nil {
+		return json.RawMessage("[]")
+	}
+	return b
+}
+
 // stripContent removes content fields from a JSON object payload. On any
 // parse problem it returns {} rather than risk writing content.
 func stripContent(in []byte) []byte {
@@ -160,8 +290,18 @@ func stripContent(in []byte) []byte {
 	if json.Unmarshal(in, &m) != nil {
 		return []byte("{}")
 	}
+	plan := planTool(m)
+	var planResp json.RawMessage
+	if plan {
+		if raw, ok := m["tool_response"]; ok {
+			planResp = planObject(raw, keepPlanResponse)
+		}
+	}
 	for _, k := range contentKeys {
 		delete(m, k)
+	}
+	if planResp != nil {
+		m["tool_response"] = planResp
 	}
 	// Tool arguments, as an object or a JSON string (Copilot's toolArgs):
 	// only the fields in each key's keep list stay.
@@ -177,6 +317,11 @@ func stripContent(in []byte) []byte {
 		var ti map[string]json.RawMessage
 		if json.Unmarshal(raw, &ti) != nil {
 			delete(m, key)
+			continue
+		}
+		if plan && key == "tool_input" {
+			b, _ := json.Marshal(ti)
+			m[key] = planObject(b, keepPlanInput)
 			continue
 		}
 		for k := range ti {

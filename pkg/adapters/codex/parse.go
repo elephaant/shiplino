@@ -24,7 +24,8 @@ const Name = "codex"
 //	Stop                turn.end (ok)
 //	Interrupt           turn.end (interrupted)
 //	PreToolUse          tool.start
-//	PostToolUse         tool.end + shell.exec / file.edit (apply_patch)
+//	PostToolUse         tool.end + shell.exec / file.edit (apply_patch) /
+//	                    session.update (update_plan: the todo list)
 //	PermissionRequest   waiting.start
 //	SubagentStart/Stop  subagent.start / subagent.end
 //	PreCompact/PostCompact compact
@@ -207,7 +208,37 @@ func (b builder) toolEnd() []model.Event {
 			derived(model.KindFileEdit, fmt.Sprintf("file%d", i), fe)
 		}
 	}
+	if b.p.ToolName == "update_plan" {
+		if d := planData(b.p.ToolInput, b.p.ToolResponse); d != nil {
+			derived(model.KindSessionUpdate, "plan", d)
+		}
+	}
 	return out
+}
+
+// planData reads an update_plan call: input {explanation?, plan: [{step,
+// status}]} (pending | in_progress | completed), the whole list, and the
+// output "Plan updated" on success (codex-rs plan_tool.rs and the plan
+// handler, checked 2026-10-10). Any other output is a rejected call.
+func planData(input, response json.RawMessage) map[string]any {
+	var in struct {
+		Plan []struct {
+			Step   string `json:"step"`
+			Status string `json:"status"`
+		} `json:"plan"`
+	}
+	if json.Unmarshal(input, &in) != nil || in.Plan == nil {
+		return nil
+	}
+	var resp string
+	if len(response) > 0 && json.Unmarshal(response, &resp) == nil && resp != "" && resp != "Plan updated" {
+		return nil
+	}
+	items := make([]model.PlanItem, 0, len(in.Plan))
+	for _, s := range in.Plan {
+		items = append(items, model.PlanItem{Text: s.Step, Status: s.Status})
+	}
+	return model.PlanData(items, false)
 }
 
 // NormalizeTool maps Codex tool names to normalized tool names.

@@ -25,7 +25,8 @@ const Name = "gemini-cli"
 //	BeforeAgent   turn.start (prompt)
 //	AfterAgent    turn.end (prompt_response)
 //	BeforeTool    tool.start
-//	AfterTool     tool.end + shell.exec / file.edit / file.read / mcp.call
+//	AfterTool     tool.end + shell.exec / file.edit / file.read / mcp.call /
+//	              session.update (write_todos: the todo list)
 //	Notification  waiting.start (notification_type ToolPermission)
 //	PreCompress   compact (trigger)
 //
@@ -249,6 +250,24 @@ func (tc toolCall) derive(cwd string) []derived {
 			d["lines_source"] = "agent"
 		}
 		return []derived{{model.KindFileEdit, "file", d}}
+	case tc.Name == "write_todos" && tc.OK:
+		// args {todos: [{description, status}]}, the whole list; statuses
+		// pending | in_progress | completed | cancelled | blocked
+		// (packages/core/src/tools/write-todos.ts, checked 2026-10-10).
+		var args struct {
+			Todos []struct {
+				Description string `json:"description"`
+				Status      string `json:"status"`
+			} `json:"todos"`
+		}
+		if json.Unmarshal(tc.Args, &args) != nil || args.Todos == nil {
+			return nil
+		}
+		items := make([]model.PlanItem, 0, len(args.Todos))
+		for _, t := range args.Todos {
+			items = append(items, model.PlanItem{Text: t.Description, Status: t.Status})
+		}
+		return []derived{{model.KindSessionUpdate, "plan", model.PlanData(items, false)}}
 	case tc.Name == "read_file" && in.FilePath != "" && tc.OK:
 		return []derived{{model.KindFileRead, "file", with(map[string]any{"path": joinPath(cwd, in.FilePath)})}}
 	case tool == model.ToolMCP:
