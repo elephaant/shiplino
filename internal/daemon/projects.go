@@ -14,10 +14,18 @@ const (
 	branchTTL  = 5 * time.Second  // branches change during work
 )
 
+// ProjectGit answers project detection's git questions: the git binary
+// (gitwatch.Exec) normally, a fixed map for demo data.
+type ProjectGit interface {
+	projects.Git
+	// Branch returns the checked-out branch of dir, or "".
+	Branch(dir string) string
+}
+
 // resolver maps working directories to projects and branches, caching
 // git lookups so a busy session costs at most one git call per TTL.
 type resolver struct {
-	git      gitwatch.Exec
+	git      ProjectGit
 	userHome string
 	byCWD    map[string]cachedProject
 	byID     map[string]projects.Project
@@ -37,7 +45,7 @@ type cachedBranch struct {
 
 func newResolver() *resolver {
 	home, _ := os.UserHomeDir()
-	return &resolver{userHome: home, byCWD: map[string]cachedProject{}, byID: map[string]projects.Project{}, branches: map[string]cachedBranch{}, now: time.Now}
+	return &resolver{git: gitwatch.Exec{}, userHome: home, byCWD: map[string]cachedProject{}, byID: map[string]projects.Project{}, branches: map[string]cachedBranch{}, now: time.Now}
 }
 
 func (r *resolver) project(cwd string) projects.Project {

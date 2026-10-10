@@ -88,6 +88,8 @@ Prefer to run the daemon yourself (a terminal, tmux, your own process manager)? 
 
 Remove everything with `shiplino uninstall` (add `--purge` to delete recorded data, or `--dry-run` to see what would change).
 
+**Try it without connecting anything:** `shiplino demo` (or `shiplino open --demo`) opens a board of made-up projects with agents working live. It runs its own daemon on a free port with a temporary folder, never touches your data or agents, and deletes everything when you press Ctrl-C.
+
 ## Build from source
 
 ```bash
@@ -130,6 +132,7 @@ shiplino setup --dry-run               show the diff of every agent config setup
 shiplino setup --no-service            connect agents only; you run `shiplino daemon` yourself
 shiplino uninstall --dry-run           show what uninstall would remove; write nothing
 shiplino status | ls | open | doctor   what's running, recent sessions, the board, health checks
+shiplino demo [--no-open]              a throwaway board with synthetic data, until Ctrl-C
 shiplino search <words> | export       find anything; sessions as CSV or JSON
 shiplino export --session <id>         one conversation as Markdown
 shiplino backfill [--since 30d]        import history from before setup

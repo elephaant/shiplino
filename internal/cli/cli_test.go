@@ -250,6 +250,12 @@ func TestRunDispatch(t *testing.T) {
 	if code := Run([]string{"nope"}, &out, &out, "x"); code != 2 {
 		t.Fatalf("unknown command exit %d", code)
 	}
+	for _, args := range [][]string{{"demo", "--nope"}, {"open", "--demo", "extra"}} {
+		out.Reset()
+		if code := Run(args, &out, &out, "x"); code != 2 || !strings.Contains(out.String(), "usage: shiplino demo") {
+			t.Errorf("%v: exit %d %q", args, code, out.String())
+		}
+	}
 }
 
 func TestSetupStartsServiceAndWaitsForHealth(t *testing.T) {

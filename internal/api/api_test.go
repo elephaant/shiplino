@@ -97,6 +97,30 @@ func TestLimits(t *testing.T) {
 	}
 }
 
+func TestStatusReportsDemo(t *testing.T) {
+	f := setup(t)
+	if _, body := f.get(t, "/api/v1/status", bearer); strings.Contains(string(body), `"demo"`) {
+		t.Fatalf("a normal daemon reports demo: %s", body)
+	}
+	f.s.Demo = true
+	if _, body := f.get(t, "/api/v1/status", bearer); !strings.Contains(string(body), `"demo":true`) {
+		t.Fatalf("status = %s", body)
+	}
+}
+
+func TestListenAnyPort(t *testing.T) {
+	home := t.TempDir()
+	ln, err := Listen(home, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ln.Close()
+	b, _ := os.ReadFile(filepath.Join(home, "port"))
+	if got := ln.Addr().(*net.TCPAddr).Port; got == 0 || strings.TrimSpace(string(b)) != strconv.Itoa(got) {
+		t.Fatalf("listening on %d, port file %q", got, b)
+	}
+}
+
 func TestHostHeaderBlocksDNSRebinding(t *testing.T) {
 	f := setup(t)
 	for _, host := range []string{"evil.example.com", "evil.example.com:4777", "192.168.1.5"} {
