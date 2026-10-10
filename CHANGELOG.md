@@ -45,6 +45,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - An event from before a session ended, read late (e.g. a subagent's own hook file), still counts but no longer reopens the session.
 
 ### Fixed
+- On Windows, the daemon could stop reading new events for good when a file changed while it was adding a folder watch (a deadlock with the file watcher).
 - At the minimal capture level, git commits showed "Waiting for you" as their subject. Only waiting events keep that text now; other messages are dropped.
 
 ## [0.1.0-alpha.1] - 2026-10-10
