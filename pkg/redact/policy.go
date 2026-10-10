@@ -93,21 +93,28 @@ func (r *Redactor) Event(e *model.Event, level Level) {
 			} else {
 				d[k] = r.Text(s)
 			}
-		case map[string]any:
-			r.mapStrings(s)
+		case map[string]any, []any:
+			d[k] = r.value(s)
 		}
 	}
 }
 
-func (r *Redactor) mapStrings(m map[string]any) {
-	for k, v := range m {
-		switch s := v.(type) {
-		case string:
-			m[k] = r.Text(s)
-		case map[string]any:
-			r.mapStrings(s)
+// value redacts every string inside nested maps and lists (data sent by
+// custom agents can have any shape).
+func (r *Redactor) value(v any) any {
+	switch s := v.(type) {
+	case string:
+		return r.Text(s)
+	case map[string]any:
+		for k, x := range s {
+			s[k] = r.value(x)
+		}
+	case []any:
+		for i, x := range s {
+			s[i] = r.value(x)
 		}
 	}
+	return v
 }
 
 func waitingText(reason string) string {
