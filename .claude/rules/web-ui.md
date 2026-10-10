@@ -48,7 +48,7 @@ This version of Next.js has breaking changes. Read `node_modules/next/dist/docs/
 
 ## Screens (plan)
 
-All projects overview · Project board (kanban) · Session detail (timeline, files, commands, usage, raw) · Timeline/Gantt · Insights · Office (PixiJS, later) · Search (⌘K via the shadcn `command` component) · Settings.
+All projects overview · Project board (kanban) · Session detail (timeline, files, commands, usage, raw) · Timeline/Gantt · Insights · Office (plain canvas 2D, our own pixel art in code, no game engine) · Search (⌘K via the shadcn `command` component) · Settings.
 
 ## Quality
 
