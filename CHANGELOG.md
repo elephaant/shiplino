@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Added
+- Windsurf (Cascade) support: `shiplino setup` adds observe-only hooks to `~/.codeium/windsurf/hooks.json` and records prompts, turns, file reads and edits (with ± lines), commands and MCP calls. Windsurf's hooks don't report token usage, so its sessions show no cost.
+- GitHub Copilot CLI support: `shiplino setup` writes observe-only hooks to `~/.copilot/hooks/shiplino.json` and records sessions, prompts, tool calls, shell commands, file edits, subagent ends, errors and permission prompts (no token usage yet).
+- Gemini CLI support: `shiplino setup` registers observe-only hooks in `~/.gemini/settings.json`. Sessions, turns, tool calls, shell commands, file edits (with Gemini's own line counts), MCP calls and permission waits are recorded live. Token usage, model and session titles come from Gemini's chat recordings, priced with Gemini API list prices, and past sessions can be backfilled.
+- Cursor: sessions that ran without hooks (before setup, or with hooks disabled) are rebuilt from Cursor's agent transcripts, including subagents, and `shiplino backfill` imports them. Transcript data is coarser than hook data: times are to the minute, there are no tokens or exit codes, and line counts are computed.
+- `shiplino wrap -- <command>` records any CLI agent without hooks. The command runs unchanged (same terminal, I/O, exit code and signals), and the session shows on the board with its directory, redacted command, exit code, duration and git commits. For Aider, prompts, Aider's own token and cost report, edited files and auto commits are read from its chat history.
+- Opt-in cloud sync client: `shiplino sync login|status [--dry-run]|allow|deny|logout`. It signs in with a device code and keeps tokens in the OS keychain (or a visible 0600 file where there's none). Only projects you allow are sent, stripped to the sync capture level (minimal by default) and redacted again, in gzip batches with resume, retry and backoff. Sync state is shown in `doctor` and on the Settings page. The wire protocol is in `docs/sync-protocol.md`.
+- Daemon: much faster under heavy load. Files are parsed in parallel and written in batched transactions, WAL checkpoints no longer stall writes, and boards read only the current sprint's sessions. Adds a load test (`make bench`) and a "Performance" section in `docs/how-it-works.md`.
 - OpenAI Codex support. `shiplino setup` adds hooks to `~/.codex/hooks.json` for all 12 Codex hook events (backed up, idempotent, your own hooks kept); Codex asks once to trust them under `/hooks`. Sessions from the Codex desktop app, which run without hooks, are found in `~/.codex/sessions` and read from their rollout files: prompts, turns, commands with exit codes, file changes with Codex's own line counts, MCP calls, model changes and per-response token usage (Codex's `token_usage_record`). When a session has hooks, its activity comes from the hooks and its rollout only adds usage, so nothing is counted twice.
 - Cursor support (IDE agent and `cursor-agent`). `shiplino setup` adds observe-only hooks to `~/.cursor/hooks.json`: never permission hooks, never `failClosed`. It records prompts, turns, tool calls with durations, shell commands with exit codes, file edits, MCP calls, subagents (nested under their parent) and compaction. Token usage is recorded when Cursor includes it in `afterAgentResponse`.
 - Cursor also runs Claude Code and Codex hooks. Those copies are recognized and skipped, so a Cursor session is never recorded twice.
@@ -30,6 +37,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - A session's model is the one that answered its latest response (sessions can switch models).
 - If the system's file-notification limit is used up by other programs (Linux inotify), the daemon keeps working by polling twice a second instead of stopping, and `doctor` shows the fix.
 - An event from before a session ended, read late (e.g. a subagent's own hook file), still counts but no longer reopens the session.
+
+### Fixed
+- At the minimal capture level, git commits showed "Waiting for you" as their subject. Only waiting events keep that text now; other messages are dropped.
 
 ## [0.1.0-alpha.1] - 2026-10-10
 
