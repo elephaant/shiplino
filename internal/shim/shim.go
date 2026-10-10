@@ -128,10 +128,12 @@ var contentKeys = []string{"prompt", "tool_response", "last_assistant_message", 
 	"tool_output", "output", "result_json", "text", "content", "edits", "attachments", "command",
 	"agent_message", "summary", "task", "description", "error_message", "user_email", "modified_files",
 	// Copilot CLI (camelCase payloads)
-	"toolResult", "response", "initialPrompt", "transformedPrompt", "customInstructions", "agentDescription"}
+	"toolResult", "response", "initialPrompt", "transformedPrompt", "customInstructions", "agentDescription",
+	// Gemini CLI
+	"prompt_response", "details", "llm_request", "llm_response"}
 
 // keepInput are tool_input fields allowed at minimal (file paths only).
-var keepInput = map[string]bool{"file_path": true, "notebook_path": true, "path": true}
+var keepInput = map[string]bool{"file_path": true, "notebook_path": true, "path": true, "dir_path": true}
 
 // keepInfo are Windsurf tool_info fields allowed at minimal: paths and MCP
 // names, never the prompt, response, edits, command or MCP arguments.

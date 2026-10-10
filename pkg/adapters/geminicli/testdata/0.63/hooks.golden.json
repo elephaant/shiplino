@@ -1,0 +1,455 @@
+[
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:00Z",
+    "received_at": "2026-10-09T11:00:00Z",
+    "kind": "session.start",
+    "agent": {
+      "name": "gemini-cli"
+    },
+    "collector": "hook",
+    "session_id": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001",
+    "actor_id": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001",
+    "project": {
+      "cwd": "/home/dev/demo"
+    },
+    "data": {
+      "source": "startup",
+      "transcript_path": "/home/dev/.gemini/tmp/demo/chats/session-2026-10-09T10-00-gs1a2b3c.jsonl"
+    },
+    "dedup_key": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001:session.start:env-00"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:01Z",
+    "received_at": "2026-10-09T11:00:00Z",
+    "kind": "turn.start",
+    "agent": {
+      "name": "gemini-cli"
+    },
+    "collector": "hook",
+    "session_id": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001",
+    "actor_id": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001",
+    "project": {
+      "cwd": "/home/dev/demo"
+    },
+    "data": {
+      "prompt": "add a health endpoint",
+      "prompt_chars": 21,
+      "transcript_path": "/home/dev/.gemini/tmp/demo/chats/session-2026-10-09T10-00-gs1a2b3c.jsonl"
+    },
+    "dedup_key": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001:turn.start:env-01"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:02Z",
+    "received_at": "2026-10-09T11:00:00Z",
+    "kind": "tool.start",
+    "agent": {
+      "name": "gemini-cli"
+    },
+    "collector": "hook",
+    "session_id": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001",
+    "actor_id": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001",
+    "project": {
+      "cwd": "/home/dev/demo"
+    },
+    "data": {
+      "input_summary": "rg -n health src",
+      "tool": "shell",
+      "tool_raw": "run_shell_command"
+    },
+    "dedup_key": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001:tool.start:env-02"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:03Z",
+    "received_at": "2026-10-09T11:00:00Z",
+    "kind": "tool.end",
+    "agent": {
+      "name": "gemini-cli"
+    },
+    "collector": "hook",
+    "session_id": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001",
+    "actor_id": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001",
+    "project": {
+      "cwd": "/home/dev/demo"
+    },
+    "data": {
+      "ok": false,
+      "tool": "shell"
+    },
+    "dedup_key": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001:tool.end:env-03"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:03Z",
+    "received_at": "2026-10-09T11:00:00Z",
+    "kind": "shell.exec",
+    "agent": {
+      "name": "gemini-cli"
+    },
+    "collector": "hook",
+    "session_id": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001",
+    "actor_id": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001",
+    "project": {
+      "cwd": "/home/dev/demo"
+    },
+    "data": {
+      "command": "rg -n health src",
+      "cwd": "/home/dev/demo",
+      "exit_code": 1
+    },
+    "dedup_key": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001:shell.exec:shell:env-03"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:04Z",
+    "received_at": "2026-10-09T11:00:00Z",
+    "kind": "waiting.start",
+    "agent": {
+      "name": "gemini-cli"
+    },
+    "collector": "hook",
+    "session_id": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001",
+    "actor_id": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001",
+    "project": {
+      "cwd": "/home/dev/demo"
+    },
+    "data": {
+      "message": "Tool WriteFile requires editing",
+      "reason": "permission"
+    },
+    "dedup_key": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001:waiting.start:env-04"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:05Z",
+    "received_at": "2026-10-09T11:00:00Z",
+    "kind": "tool.start",
+    "agent": {
+      "name": "gemini-cli"
+    },
+    "collector": "hook",
+    "session_id": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001",
+    "actor_id": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001",
+    "project": {
+      "cwd": "/home/dev/demo"
+    },
+    "data": {
+      "input_summary": "/home/dev/demo/src/health.ts",
+      "tool": "write",
+      "tool_raw": "write_file"
+    },
+    "dedup_key": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001:tool.start:env-05"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:06Z",
+    "received_at": "2026-10-09T11:00:00Z",
+    "kind": "tool.end",
+    "agent": {
+      "name": "gemini-cli"
+    },
+    "collector": "hook",
+    "session_id": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001",
+    "actor_id": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001",
+    "project": {
+      "cwd": "/home/dev/demo"
+    },
+    "data": {
+      "ok": true,
+      "tool": "write"
+    },
+    "dedup_key": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001:tool.end:env-06"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:06Z",
+    "received_at": "2026-10-09T11:00:00Z",
+    "kind": "file.edit",
+    "agent": {
+      "name": "gemini-cli"
+    },
+    "collector": "hook",
+    "session_id": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001",
+    "actor_id": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001",
+    "project": {
+      "cwd": "/home/dev/demo"
+    },
+    "data": {
+      "lines_added": 1,
+      "lines_removed": 0,
+      "lines_source": "agent",
+      "op": "create",
+      "path": "/home/dev/demo/src/health.ts"
+    },
+    "dedup_key": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001:file.edit:file:env-06"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:07Z",
+    "received_at": "2026-10-09T11:00:00Z",
+    "kind": "tool.start",
+    "agent": {
+      "name": "gemini-cli"
+    },
+    "collector": "hook",
+    "session_id": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001",
+    "actor_id": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001",
+    "project": {
+      "cwd": "/home/dev/demo"
+    },
+    "data": {
+      "input_summary": "src/app.ts",
+      "tool": "edit",
+      "tool_raw": "replace"
+    },
+    "dedup_key": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001:tool.start:env-07"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:08Z",
+    "received_at": "2026-10-09T11:00:00Z",
+    "kind": "tool.end",
+    "agent": {
+      "name": "gemini-cli"
+    },
+    "collector": "hook",
+    "session_id": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001",
+    "actor_id": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001",
+    "project": {
+      "cwd": "/home/dev/demo"
+    },
+    "data": {
+      "ok": true,
+      "tool": "edit"
+    },
+    "dedup_key": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001:tool.end:env-08"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:08Z",
+    "received_at": "2026-10-09T11:00:00Z",
+    "kind": "file.edit",
+    "agent": {
+      "name": "gemini-cli"
+    },
+    "collector": "hook",
+    "session_id": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001",
+    "actor_id": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001",
+    "project": {
+      "cwd": "/home/dev/demo"
+    },
+    "data": {
+      "lines_added": 2,
+      "lines_removed": 1,
+      "lines_source": "agent",
+      "op": "modify",
+      "path": "/home/dev/demo/src/app.ts"
+    },
+    "dedup_key": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001:file.edit:file:env-08"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:09Z",
+    "received_at": "2026-10-09T11:00:00Z",
+    "kind": "tool.start",
+    "agent": {
+      "name": "gemini-cli"
+    },
+    "collector": "hook",
+    "session_id": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001",
+    "actor_id": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001",
+    "project": {
+      "cwd": "/home/dev/demo"
+    },
+    "data": {
+      "input_summary": "tracker/list_issues",
+      "tool": "mcp",
+      "tool_raw": "mcp_tracker_list_issues"
+    },
+    "dedup_key": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001:tool.start:env-09"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:10Z",
+    "received_at": "2026-10-09T11:00:00Z",
+    "kind": "tool.end",
+    "agent": {
+      "name": "gemini-cli"
+    },
+    "collector": "hook",
+    "session_id": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001",
+    "actor_id": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001",
+    "project": {
+      "cwd": "/home/dev/demo"
+    },
+    "data": {
+      "ok": true,
+      "tool": "mcp"
+    },
+    "dedup_key": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001:tool.end:env-10"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:10Z",
+    "received_at": "2026-10-09T11:00:00Z",
+    "kind": "mcp.call",
+    "agent": {
+      "name": "gemini-cli"
+    },
+    "collector": "hook",
+    "session_id": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001",
+    "actor_id": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001",
+    "project": {
+      "cwd": "/home/dev/demo"
+    },
+    "data": {
+      "ok": true,
+      "server": "tracker",
+      "tool": "list_issues"
+    },
+    "dedup_key": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001:mcp.call:mcp:env-10"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:11Z",
+    "received_at": "2026-10-09T11:00:00Z",
+    "kind": "tool.end",
+    "agent": {
+      "name": "gemini-cli"
+    },
+    "collector": "hook",
+    "session_id": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001",
+    "actor_id": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001",
+    "project": {
+      "cwd": "/home/dev/demo"
+    },
+    "data": {
+      "ok": false,
+      "tool": "read"
+    },
+    "dedup_key": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001:tool.end:env-11"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:12Z",
+    "received_at": "2026-10-09T11:00:00Z",
+    "kind": "tool.end",
+    "agent": {
+      "name": "gemini-cli"
+    },
+    "collector": "hook",
+    "session_id": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001",
+    "actor_id": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001",
+    "project": {
+      "cwd": "/home/dev/demo"
+    },
+    "data": {
+      "ok": true,
+      "tool": "read"
+    },
+    "dedup_key": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001:tool.end:env-12"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:12Z",
+    "received_at": "2026-10-09T11:00:00Z",
+    "kind": "file.read",
+    "agent": {
+      "name": "gemini-cli"
+    },
+    "collector": "hook",
+    "session_id": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001",
+    "actor_id": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001",
+    "project": {
+      "cwd": "/home/dev/demo"
+    },
+    "data": {
+      "path": "/home/dev/demo/README.md"
+    },
+    "dedup_key": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001:file.read:file:env-12"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:13Z",
+    "received_at": "2026-10-09T11:00:00Z",
+    "kind": "compact",
+    "agent": {
+      "name": "gemini-cli"
+    },
+    "collector": "hook",
+    "session_id": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001",
+    "actor_id": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001",
+    "project": {
+      "cwd": "/home/dev/demo"
+    },
+    "data": {
+      "phase": "pre",
+      "trigger": "auto"
+    },
+    "dedup_key": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001:compact:env-13"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:14Z",
+    "received_at": "2026-10-09T11:00:00Z",
+    "kind": "turn.end",
+    "agent": {
+      "name": "gemini-cli"
+    },
+    "collector": "hook",
+    "session_id": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001",
+    "actor_id": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001",
+    "project": {
+      "cwd": "/home/dev/demo"
+    },
+    "data": {
+      "assistant_summary": "Added a /health endpoint.",
+      "status": "ok"
+    },
+    "dedup_key": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001:turn.end:env-14"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:15Z",
+    "received_at": "2026-10-09T11:00:00Z",
+    "kind": "session.end",
+    "agent": {
+      "name": "gemini-cli"
+    },
+    "collector": "hook",
+    "session_id": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001",
+    "actor_id": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001",
+    "project": {
+      "cwd": "/home/dev/demo"
+    },
+    "data": {
+      "reason": "exit",
+      "status": "ended"
+    },
+    "dedup_key": "gemini-cli:gs1a2b3c-0000-4000-8000-000000000001:session.end:env-15"
+  }
+]
