@@ -72,13 +72,18 @@ func writeCodex(t *testing.T, home string) {
 	write(t, filepath.Join(home, ".codex", "sessions", "2026", "10", "09", "rollout-2026-10-09T10-00-00-th-2.jsonl"), fixture(t, fixtures+"codex/testdata/0.153/rollout.jsonl"))
 }
 
-// snapshot lists every path under root with its size and modification time.
+// snapshot lists every path under root, with files' size and modification
+// time. Folder times are left out: Windows updates them lazily.
 func snapshot(t *testing.T, root string) map[string]string {
 	t.Helper()
 	out := map[string]string{}
 	err := filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
+		}
+		if d.IsDir() {
+			out[p] = "dir"
+			return nil
 		}
 		fi, err := d.Info()
 		if err != nil {

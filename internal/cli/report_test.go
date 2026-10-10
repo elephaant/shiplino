@@ -88,13 +88,18 @@ func TestParseSince(t *testing.T) {
 	}
 }
 
-// tree lists every path under root with its size and modification time.
+// tree lists every path under root, with files' size and modification
+// time. Folder times are left out: Windows updates them lazily.
 func tree(t *testing.T, root string) []string {
 	t.Helper()
 	var out []string
 	err := filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
+		}
+		if d.IsDir() {
+			out = append(out, p)
+			return nil
 		}
 		fi, err := d.Info()
 		if err != nil {
