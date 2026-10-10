@@ -74,7 +74,7 @@ func (Adapter) ParseTranscriptLine(line []byte, meta adapters.TranscriptMeta) ([
 	}
 	acts := activity(line, meta)
 	u := l.Message.Usage
-	if l.Type != "assistant" || u == nil || l.Message.ID == "" || l.SessionID == "" || meta.Warmup {
+	if l.Type != "assistant" || u == nil || l.Message.ID == "" || l.SessionID == "" {
 		return acts, nil
 	}
 	if l.Message.Model == "<synthetic>" { // local error messages, not API calls
@@ -115,7 +115,46 @@ func (Adapter) ParseTranscriptLine(line []byte, meta adapters.TranscriptMeta) ([
 	if usage.InferenceGeo == "us" {
 		data["inference_geo"] = "us"
 	}
-	if cost, ok := pricing.Default().Cost(l.Message.Model, usage); ok {
+	cost, priced := pricing.Default().Cost(l.Message.Model, usage)
+
+	// One response is written as several lines (one per content block),
+	// and later lines can carry larger counts (output keeps growing). The
+	// first line becomes the usage event; a later line with larger counts
+	// adds only the difference. Keys are global, not per session: resumed
+	// or continued sessions copy earlier responses into new files, and a
+	// response must count once.
+	key := Name + ":usage:" + l.Message.ID
+	cur := fmt.Sprintf("%d.%d.%d.%d.%d.%d", usage.Input, usage.Output, usage.CacheRead, usage.CacheWrite5m, usage.CacheWrite1h, usage.WebSearches)
+	st := meta.State
+	if st != nil && st["usage_msg"] == l.Message.ID {
+		var p pricing.Usage
+		fmt.Sscanf(st["usage_seen"], "%d.%d.%d.%d.%d.%d", &p.Input, &p.Output, &p.CacheRead, &p.CacheWrite5m, &p.CacheWrite1h, &p.WebSearches)
+		d := pricing.Usage{Input: max(usage.Input-p.Input, 0), Output: max(usage.Output-p.Output, 0), CacheRead: max(usage.CacheRead-p.CacheRead, 0),
+			CacheWrite5m: max(usage.CacheWrite5m-p.CacheWrite5m, 0), CacheWrite1h: max(usage.CacheWrite1h-p.CacheWrite1h, 0), WebSearches: max(usage.WebSearches-p.WebSearches, 0)}
+		if d == (pricing.Usage{}) || meta.Warmup {
+			if d != (pricing.Usage{}) {
+				st["usage_seen"] = cur
+			}
+			return acts, nil
+		}
+		st["usage_seen"] = cur
+		data["input_tokens"], data["output_tokens"], data["cache_read_tokens"], data["cache_write_tokens"] = d.Input, d.Output, d.CacheRead, d.CacheWrite5m+d.CacheWrite1h
+		delete(data, "cache_write_1h_tokens")
+		delete(data, "web_searches")
+		data["correction"] = true
+		key += ":@" + cur
+		p.Speed, p.InferenceGeo, p.At = usage.Speed, usage.InferenceGeo, usage.At
+		prevCost, _ := pricing.Default().Cost(l.Message.Model, p)
+		cost = max(cost-prevCost, 0)
+	} else {
+		if st != nil {
+			st["usage_msg"], st["usage_seen"] = l.Message.ID, cur
+		}
+		if meta.Warmup {
+			return acts, nil
+		}
+	}
+	if priced {
 		data["cost_usd"] = cost
 		data["cost_source"] = "computed"
 	} else {
@@ -135,7 +174,7 @@ func (Adapter) ParseTranscriptLine(line []byte, meta adapters.TranscriptMeta) ([
 		SessionID:  sid,
 		ActorID:    sid,
 		Data:       data,
-		DedupKey:   sid + ":usage:" + l.Message.ID,
+		DedupKey:   key,
 	}
 	if l.AgentID != "" {
 		e.ActorID = sid + "/sub:" + l.AgentID

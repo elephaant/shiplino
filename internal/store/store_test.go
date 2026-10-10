@@ -8,6 +8,7 @@ import (
 	"database/sql"
 	"fmt"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -346,5 +347,52 @@ func TestSessionsActiveSinceAndMeta(t *testing.T) {
 	}
 	if v, _ := s.Meta(ctx, "k"); v != "v" {
 		t.Fatalf("meta: %q", v)
+	}
+}
+
+// Migration v9 keeps one usage event per Claude Code response, so copies
+// in resumed sessions' files stop counting twice.
+func TestClaudeUsageDuplicatesRemoved(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "old.db")
+	db, err := sql.Open("sqlite", "file:"+filepath.ToSlash(path))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, m := range migrations[:8] {
+		if _, err := db.Exec(m); err != nil {
+			t.Fatal(err)
+		}
+	}
+	db.Exec(`PRAGMA user_version = 8`)
+	ins := func(id string, ts int, key, msg string, report bool) {
+		data := fmt.Sprintf(`{"message_id":%q}`, msg)
+		if report {
+			data = `{"report":true,"total_cost_usd":1}`
+		}
+		db.Exec(`INSERT INTO events (id, ts, kind, agent, session_id, collector, dedup_key, body) VALUES (?, ?, 'usage', 'claude-code', 's', 'transcript', ?, ?)`,
+			id, ts, key, `{"data":`+data+`}`)
+	}
+	ins("e1", 1, "claude-code:s1:usage:m1", "m1", false)
+	ins("e2", 5, "claude-code:s2:usage:m1", "m1", false) // copy in a resumed session
+	ins("e3", 2, "claude-code:s1:usage:m2", "m2", false)
+	ins("e4", 3, "claude-code:s1:cost-state:1", "", true)
+	ins("e5", 4, "claude-code:s2:cost-state:2", "", true)
+	db.Close()
+
+	s, err := Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	var ids []string
+	rows, _ := s.db.Query(`SELECT id FROM events ORDER BY id`)
+	for rows.Next() {
+		var id string
+		rows.Scan(&id)
+		ids = append(ids, id)
+	}
+	rows.Close()
+	if strings.Join(ids, ",") != "e1,e3,e4,e5" {
+		t.Fatalf("events after v9: %v", ids)
 	}
 }
