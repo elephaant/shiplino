@@ -107,12 +107,12 @@ On a flat-rate plan (Claude Pro/Max, ChatGPT plans for Codex) what matters is ho
 |-------|-----------------|----------------|
 | **Codex** | `rate_limits` in the `token_count` lines of its rollouts: used percent, window length and reset time of each window (usually 5 hours and weekly), and the plan | The agent's numbers (`source: reported`) |
 | **Claude Code** | Only when a request is refused at a limit: a `rate_limit` error line with the window (`five_hour`, `seven_day`) and its reset time | "Limit reached · resets 14:20" (reported) |
-| Claude Code, otherwise | Nothing on disk. Claude Code passes the used percentages only to [status line](https://code.claude.com/docs/en/statusline) commands | An **estimate**: tokens used in the current 5-hour window and the last 7 days, with no percentage |
+| Claude Code, with the status line wrapper (opt-in) | `rate_limits` in its [status line](https://code.claude.com/docs/en/statusline) input: used percent and reset time of the 5-hour and weekly windows (Pro and Max plans) | The agent's numbers (`source: reported`) |
+| Claude Code, otherwise | Nothing on disk. Claude Code passes the used percentages only to status line commands | An **estimate**: tokens used in the current 5-hour window and the last 7 days, with no percentage |
 
 Notes:
 - **The agent's numbers win.** Estimates are shown only for an agent on a plan that reports no percentages, and only for windows it reports nothing about.
 - **Estimates have no percentage.** Plan quotas aren't published and change, so Shiplino doesn't guess them. A 5-hour estimate starts at the hour (UTC) of the first response after the previous window ended, as other usage tools count it; the real window may differ. The weekly estimate is a rolling 7 days, since the real week starts at a time only the provider knows.
-- **Why not the status line?** Reading Claude Code's percentages would mean registering a status line command, which replaces the one you see (or have set up) at the bottom of Claude Code. Shiplino doesn't change what the agent shows, so it doesn't.
 - **Which agents are on a plan:** an agent counts as on a plan once it reports a limit (Codex does whenever you're signed in with ChatGPT). Set it yourself in `~/.shiplino/config.toml`; `api` hides an agent's windows:
 
   ```toml
@@ -122,6 +122,33 @@ Notes:
 - **Alerts:** a desktop notification once per window when an agent reports `limit_percent` or more used (default 80; `0` turns it off). Estimates never notify.
 - **A window is dropped once it resets**, as the agents themselves do, until the agent reports the new one.
 - **Privacy:** limit events hold only numbers, window names and times. They sync (if you turn sync on) like token counts.
+
+### Claude Code's percentages: the status line wrapper
+
+Claude Code passes the used percentage of each plan window only to [status line](https://code.claude.com/docs/en/statusline) commands, never to hooks or transcripts. To get them, turn on the wrapper (it's off by default):
+
+```bash
+shiplino setup --statusline        # or Settings → Agents → Claude Code status line → Turn on
+shiplino setup --no-statusline     # put your own status line back
+```
+
+It changes one value in `~/.claude/settings.json`, after a backup, and shows the diff first (`--dry-run`, or the dialog on the Settings page):
+
+```diff
+   "statusLine": {
+     "type": "command",
+-    "command": "~/.claude/statusline.sh",
++    "command": "~/.shiplino/bin/shiplino statusline --wrap fi8uY2xhdWRlL3N0YXR1c2xpbmUuc2g",
+     "padding": 2
+   }
+```
+
+- **What you see stays the same.** `shiplino statusline` reads the input Claude Code sends, then runs your own command (decoded from `--wrap`) with the same input in the same shell Claude Code uses, and passes its output, errors and exit code through unchanged. It adds a few milliseconds. If anything on Shiplino's side fails, your command still runs.
+- **No status line of your own?** The wrapper prints nothing. Claude Code still counts it as a status line, so it hides its footer hints (such as `esc to interrupt`) while one is set. `shiplino setup --statusline=minimal` shows a short line instead: `5h 23% · resets 14:00 · 7d 41%`.
+- **What's recorded:** only the session id, Claude Code's version, the model id and the `five_hour` / `seven_day` windows (percent and reset time), appended to the spool like a hook event. Not the rest of the input (folder, cost, transcript path). Nothing at all on API billing, where Claude Code sends no windows. Pausing recording pauses this too.
+- **Zero tokens.** A status line runs in Claude Code's interface, not the model: its output is shown, never sent to the model.
+- **Undo is exact.** Your original command is stored in the wrapper's own `--wrap` argument, so `shiplino setup --no-statusline`, `shiplino uninstall` and the Settings page put back exactly the command you had, even without Shiplino's own files. If you had none, the `statusLine` entry is removed. If you later change your status line yourself (for example with `/statusline`), Shiplino leaves your new one alone.
+- `shiplino doctor` shows whether the wrapper is on and what it wraps.
 
 ## How others do it
 

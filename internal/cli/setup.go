@@ -19,6 +19,7 @@ import (
 	"github.com/elephaant/shiplino/internal/notify"
 	"github.com/elephaant/shiplino/internal/service"
 	"github.com/elephaant/shiplino/internal/update"
+	"github.com/elephaant/shiplino/pkg/adapters/claudecode"
 )
 
 // env is what commands need from the outside world; tests replace it.
@@ -75,11 +76,14 @@ func (e *env) backupDir(agent string) string { return filepath.Join(e.home, "bac
 
 // setup installs the binary, connects detected agents and checks the hook.
 // --dry-run prints what it would change and writes nothing; --no-service
-// leaves the daemon for the user to run.
+// leaves the daemon for the user to run. --statusline also wraps Claude
+// Code's status line (opt-in; =minimal shows a short line of Shiplino's
+// own when there is none), --no-statusline puts it back.
 func setup(ctx context.Context, e *env, args []string) int {
 	noService := hasFlag(args, "--no-service")
+	sl := statusLineChoice(args)
 	if hasFlag(args, "--dry-run") {
-		return setupDryRun(ctx, e, noService)
+		return setupDryRun(ctx, e, noService, sl)
 	}
 	fmt.Fprintf(e.out, "Shiplino %s setup\n\n", e.version)
 
@@ -107,9 +111,16 @@ func setup(ctx context.Context, e *env, args []string) int {
 	connected := 0
 	var notes []string
 	for _, a := range agents.All {
+		if a.OptIn && sl == slKeep {
+			continue
+		}
 		found, version, path := a.Detect(ctx, e.userHome)
 		if !found {
 			fmt.Fprintf(e.out, "  ➖ %-20s not found\n", a.Name)
+			continue
+		}
+		if a.OptIn {
+			ok = setupStatusLine(e, a, path, bin, sl) && ok
 			continue
 		}
 		changed, events, err := a.Install(path, bin, version, e.backupDir(a.ID))
@@ -201,17 +212,36 @@ func setup(ctx context.Context, e *env, args []string) int {
 // setupDryRun prints what setup would do, with a diff of every agent
 // config it would change. It writes nothing: no hooks, backups, binary,
 // config, service or history import.
-func setupDryRun(ctx context.Context, e *env, noService bool) int {
+func setupDryRun(ctx context.Context, e *env, noService bool, sl slChoice) int {
 	fmt.Fprintf(e.out, "Shiplino %s setup --dry-run: showing what would change, writing nothing\n\n", e.version)
 	bin := e.binPath()
 	ok := true
 	for _, a := range agents.All {
+		if a.OptIn && sl == slKeep {
+			continue
+		}
 		found, version, path := a.Detect(ctx, e.userHome)
 		if !found {
 			fmt.Fprintf(e.out, "  ➖ %-20s not found\n", a.Name)
 			continue
 		}
-		changes, err := a.PreviewInstall(path, bin, version)
+		var changes []agents.Change
+		var err error
+		switch sl {
+		case slRemove:
+			if a.OptIn {
+				changes, err = a.PreviewUninstall(path)
+				ok = printPlan(e, a.Name, path, changes, err, "not installed") && ok
+				continue
+			}
+		case slMinimal:
+			if a.OptIn {
+				a.Install = func(path, bin, _, backup string) (bool, int, error) {
+					return agents.InstallStatusLine(path, bin, backup, true)
+				}
+			}
+		}
+		changes, err = a.PreviewInstall(path, bin, version)
 		ok = printPlan(e, a.Name, path, changes, err, "hooks already up to date") && ok
 	}
 	fmt.Fprintln(e.out, "\nSetup would also:")
@@ -229,6 +259,61 @@ func setupDryRun(ctx context.Context, e *env, noService bool) int {
 		return 1
 	}
 	return 0
+}
+
+// slChoice is what setup does with the opt-in status line wrapper.
+type slChoice int
+
+const (
+	slKeep    slChoice = iota // leave it as it is
+	slInstall                 // --statusline
+	slMinimal                 // --statusline=minimal
+	slRemove                  // --no-statusline
+)
+
+func statusLineChoice(args []string) slChoice {
+	switch {
+	case hasFlag(args, "--no-statusline"):
+		return slRemove
+	case hasFlag(args, "--statusline=minimal"):
+		return slMinimal
+	case hasFlag(args, "--statusline"):
+		return slInstall
+	}
+	return slKeep
+}
+
+// setupStatusLine installs or removes the status line wrapper and says
+// what it did. It reports whether that worked.
+func setupStatusLine(e *env, a agents.Hooks, path, bin string, sl slChoice) bool {
+	var changed bool
+	var err error
+	if sl == slRemove {
+		changed, err = a.Uninstall(path, e.backupDir(a.ID))
+	} else {
+		changed, _, err = agents.InstallStatusLine(path, bin, e.backupDir(a.ID), sl == slMinimal)
+	}
+	switch {
+	case agents.IsUnparseable(err):
+		fmt.Fprintf(e.out, "  ⚠️  %-20s %s isn't plain JSON (comments?), left untouched\n", a.Name, tilde(path, e.userHome))
+		return false
+	case err != nil:
+		fmt.Fprintf(e.out, "  ❌ %-20s %v\n", a.Name, err)
+		return false
+	case sl == slRemove && changed:
+		fmt.Fprintf(e.out, "  ✅ %-20s removed, your own status line command is back (%s)\n", a.Name, tilde(path, e.userHome))
+	case sl == slRemove:
+		fmt.Fprintf(e.out, "  ➖ %-20s not installed\n", a.Name)
+	case changed:
+		fmt.Fprintf(e.out, "  ✅ %-20s records plan usage; what it shows is unchanged (%s)\n", a.Name, tilde(path, e.userHome))
+		if st, _ := claudecode.ReadStatusLine(path, e.userHome); st.Original == "" && !st.Minimal {
+			fmt.Fprintf(e.out, "     %-20s you had no status line, so it's empty, and Claude Code hides its footer hints while\n", "")
+			fmt.Fprintf(e.out, "     %-20s one is set (--statusline=minimal shows plan usage there; --no-statusline removes it)\n", "")
+		}
+	default:
+		fmt.Fprintf(e.out, "  ✅ %-20s already up to date (%s)\n", a.Name, tilde(path, e.userHome))
+	}
+	return true
 }
 
 // printPlan prints one agent's dry-run result: a unified diff per file,
@@ -272,12 +357,18 @@ func uninstall(ctx context.Context, e *env, args []string) int {
 	}
 	for _, a := range agents.All {
 		_, _, path := a.Detect(ctx, e.userHome)
-		if changed, err := a.Uninstall(path, e.backupDir(a.ID)); err != nil {
+		changed, err := a.Uninstall(path, e.backupDir(a.ID))
+		switch {
+		case err != nil:
 			ok = false
 			fmt.Fprintf(e.out, "  ❌ %-12s %v\n", a.Name, err)
-		} else if changed {
+		case changed && a.OptIn:
+			fmt.Fprintf(e.out, "  ✅ %-12s removed, your own status line is back (%s)\n", a.Name, tilde(path, e.userHome))
+		case changed:
 			fmt.Fprintf(e.out, "  ✅ %-12s hooks removed (%s)\n", a.Name, tilde(path, e.userHome))
-		} else {
+		case a.OptIn:
+			// Off by default: nothing worth a line.
+		default:
 			fmt.Fprintf(e.out, "  ➖ %-12s no Shiplino hooks found\n", a.Name)
 		}
 	}
@@ -305,7 +396,9 @@ func uninstallDryRun(ctx context.Context, e *env, purge bool) int {
 		_, _, path := a.Detect(ctx, e.userHome)
 		changes, err := a.PreviewUninstall(path)
 		if err == nil && len(changes) == 0 {
-			fmt.Fprintf(e.out, "  ➖ %-20s no Shiplino hooks found\n", a.Name)
+			if !a.OptIn {
+				fmt.Fprintf(e.out, "  ➖ %-20s no Shiplino hooks found\n", a.Name)
+			}
 			continue
 		}
 		ok = printPlan(e, a.Name, path, changes, err, "") && ok

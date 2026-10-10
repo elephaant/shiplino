@@ -32,6 +32,8 @@ const Name = "claude-code"
 //	Notification        waiting.start for prompts that need the user; others ignored
 //	SubagentStart/Stop  subagent.start / subagent.end
 //	PreCompact/PostCompact compact
+//	StatusLine          limit, one per window (not a hook: input recorded by
+//	                    the opt-in status line wrapper, see statusline.go)
 //
 // Other known events (CwdChanged, …) are ignored for now. TaskCreated and
 // TaskCompleted fire before the change and another hook can still block
@@ -226,6 +228,8 @@ func (Adapter) ParseHook(raw []byte, meta adapters.HookMeta) ([]model.Event, err
 			"child_session_id": b.sid + "/sub:" + p.AgentID, "agent_type": p.AgentType,
 			"status": "done", "transcript_path": p.AgentTranscript,
 		})), nil
+	case StatusLineEvent:
+		return b.statusLineLimits(raw), nil
 	case "PreCompact":
 		return b.one(model.KindCompact, map[string]any{"phase": "pre", "trigger": p.Trigger}), nil
 	case "PostCompact":

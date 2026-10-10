@@ -5,6 +5,7 @@ package agents
 import (
 	"context"
 	"errors"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -31,6 +32,10 @@ type Hooks struct {
 	// Usage is shown by doctor when the agent records token usage in a
 	// limited way (e.g. only when a session ends).
 	Usage string
+	// OptIn entries are off by default: setup connects them only when
+	// asked (e.g. --statusline). About says what they do.
+	OptIn bool
+	About string
 }
 
 // errUnparseable is shared by every hook-file adapter.
@@ -54,6 +59,7 @@ var All = []Hooks{
 		},
 		Installed: claudecode.Installed,
 	},
+	StatusLine,
 	{
 		Name: "Codex", ID: codex.Name,
 		Detect: func(ctx context.Context, home string) (bool, string, string) {
@@ -204,6 +210,45 @@ var All = []Hooks{
 	},
 }
 
+// StatusLine wraps Claude Code's status line command so Shiplino gets the
+// plan percentages Claude Code shows only there (opt-in). Install and
+// Uninstall work on the same settings.json as the hooks.
+var StatusLine = Hooks{
+	Name: "Claude Code status line", ID: claudecode.Name, OptIn: true,
+	About: "Opt-in: records Claude Code's plan usage (5-hour and weekly %) from its status line. What your status line shows stays exactly the same.",
+	Detect: func(ctx context.Context, home string) (bool, string, string) {
+		d := claudecode.Detect(ctx, home)
+		return d.Installed, d.Version, d.SettingsPath
+	},
+	Install: func(path, bin, _, backup string) (bool, int, error) {
+		return InstallStatusLine(path, bin, backup, false)
+	},
+	Uninstall: func(path, backup string) (bool, error) {
+		r, err := claudecode.UninstallStatusLine(path, userHome(), backup)
+		return r.Changed, err
+	},
+	Installed: func(path string) (bool, string, error) {
+		st, err := claudecode.ReadStatusLine(path, userHome())
+		if errors.Is(err, claudecode.ErrStatusLineNotCommand) {
+			return false, "", nil // not ours; connecting explains why it can't
+		}
+		return st.Installed, st.Bin, err
+	},
+	Note: "Claude Code picks it up at its next status line update. If you had no status line of your own, the new one is empty and Claude Code hides its footer hints while it is set",
+}
+
+// InstallStatusLine installs the status line wrapper; minimal shows
+// Shiplino's own short line when the user has no status line.
+func InstallStatusLine(path, bin, backup string, minimal bool) (bool, int, error) {
+	r, err := claudecode.InstallStatusLine(path, bin, userHome(), backup, minimal)
+	return r.Changed, 1, err
+}
+
+func userHome() string {
+	h, _ := os.UserHomeDir()
+	return h
+}
+
 func clineInstall(dir, bin, _, _ string) (bool, int, error) {
 	r, err := cline.Install(dir, bin)
 	if err == nil {
@@ -258,6 +303,8 @@ type Status struct {
 	Found     bool   `json:"found"`
 	Version   string `json:"version,omitempty"`
 	HooksPath string `json:"hooks_path,omitempty"`
+	OptIn     bool   `json:"opt_in,omitempty"` // off unless the user turns it on
+	About     string `json:"about,omitempty"`
 	Connected bool   `json:"connected"`         // our hook is installed
 	Current   bool   `json:"current"`           // and points at bin
 	Problem   string `json:"problem,omitempty"` // e.g. the config isn't plain JSON
@@ -268,7 +315,7 @@ type Status struct {
 func Statuses(ctx context.Context, home, bin string) []Status {
 	out := make([]Status, 0, len(All))
 	for _, a := range All {
-		st := Status{Key: a.Key(), ID: a.ID, Name: a.Name}
+		st := Status{Key: a.Key(), ID: a.ID, Name: a.Name, OptIn: a.OptIn, About: a.About}
 		st.Found, st.Version, st.HooksPath = a.Detect(ctx, home)
 		if st.Found {
 			ok, cmd, err := a.Installed(st.HooksPath)

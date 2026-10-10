@@ -42,6 +42,34 @@ function DiffView({ diff }: { diff: string }) {
   );
 }
 
+const hookWords = {
+  connect: "Connect",
+  remove: "Remove",
+  removeButton: "Remove hooks",
+  connected: "connected",
+  removed: "hooks removed",
+  connectAbout:
+    "Shiplino adds its hook to this file. It prints nothing, adds no tokens and can't block the agent. The old file is backed up first.",
+  removeAbout:
+    "Shiplino removes only its own hooks. Everything else in the file stays, and the old file is backed up first.",
+  upToDate: "the hooks are already up to date.",
+  notFound: "no Shiplino hooks were found.",
+};
+
+/** The same flow for an opt-in extra (the Claude Code status line wrapper). */
+const optInWords = {
+  connect: "Turn on",
+  remove: "Turn off",
+  removeButton: "Turn off",
+  connected: "on",
+  removed: "off",
+  connectAbout:
+    "Shiplino wraps your status line command: it records the plan usage numbers Claude Code passes to it, then runs your command, so what you see stays exactly the same. It adds no tokens. The old file is backed up first.",
+  removeAbout: "Shiplino puts your own status line command back exactly as it was. The old file is backed up first.",
+  upToDate: "it is already on.",
+  notFound: "it is already off.",
+};
+
 /**
  * Connect (or remove) an agent's hooks from the settings page. The dialog
  * first shows the exact diff, made by the same code as `shiplino setup
@@ -77,7 +105,7 @@ export function AgentChange({
     setBusy(true);
     try {
       onDone(await api<Settings>(`${path}/${action}`, { method: "POST" }));
-      toast.success(connect ? `${agent.name} connected` : `${agent.name} hooks removed`, {
+      toast.success(`${agent.name} ${connect ? w.connected : w.removed}`, {
         description: connect ? plan?.note : undefined,
       });
       setOpen(false);
@@ -89,23 +117,20 @@ export function AgentChange({
   };
 
   const nothing = plan && plan.changes.length === 0;
+  const w = agent.opt_in ? optInWords : hookWords;
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
         <Button size="sm" variant={connect ? "default" : "outline"}>
-          {connect ? <Link2 /> : <Unlink />} {connect ? "Connect" : "Remove"}
+          {connect ? <Link2 /> : <Unlink />} {connect ? w.connect : w.remove}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>
-            {connect ? "Connect" : "Remove"} {agent.name}
+            {connect ? w.connect : w.remove} {agent.name}
           </DialogTitle>
-          <DialogDescription>
-            {connect
-              ? "Shiplino adds its hook to this file. It prints nothing, adds no tokens and can't block the agent. The old file is backed up first."
-              : "Shiplino removes only its own hooks. Everything else in the file stays, and the old file is backed up first."}
-          </DialogDescription>
+          <DialogDescription>{connect ? w.connectAbout : w.removeAbout}</DialogDescription>
         </DialogHeader>
         {error && (
           <p className="flex items-start gap-1.5 text-sm text-status-failed">
@@ -121,9 +146,7 @@ export function AgentChange({
           </div>
         ))}
         {nothing && !plan.problem && (
-          <p className="text-muted-foreground text-sm">
-            Nothing to change: {connect ? "the hooks are already up to date." : "no Shiplino hooks were found."}
-          </p>
+          <p className="text-muted-foreground text-sm">Nothing to change: {connect ? w.upToDate : w.notFound}</p>
         )}
         {plan?.problem && (
           <p className="flex items-start gap-1.5 text-sm text-status-waiting">
@@ -141,7 +164,7 @@ export function AgentChange({
             disabled={busy || !plan || plan.changes.length === 0}
             onClick={apply}
           >
-            {connect ? "Connect" : "Remove hooks"}
+            {connect ? w.connect : w.removeButton}
           </Button>
         </DialogFooter>
       </DialogContent>

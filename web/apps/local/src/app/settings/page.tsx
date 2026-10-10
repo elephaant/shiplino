@@ -336,6 +336,8 @@ export default function SettingsPage() {
         </CardHeader>
         <CardContent>
           {s.agents.map((a) => {
+            // An opt-in extra of an agent that isn't here: the agent's own row says so.
+            if (a.opt_in && !a.found) return null;
             let badge: ReactNode;
             let hint: ReactNode = null;
             if (a.problem) {
@@ -354,6 +356,9 @@ export default function SettingsPage() {
             } else if (a.connected) {
               badge = <Badge variant="outline">Points at another Shiplino</Badge>;
               hint = "Connect again to point it at this one";
+            } else if (a.found && a.opt_in) {
+              badge = <Badge variant="outline">Off</Badge>;
+              hint = a.about;
             } else if (a.found) {
               badge = <Badge variant="outline">Not connected</Badge>;
             } else {

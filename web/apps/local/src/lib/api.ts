@@ -264,6 +264,10 @@ export interface AgentStatus {
   found: boolean;
   version?: string;
   hooks_path?: string;
+  /** Off unless the user turns it on (the Claude Code status line wrapper). */
+  opt_in?: boolean;
+  /** What an opt-in entry does. */
+  about?: string;
   connected: boolean;
   current: boolean;
   problem?: string;

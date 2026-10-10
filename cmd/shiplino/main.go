@@ -6,6 +6,7 @@ import (
 
 	"github.com/elephaant/shiplino/internal/cli"
 	"github.com/elephaant/shiplino/internal/shim"
+	"github.com/elephaant/shiplino/internal/statusline"
 )
 
 var version = "0.0.0-dev"
@@ -16,6 +17,11 @@ func main() {
 	if len(os.Args) > 1 && os.Args[1] == "hook" {
 		shim.Run(os.Args[2:], os.Stdin)
 		os.Exit(0)
+	}
+	// The opt-in status line wrapper is just as hot: Claude Code runs it
+	// after every response. It passes the user's own command through.
+	if len(os.Args) > 1 && os.Args[1] == "statusline" {
+		os.Exit(statusline.Run(os.Args[2:], os.Stdin, os.Stdout, os.Stderr))
 	}
 	os.Exit(cli.Run(os.Args[1:], os.Stdout, os.Stderr, version))
 }
