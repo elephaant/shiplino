@@ -20,6 +20,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - A running session with no activity for 30 minutes (2 hours while a tool such as a long build is still running) becomes idle and leaves the Running column: to Review if it changed files, otherwise to Done. Its next event brings it back.
 - Cards roll up their subagents: a card shows Waiting if any subagent waits on you (with what it's asking), Running if any still works, and counts subagents' files, lines and tool calls.
 - Codex sessions now show cost: OpenAI list prices for gpt-5.6-terra, gpt-5.6-luna, gpt-5.5 and gpt-5.3-codex, including long-context (over 272K prompt tokens), fast and flex rates.
+- Claude Code sessions the hooks didn't see (from before setup, or with hooks missing) are rebuilt from their transcripts: prompts, turns, tool calls, commands with exit codes, file edits with Claude Code's own diff counts, subagents and the PRs it reported. Recent transcripts are found automatically.
+- `shiplino backfill [--since 30d]` imports agent history from before setup, and `shiplino setup` imports the last 30 days so the board isn't empty on first run.
 - `doctor` explains degraded modes and how to fix them: the board running on another port because 4777 was busy, and file notifications being unavailable.
 
 ### Changed

@@ -54,8 +54,9 @@ type TranscriptMeta struct {
 // TranscriptDiscoverer is implemented by adapters whose transcripts can
 // be found by location (sessions without hooks, e.g. desktop apps).
 type TranscriptDiscoverer interface {
-	// TranscriptRoots returns glob patterns of recently active transcripts.
-	TranscriptRoots(userHome string, now time.Time) []string
+	// TranscriptRoots returns glob patterns that cover every transcript
+	// modified since `since` (callers still filter by modification time).
+	TranscriptRoots(userHome string, now, since time.Time) []string
 }
 
 // TranscriptParser is implemented by adapters that read the agent's own

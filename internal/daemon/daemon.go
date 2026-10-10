@@ -443,18 +443,24 @@ func (d *Daemon) checkIdle(ctx context.Context, now time.Time) error {
 // sessions that run without hooks (e.g. desktop apps).
 func (d *Daemon) discover() {
 	d.lastDiscover = time.Now()
+	d.discoverSince(time.Now().Add(-transcriptRecent))
+}
+
+// discoverSince registers transcripts modified since `since` and returns
+// how many were new.
+func (d *Daemon) discoverSince(recent time.Time) int {
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return
+		return 0
 	}
-	recent := time.Now().Add(-transcriptRecent)
+	before := len(d.transcripts)
 	for _, name := range adapters.Names() {
 		a, _ := adapters.Get(name)
 		td, ok := a.(adapters.TranscriptDiscoverer)
 		if !ok {
 			continue
 		}
-		for _, g := range td.TranscriptRoots(home, time.Now()) {
+		for _, g := range td.TranscriptRoots(home, time.Now(), recent) {
 			matches, _ := filepath.Glob(g)
 			for _, m := range matches {
 				if fi, err := os.Stat(m); err == nil && fi.ModTime().After(recent) {
@@ -463,6 +469,15 @@ func (d *Daemon) discover() {
 			}
 		}
 	}
+	return len(d.transcripts) - before
+}
+
+// Backfill imports agents' transcripts modified since `since`: history
+// from before Shiplino was set up. They are read on the next passes.
+func (d *Daemon) Backfill(since time.Time) int {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	return d.discoverSince(since)
 }
 
 // warmup replays a transcript up to off with Warmup set, so a parser that

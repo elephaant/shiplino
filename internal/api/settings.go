@@ -17,6 +17,9 @@ type Admin interface {
 	Pause(until time.Time) error // zero: until resumed
 	Resume() error
 	TestNotification(ctx context.Context) error
+	// Backfill imports transcripts modified since `since` and returns how
+	// many files were added.
+	Backfill(since time.Time) int
 }
 
 func (s *Server) settings(w http.ResponseWriter, r *http.Request) {
@@ -63,6 +66,25 @@ func (s *Server) resume(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, s.Admin.Settings(r.Context()))
+}
+
+// backfill: POST /api/v1/backfill {"days": 30}
+func (s *Server) backfill(w http.ResponseWriter, r *http.Request) {
+	if s.Admin == nil {
+		writeError(w, http.StatusNotImplemented, "settings unavailable")
+		return
+	}
+	body := struct {
+		Days int `json:"days"`
+	}{Days: 30}
+	if r.ContentLength != 0 {
+		if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4<<10)).Decode(&body); err != nil || body.Days < 1 || body.Days > 3650 {
+			writeError(w, http.StatusBadRequest, "days must be 1-3650")
+			return
+		}
+	}
+	n := s.Admin.Backfill(time.Now().AddDate(0, 0, -body.Days))
+	writeJSON(w, http.StatusOK, map[string]int{"transcripts": n, "days": body.Days})
 }
 
 func (s *Server) testNotification(w http.ResponseWriter, r *http.Request) {

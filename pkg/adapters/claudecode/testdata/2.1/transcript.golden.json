@@ -32,6 +32,29 @@
     "v": 1,
     "ts": "2026-10-09T10:00:03.2Z",
     "received_at": "2026-10-09T10:00:00Z",
+    "kind": "tool.start",
+    "agent": {
+      "name": "claude-code"
+    },
+    "collector": "transcript",
+    "session_id": "claude-code:sess-0001",
+    "actor_id": "claude-code:sess-0001",
+    "project": {
+      "cwd": "/home/dev/demo"
+    },
+    "data": {
+      "input_summary": "greet",
+      "tool": "search",
+      "tool_call_id": "toolu_01",
+      "tool_raw": "Grep"
+    },
+    "dedup_key": "claude-code:sess-0001:toolu_01:start"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:03.2Z",
+    "received_at": "2026-10-09T10:00:00Z",
     "kind": "usage",
     "agent": {
       "name": "claude-code",

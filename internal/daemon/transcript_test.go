@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 const transcriptFixture = "../../pkg/adapters/claudecode/testdata/2.1/transcript.jsonl"
@@ -142,5 +143,45 @@ func TestOversizedLineIsSkipped(t *testing.T) {
 	}
 	if e.d.Stats().Bad != 1 {
 		t.Fatalf("stats = %+v", e.d.Stats())
+	}
+}
+
+// A Claude Code session the hooks never saw is found by discovery and
+// rebuilt from its transcript: turns, tools, commands, edits and its PR.
+func TestHooklessClaudeSessionFromTranscript(t *testing.T) {
+	home := withHome(t)
+	e := newEnv(t)
+	dir := filepath.Join(home, ".claude", "projects", "-home-dev-shop")
+	os.MkdirAll(dir, 0o700)
+	b, err := os.ReadFile("../../pkg/adapters/claudecode/testdata/2.1/activity.jsonl")
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.WriteFile(filepath.Join(dir, "sess-9.jsonl"), b, 0o600)
+	e.poll()
+
+	s := e.session("claude-code:sess-9")
+	if s.Turns != 1 || s.ToolCalls != 2 || s.ToolErrors != 1 || s.LinesAdded != 2 || s.LinesRemoved != 1 || len(s.Links) != 1 {
+		t.Fatalf("session: turns=%d tools=%d errs=%d +%d -%d links=%v", s.Turns, s.ToolCalls, s.ToolErrors, s.LinesAdded, s.LinesRemoved, s.Links)
+	}
+	if sub := e.session("claude-code:sess-9/sub:ag-1"); sub.ToolCalls != 1 {
+		t.Fatalf("subagent: %+v", sub)
+	}
+	// Backfill finds older files that discovery skips.
+	old := filepath.Join(dir, "old.jsonl")
+	os.WriteFile(old, []byte(strings.ReplaceAll(string(b), "sess-9", "sess-old")), 0o600)
+	week := time.Now().Add(-7 * 24 * time.Hour)
+	os.Chtimes(old, week, week)
+	e.d.discover()
+	e.poll()
+	if s, _ := e.st.Session(ctx, "claude-code:sess-old"); s != nil {
+		t.Fatal("discovery imported a week-old transcript")
+	}
+	if n := e.d.Backfill(time.Now().Add(-30 * 24 * time.Hour)); n != 1 {
+		t.Fatalf("backfill registered %d", n)
+	}
+	e.poll()
+	if s := e.session("claude-code:sess-old"); s.ToolCalls != 2 {
+		t.Fatalf("backfilled session: %+v", s)
 	}
 }

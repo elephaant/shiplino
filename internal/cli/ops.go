@@ -4,6 +4,7 @@
 package cli
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -58,6 +59,26 @@ func (c *client) get(ctx context.Context, path string, v any) error {
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("daemon returned %s for %s", resp.Status, path)
+	}
+	return json.NewDecoder(resp.Body).Decode(v)
+}
+
+// post sends a JSON body and decodes the JSON answer into v (if not nil).
+func (c *client) post(ctx context.Context, path string, body, v any) error {
+	b, _ := json.Marshal(body)
+	req, _ := http.NewRequestWithContext(ctx, "POST", c.base+path, bytes.NewReader(b))
+	req.Header.Set("Authorization", "Bearer "+c.token)
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return errDaemonDown
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode/100 != 2 {
+		return fmt.Errorf("daemon returned %s for %s", resp.Status, path)
+	}
+	if v == nil || resp.StatusCode == http.StatusNoContent {
+		return nil
 	}
 	return json.NewDecoder(resp.Body).Decode(v)
 }
