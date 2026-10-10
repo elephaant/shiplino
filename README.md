@@ -5,7 +5,7 @@ Every project, every session, every subagent, every command, every file, every d
 
 **One command to install. Zero tokens to run.**
 
-> ⚠️ **Status: alpha.** Claude Code, Codex (CLI and desktop app), Cursor (IDE agent and CLI), Gemini CLI, GitHub Copilot CLI and Windsurf are supported, plus Aider or any CLI agent through `shiplino wrap`, and custom agents through the SDKs. Expect rough edges and report them in Issues.
+> ⚠️ **Status: alpha.** Claude Code, Codex (CLI and desktop app), Cursor (IDE agent and CLI), Gemini CLI, GitHub Copilot CLI, Windsurf, OpenCode and Cline are supported, plus Aider or any CLI agent through `shiplino wrap`, and custom agents through the SDKs. Expect rough edges and report them in Issues.
 
 ---
 
