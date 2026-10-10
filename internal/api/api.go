@@ -175,20 +175,44 @@ func securityHeaders(next http.Handler) http.Handler {
 func (s *Server) auth(next http.HandlerFunc) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var got string
+		cookie := false
 		if h := r.Header.Get("Authorization"); h != "" {
 			got, _ = strings.CutPrefix(h, "Bearer ")
 			if got == h {
 				got = "" // not a Bearer header: reject rather than guess
 			}
 		} else if c, err := r.Cookie(cookieName); err == nil {
-			got = c.Value
+			got, cookie = c.Value, true
 		}
 		if subtle.ConstantTimeCompare([]byte(got), []byte(s.token)) != 1 {
 			writeError(w, http.StatusUnauthorized, "missing or invalid token")
 			return
 		}
+		// SameSite=Strict doesn't separate ports: a page on another
+		// localhost port is the same site and gets the cookie. So a
+		// cookie-authenticated request that changes something must come
+		// from this page (Bearer callers, the CLI and SDKs, can't be
+		// forged cross-site).
+		if cookie && r.Method != http.MethodGet && r.Method != http.MethodHead && !s.fromThisPage(r) {
+			writeError(w, http.StatusForbidden, "cross-origin request refused")
+			return
+		}
 		next(w, r)
 	})
+}
+
+// fromThisPage reports whether a browser request comes from the page
+// this server serves (or the configured dev server). Browsers send Origin
+// on every POST, PATCH and DELETE; Sec-Fetch-Site covers the rest.
+func (s *Server) fromThisPage(r *http.Request) bool {
+	if o := r.Header.Get("Origin"); o != "" {
+		return o == "http://"+r.Host || s.DevOrigin != "" && o == s.DevOrigin
+	}
+	switch r.Header.Get("Sec-Fetch-Site") {
+	case "", "same-origin", "none":
+		return true
+	}
+	return false
 }
 
 // index serves the page and hands the browser the token as a strict,
