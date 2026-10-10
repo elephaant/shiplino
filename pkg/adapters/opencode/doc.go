@@ -31,7 +31,7 @@
 //	                       own tokens and cost
 //	permission.asked       waiting.start (permission); permission.updated in
 //	                       older versions
-//	permission.replied     waiting.end
+//	permission.replied     waiting.end (denied when the reply is "reject")
 //	question.asked         waiting.start (question); question.replied/rejected: waiting.end
 //	session.idle           turn.end (subagent.end for a child)
 //	session.compacted      compact

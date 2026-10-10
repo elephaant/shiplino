@@ -1,11 +1,17 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/elephaant/shiplino/pkg/engine"
+	"github.com/elephaant/shiplino/pkg/insights"
+	"github.com/elephaant/shiplino/pkg/model"
+	"github.com/elephaant/shiplino/pkg/projects"
 )
 
 func TestBuildInsights(t *testing.T) {
@@ -58,5 +64,81 @@ func TestInsightsEndpoint(t *testing.T) {
 	}
 	if resp, _ := f.get(t, "/api/v1/insights?days=0", bearer); resp.StatusCode != 400 {
 		t.Fatalf("bad days: %d", resp.StatusCode)
+	}
+}
+
+func TestInsightsFailures(t *testing.T) {
+	f := setup(t)
+	ctx := context.Background()
+	now := time.Now().UTC().Truncate(time.Millisecond)
+	tx, _ := f.s.st.Begin(ctx)
+	sid := "claude-code:f1"
+	proj := &model.Project{ID: "github.com/acme/api", CWD: "/home/dev/api"}
+	tx.PutProject(ctx, projects.Project{ID: proj.ID, Name: "api", Kind: "git", RepoRoot: "/home/dev/api"}, now)
+	type step struct {
+		kind model.Kind
+		data map[string]any
+	}
+	steps := []step{
+		{model.KindToolStart, map[string]any{"tool_call_id": "t1", "tool": "shell", "tool_raw": "Bash", "input_summary": "go test ./auth -run TestSecretThing"}},
+		{model.KindToolEnd, map[string]any{"tool_call_id": "t1", "tool": "shell", "ok": false, "error": "FAIL: TestSecretThing"}},
+		{model.KindShellExec, map[string]any{"tool_call_id": "t1", "command": "go test ./auth -run TestSecretThing", "program": "go", "exit_code": 1}},
+	}
+	for i := range 3 {
+		id := fmt.Sprint("e", i)
+		steps = append(steps,
+			step{model.KindToolStart, map[string]any{"tool_call_id": id, "tool": "edit", "tool_raw": "Edit", "input_summary": "/home/dev/api/src/auth.go"}},
+			step{model.KindToolEnd, map[string]any{"tool_call_id": id, "tool": "edit", "ok": false, "error": "old_string not found"}})
+	}
+	steps = append(steps, step{model.KindTurnEnd, map[string]any{"status": "error", "error": "API overloaded"}})
+	eng := engine.New(nil, nil)
+	for i, ev := range steps {
+		at := now.Add(time.Duration(i) * time.Second)
+		e := model.Event{ID: model.NewULID(at), V: 1, TS: at, Kind: ev.kind, Agent: model.Agent{Name: "claude-code"},
+			Collector: model.CollectorHook, SessionID: sid, ActorID: sid, DedupKey: fmt.Sprint("f", i), Data: ev.data, Project: proj}
+		tx.InsertEvent(ctx, e)
+		for _, x := range eng.Apply(e) {
+			tx.PutSession(ctx, x)
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		t.Fatal(err)
+	}
+	resp, body := f.get(t, "/api/v1/insights?days=7", bearer)
+	var in struct {
+		Failures json.RawMessage `json:"failures"`
+	}
+	if resp.StatusCode != 200 || json.Unmarshal(body, &in) != nil {
+		t.Fatalf("insights: %d %s", resp.StatusCode, body)
+	}
+	var fl insights.Failures
+	if err := json.Unmarshal(in.Failures, &fl); err != nil {
+		t.Fatal(err)
+	}
+	if fl.ToolFailures != 4 || fl.ShellFailures != 1 || fl.EndedBadly != 1 || fl.RetryLoops != 1 || fl.Shell[0].Program != "go" || fl.Shell[0].IDs[0] != sid ||
+		fl.Tools[0].ToolRaw != "Edit" || fl.Tools[1].ToolRaw != "Bash" || fl.Endings[0].Status != "error" || fl.Projects[0].Name != "api" ||
+		fl.Loops[0].Target != "src/auth.go" {
+		t.Fatalf("failures: %s", in.Failures)
+	}
+	// The report is metadata only: no command, error or argument text.
+	for _, s := range []string{"TestSecretThing", "overloaded", "./auth", "old_string", "/home/dev"} {
+		if strings.Contains(string(in.Failures), s) {
+			t.Errorf("failures contain %q: %s", s, in.Failures)
+		}
+	}
+}
+
+func TestRelPath(t *testing.T) {
+	cases := []struct{ root, in, want string }{
+		{"/home/dev/api", "/home/dev/api/src/a.go", "src/a.go"},
+		{"/home/dev/api", "/home/dev/other/b.go", "…/b.go"},
+		{"", "/home/dev/api/a.go", "…/a.go"},
+		{"/home/dev/api", "src/a.go", "src/a.go"},
+		{"/home/dev/api", "/home/dev/api", "."},
+	}
+	for _, c := range cases {
+		if got := relPath(c.root, c.in); got != c.want {
+			t.Errorf("relPath(%q, %q) = %q, want %q", c.root, c.in, got, c.want)
+		}
 	}
 }

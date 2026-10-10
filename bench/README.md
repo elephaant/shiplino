@@ -12,6 +12,7 @@ make bench                # full size; fails if a target is missed
 | `TestLoad` | 50 sessions × 4 subagents × 10 tool calls/s (4,000 hooks/s) for 20 s: hook → `OnChange` and hook → WebSocket latency, per-commit time, board query time under load. Checks every tool call was counted once | hook → live view p95 < 500 ms |
 | `TestIngestThroughput` | One daemon pass over a 200,000-line spool backlog | > 20,000 events/s |
 | `TestBoardQueryWithHistory` | Board of a project with 2,000 past sessions × 4 subagents | p95 < 30 ms |
+| `TestInsightsWithHistory` | Insights over 2,000 sessions × 40 tool calls, a third with failures and retry loops: the endpoint, and the failure report built from the sessions the engine folded | failure report p95 < 30 ms |
 
 Notes:
 

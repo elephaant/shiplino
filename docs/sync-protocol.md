@@ -60,7 +60,7 @@ The sync service applies the same filter again when it receives events, so an ol
 | Envelope | `id`, `v`, `ts`, `received_at`, `kind`, `agent`, `collector`, `machine_id`, `session_id`, `actor_id`, `parent_actor`, `actor_type`, `turn_id`, `dedup_key`, `project` (`id`, `remote`, `branch`, `head`; no local folders) |
 | Tools, agents and models | `tool`, `tool_raw`, `tool_call_id`, `agent_type`, `agent_id`, `attribution`, `child_session_id`, `model`, `speed`, `inference_geo`, `message_id`, `request_id`, `agent_version`, `wrapped`, `card_id` |
 | Tokens and cost | `input_tokens`, `output_tokens`, `cache_read_tokens`, `cache_write_tokens`, `cache_write_1h_tokens`, `reasoning_tokens`, `web_searches`, `tokens`, `tokens_rounded`, `tokens_source`, `prompt_chars`, `cost_usd`, `cost_source`, `total_cost_usd`, `message_cost_usd`, `report`, `process`, `correction`, `model_usage` (numbers only) |
-| Outcomes and timing | `ok`, `exit_code`, `duration_ms`, `status`, `reason`, `signal`, `interrupted`, `stop_reason`, `recoverable`, `permission_mode`, `source`, `trigger` |
+| Outcomes and timing | `ok`, `exit_code`, `duration_ms`, `status`, `reason`, `signal`, `interrupted`, `stop_reason`, `recoverable`, `permission_mode`, `source`, `trigger`, `denied`, and a shell command's `program` (its program name, e.g. `go`: a checked token of at most 32 characters of `[a-z0-9._-]`, never the command) |
 | Files | `path`, `file_path`, `files`, `file_paths`, `paths` (project-relative), `lines_added`, `lines_removed`, `lines_source`, `files_changed`, `patch_omitted`, and a file tool's `input_summary` (its path) |
 | Git | `sha`, `branch`, `to`, `number`, `state`, `action`, `head`, and a pull request's `url` |
 | Plan progress | `plan_total`, `plan_done` (counts, not the items) |

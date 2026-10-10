@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { Empty } from "@/components/common/empty";
 import { ByAgent, ByProject, CostSources, Models, Tools } from "@/components/insights/breakdowns";
 import { DailyChart } from "@/components/insights/daily-chart";
+import { Failures } from "@/components/insights/failures";
 import { Kpis } from "@/components/insights/kpis";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -135,6 +136,7 @@ export default function InsightsPage() {
             </div>
           </div>
           <Models rows={data.models} />
+          <Failures f={data.failures} projectNames={Object.fromEntries(projects.map((p) => [p.id, p.name]))} />
         </>
       )}
     </div>

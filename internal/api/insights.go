@@ -2,12 +2,17 @@ package api
 
 import (
 	"net/http"
+	"path"
+	"path/filepath"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/elephaant/shiplino/internal/store"
 	"github.com/elephaant/shiplino/pkg/engine"
+	"github.com/elephaant/shiplino/pkg/insights"
+	"github.com/elephaant/shiplino/pkg/projects"
 )
 
 // Totals are the headline numbers for a period. Sessions are counted in
@@ -68,6 +73,9 @@ type Insights struct {
 	// CostSources counts top-level sessions by where their cost comes from.
 	// "unpriced": tokens without a price; "none": no usage recorded at all.
 	CostSources map[string]int `json:"cost_sources"` // reported | computed | unpriced | none
+	// Failures are the period's failed tool calls and commands, refused
+	// permissions, retry loops and sessions that ended badly.
+	Failures insights.Failures `json:"failures"`
 }
 
 // insights: GET /api/v1/insights?days=30&project=
@@ -99,13 +107,18 @@ func (s *Server) insights(w http.ResponseWriter, r *http.Request) {
 		s.internal(w, err)
 		return
 	}
-	names := map[string]string{}
+	names, roots := map[string]string{}, map[string]string{}
 	if ps, err := s.st.Projects(r.Context()); err == nil {
 		for _, p := range ps {
-			names[p.ID] = p.Name
+			names[p.ID], roots[p.ID] = p.Name, projectRoot(p.Project)
 		}
 	}
-	writeJSON(w, http.StatusOK, buildInsights(all, from, to, prevFrom, days, tools, names))
+	out := buildInsights(all, from, to, prevFrom, days, tools, names)
+	// Loop targets are shown (and synced) relative to the project.
+	for i, l := range out.Failures.Loops {
+		out.Failures.Loops[i].Target = relPath(roots[l.Project], l.Target)
+	}
+	writeJSON(w, http.StatusOK, out)
 }
 
 func buildInsights(all []*engine.Session, from, to, prevFrom time.Time, days int, tools []store.ToolCount, names map[string]string) Insights {
@@ -113,6 +126,7 @@ func buildInsights(all []*engine.Session, from, to, prevFrom time.Time, days int
 	if out.Tools == nil {
 		out.Tools = []store.ToolCount{}
 	}
+	var entries []insights.Entry
 	byDay := map[string]*Day{}
 	for i := 0; i < days; i++ {
 		date := from.AddDate(0, 0, i).Format("2006-01-02")
@@ -179,6 +193,8 @@ func buildInsights(all []*engine.Session, from, to, prevFrom time.Time, days int
 		if t != &out.Totals {
 			continue
 		}
+		entries = append(entries, insights.Entry{Root: x.RootID, Agent: x.Agent, Project: x.ProjectID, IsRoot: x.ParentID == "",
+			At: x.LastEventAt, Tally: x.Failures})
 		if x.Model != "" {
 			m := get(models, x.Model)
 			m.InputTokens += x.InputTokens
@@ -226,6 +242,13 @@ func buildInsights(all []*engine.Session, from, to, prevFrom time.Time, days int
 		out.Daily[i] = *byDay[from.AddDate(0, 0, i).Format("2006-01-02")]
 	}
 	out.Agents, out.Projects, out.Models = sorted(agents, nil), sorted(projects, names), sorted(models, nil)
+	out.Failures = insights.Report(entries)
+	for i, p := range out.Failures.Projects {
+		out.Failures.Projects[i].Name = names[p.Key]
+		if p.Key == "" {
+			out.Failures.Projects[i].Name = "Unsorted"
+		}
+	}
 	return out
 }
 
@@ -250,4 +273,42 @@ func sorted(m map[string]*Breakdown, names map[string]string) []Breakdown {
 		return out[i].Key < out[j].Key
 	})
 	return out
+}
+
+// projectRoot is a project's folder: its repository root, or the folder in
+// a local project's id.
+func projectRoot(p projects.Project) string {
+	if p.RepoRoot != "" {
+		return p.RepoRoot
+	}
+	for _, prefix := range []string{"local:", "dir:"} {
+		if rest, ok := strings.CutPrefix(p.ID, prefix); ok {
+			return rest
+		}
+	}
+	return ""
+}
+
+// relPath makes a path relative to the project folder with the same rule
+// as sync: a path outside it becomes "…/" and its base name. Unix and
+// Windows paths are accepted on every OS.
+func relPath(root, p string) string {
+	if !isAbs(p) {
+		return p
+	}
+	sp := filepath.ToSlash(p)
+	if r := strings.TrimRight(filepath.ToSlash(root), "/"); r != "" && isAbs(root) {
+		if sp == r {
+			return "."
+		}
+		if rest, ok := strings.CutPrefix(sp, r+"/"); ok {
+			return rest
+		}
+	}
+	return "…/" + path.Base(strings.ReplaceAll(sp, `\`, "/"))
+}
+
+func isAbs(p string) bool {
+	return filepath.IsAbs(p) || strings.HasPrefix(p, "/") || strings.HasPrefix(p, `\`) ||
+		len(p) > 2 && p[1] == ':' && (p[2] == '\\' || p[2] == '/')
 }

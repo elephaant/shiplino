@@ -149,6 +149,61 @@ export interface Insights {
   models: InsightRow[];
   tools: { tool: string; kind: string; calls: number }[];
   cost_sources: Record<string, number>;
+  failures: Failures;
+}
+
+/** The sessions behind a failure row, most recent first (at most 20 ids). */
+export interface FailureLinks {
+  session_count: number;
+  sessions: string[];
+}
+
+export interface FailureScope extends FailureLinks {
+  key: string;
+  name?: string;
+  tool_failures: number;
+  shell_failures: number;
+  denials: number;
+  retry_loops: number;
+  ended_badly: number;
+}
+
+/** Failure analytics. Built from metadata only: no command or error text. */
+export interface Failures {
+  tool_failures: number;
+  shell_failures: number;
+  denials: number;
+  retry_loops: number;
+  ended_badly: number;
+  tools: (FailureLinks & {
+    agent: string;
+    tool: string;
+    tool_raw: string;
+    failures: number;
+    denials: number;
+    projects: string[];
+  })[];
+  shell: (FailureLinks & {
+    program: string;
+    exit_code: number;
+    failures: number;
+    agents: string[];
+    projects: string[];
+  })[];
+  loops: {
+    session: string;
+    agent: string;
+    project: string;
+    tool: string;
+    tool_raw: string;
+    target: string;
+    failures: number;
+    first: string;
+    last: string;
+  }[];
+  endings: { session: string; agent: string; project: string; status: "error" | "interrupted"; at: string }[];
+  agents: FailureScope[];
+  projects: FailureScope[];
 }
 
 export interface AgentStatus {
