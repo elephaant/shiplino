@@ -27,6 +27,11 @@ import (
 //	event_msg/task_complete turn end (duration_ms)
 //	event_msg/turn_aborted  turn interrupted
 //	token_usage_record      Codex's own usage per API response (response_id)
+//	event_msg/token_count   running totals, plus rate_limits on ChatGPT
+//	                        plans: primary/secondary {used_percent,
+//	                        window_minutes, resets_at (Unix seconds)},
+//	                        limit_id, plan_type (RateLimitSnapshot in
+//	                        codex-rs/protocol, checked 2026-10-10)
 //	event_msg/item_completed CommandExecution, FileChange, McpToolCall
 //
 // token_usage_record is used for tokens: one per API response, so each is
@@ -160,6 +165,8 @@ func (Adapter) ParseTranscriptLine(raw []byte, meta adapters.TranscriptMeta) ([]
 		e := event(st, meta, l, model.KindUsage, data, "usage:"+r.ResponseID)
 		e.TurnID = r.TurnID
 		return []model.Event{e}, nil
+	case sub == "token_count":
+		return limits(st, meta, l, p["rate_limits"]), nil
 	case sub == "user_message":
 		return []model.Event{turnStart(st, meta, l, str(p["message"]), st["turn"])}, nil
 	case sub == "task_complete":
@@ -194,6 +201,46 @@ func (Adapter) ParseTranscriptLine(raw []byte, meta adapters.TranscriptMeta) ([]
 		return items(st, meta, l, p["item"]), nil
 	}
 	return nil, nil
+}
+
+// limits turns Codex's rate-limit snapshot into one limit event per
+// window. The windows belong to the account, not the session, so the
+// dedup key is global: a state seen from parallel sessions is stored
+// once, and each change is a new event.
+func limits(st map[string]string, meta adapters.TranscriptMeta, l line, raw json.RawMessage) []model.Event {
+	type window struct {
+		UsedPercent   *float64 `json:"used_percent"`
+		WindowMinutes int64    `json:"window_minutes"`
+		ResetsAt      int64    `json:"resets_at"`
+	}
+	var rl struct {
+		LimitID   string  `json:"limit_id"`
+		Primary   *window `json:"primary"`
+		Secondary *window `json:"secondary"`
+		PlanType  string  `json:"plan_type"`
+	}
+	if json.Unmarshal(raw, &rl) != nil {
+		return nil
+	}
+	var out []model.Event
+	for _, w := range []*window{rl.Primary, rl.Secondary} {
+		if w == nil || w.UsedPercent == nil || w.WindowMinutes <= 0 {
+			continue
+		}
+		var resets time.Time
+		if w.ResetsAt > 0 {
+			resets = time.Unix(w.ResetsAt, 0)
+		}
+		id := rl.LimitID
+		if id == "codex" {
+			id = "" // the main limit; others (e.g. per model) keep their id
+		}
+		data := adapters.LimitData(w.WindowMinutes, id, *w.UsedPercent, resets, rl.PlanType)
+		e := event(st, meta, l, model.KindLimit, data, "")
+		e.DedupKey = fmt.Sprintf("%s:limit:%s:%d:%d:%g", Name, rl.LimitID, w.WindowMinutes, w.ResetsAt, *w.UsedPercent)
+		out = append(out, e)
+	}
+	return out
 }
 
 func turnStart(st map[string]string, meta adapters.TranscriptMeta, l line, prompt, turn string) model.Event {

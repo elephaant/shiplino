@@ -7,6 +7,7 @@ import { PRBadge } from "@/components/common/pr-badge";
 import { Badge } from "@/components/ui/badge";
 import type { BoardCard } from "@/lib/api";
 import { formatCost, formatDuration, noUsageReason } from "@/lib/format";
+import { API_EQUIVALENT, onPlan, useLimits } from "@/lib/limits";
 
 const statusDot: Record<string, string> = {
   running: "bg-status-running",
@@ -28,6 +29,7 @@ function DoingIcon({ text }: { text: string }) {
 
 export function CardView({ card, dragging, onOpen }: { card: BoardCard; dragging?: boolean; onOpen?: () => void }) {
   const waiting = card.status === "waiting";
+  const limits = useLimits();
   const subs = card.subagents ?? [];
   const shown =
     subs.length > 3 ? subs.filter((s) => s.status === "running" || s.status === "waiting").slice(0, 3) : subs;
@@ -122,7 +124,7 @@ export function CardView({ card, dragging, onOpen }: { card: BoardCard; dragging
             </Badge>
           ) : (
             <span
-              title={card.cost_source === "reported" ? "Reported by the agent" : "Computed from tokens × list prices"}
+              title={`${card.cost_source === "reported" ? "Reported by the agent" : "Computed from tokens × list prices"}${onPlan(limits, card.agent) ? `. ${API_EQUIVALENT}` : ""}`}
             >
               {formatCost(card.cost_usd)}
             </span>

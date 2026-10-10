@@ -233,6 +233,8 @@ export interface Settings {
     finished: boolean;
     failed: boolean;
     min_turn_ms: number;
+    /** Plan usage window alert threshold; 0 when off. */
+    limit_percent: number;
     available: boolean;
     via?: string;
   };

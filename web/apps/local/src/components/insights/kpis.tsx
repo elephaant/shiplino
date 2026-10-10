@@ -2,6 +2,7 @@ import { ArrowDownRight, ArrowUpRight, Minus } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { InsightTotals } from "@/lib/api";
 import { change, formatCost, formatDuration } from "@/lib/format";
+import { API_EQUIVALENT } from "@/lib/limits";
 
 function Delta({ cur, prev, days, goodWhenDown }: { cur: number; prev: number; days: number; goodWhenDown?: boolean }) {
   const pct = change(cur, prev);
@@ -21,7 +22,19 @@ function Delta({ cur, prev, days, goodWhenDown }: { cur: number; prev: number; d
   );
 }
 
-function Tile({ title, value, sub, delta }: { title: string; value: string; sub?: string; delta: React.ReactNode }) {
+function Tile({
+  title,
+  value,
+  sub,
+  hint,
+  delta,
+}: {
+  title: string;
+  value: string;
+  sub?: string;
+  hint?: string;
+  delta: React.ReactNode;
+}) {
   return (
     <Card className="gap-2 rounded-none py-4 shadow-none ring-0">
       <CardHeader className="px-4">
@@ -32,20 +45,36 @@ function Tile({ title, value, sub, delta }: { title: string; value: string; sub?
           <div className="truncate font-mono text-2xl leading-none tracking-tight tabular-nums">{value}</div>
           {delta}
         </div>
-        {sub && <div className="truncate text-muted-foreground text-xs">{sub}</div>}
+        {sub && (
+          <div className="truncate text-muted-foreground text-xs" title={hint}>
+            {sub}
+          </div>
+        )}
       </CardContent>
     </Card>
   );
 }
 
-export function Kpis({ t, p, days }: { t: InsightTotals; p: InsightTotals; days: number }) {
+export function Kpis({
+  t,
+  p,
+  days,
+  apiEquivalent,
+}: {
+  t: InsightTotals;
+  p: InsightTotals;
+  days: number;
+  /** Some agents run on a flat-rate plan: $ is what it would cost, not a bill. */
+  apiEquivalent?: boolean;
+}) {
   return (
     <div className="overflow-hidden rounded-xl border bg-card">
       <div className="grid divide-y sm:grid-cols-2 sm:divide-x lg:grid-cols-5 lg:divide-y-0">
         <Tile
           title="Spend"
           value={formatCost(t.cost_usd)}
-          sub="at list prices"
+          sub={apiEquivalent ? "API-equivalent, at list prices" : "at list prices"}
+          hint={apiEquivalent ? API_EQUIVALENT : undefined}
           delta={<Delta cur={t.cost_usd} prev={p.cost_usd} days={days} />}
         />
         <Tile

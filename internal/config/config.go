@@ -22,6 +22,7 @@ type Config struct {
 	Notify       Notify       `toml:"notify"`
 	Sync         Sync         `toml:"sync"`
 	Budget       Budget       `toml:"budget"`
+	Limits       Limits       `toml:"limits"`
 	Integrations Integrations `toml:"integrations"`
 }
 
@@ -63,6 +64,27 @@ type Notify struct {
 	Finished *bool  `toml:"finished"`
 	Failed   *bool  `toml:"failed"`
 	MinTurn  string `toml:"min_turn"` // e.g. "30s", "2m"
+	// LimitPercent notifies when an agent reports this much of a plan
+	// usage window used (default 80; 0 = off).
+	LimitPercent *float64 `toml:"limit_percent"`
+}
+
+// Limits says which agents run on a flat-rate plan.
+type Limits struct {
+	// Plans is "plan" or "api" per agent name. Unlisted agents count as
+	// on a plan once they report a usage limit.
+	Plans map[string]string `toml:"plans"`
+}
+
+// LimitPercent returns the plan usage alert threshold; 0 when off.
+func (c Config) LimitPercent() float64 {
+	if _, on := c.NotifySettings(); !on {
+		return 0
+	}
+	if c.Notify.LimitPercent == nil {
+		return 80
+	}
+	return *c.Notify.LimitPercent
 }
 
 // Redaction holds user-defined patterns on top of the built-in rules.
@@ -108,6 +130,14 @@ func Load(home string) (Config, error) {
 	if c.Notify.MinTurn != "" {
 		if d, err := time.ParseDuration(c.Notify.MinTurn); err != nil || d < 0 {
 			return c, fmt.Errorf("%s: notify.min_turn: want a duration like \"30s\" or \"2m\"", Path(home))
+		}
+	}
+	if p := c.Notify.LimitPercent; p != nil && (*p < 0 || *p > 100) {
+		return c, fmt.Errorf("%s: notify.limit_percent must be 0-100", Path(home))
+	}
+	for k, v := range c.Limits.Plans {
+		if v != "plan" && v != "api" {
+			return c, fmt.Errorf("%s: limits.plans.%s: want \"plan\" or \"api\"", Path(home), k)
 		}
 	}
 	if _, err := redact.New(c.Redaction.ExtraPatterns); err != nil {
@@ -173,6 +203,7 @@ waiting = true      # an agent is waiting on you (after 3s, so quick answers don
 finished = true     # a turn finished...
 min_turn = "30s"    # ...that ran at least this long
 failed = true       # a session failed
+limit_percent = 80  # an agent reports this much of a plan usage window used (0 = off)
 
 [budget]
 # Spend limits in USD at list prices (0 = none). You're notified at 80%
@@ -185,6 +216,13 @@ digest = ""
 [budget.projects]
 # Daily limits per project, by name or id, e.g.:
 # api = 20
+
+[limits.plans]
+# Which agents run on a flat-rate plan ("plan") or pay per token ("api").
+# An agent counts as on a plan once it reports a usage limit (Codex does on
+# ChatGPT plans). For a plan agent that reports no percentages, Shiplino
+# shows the tokens used in its current windows, as an estimate. E.g.:
+# claude-code = "plan"
 
 [integrations.github]
 # Show pull request state (open, merged, CI checks, reviews) on cards.

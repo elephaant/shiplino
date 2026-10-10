@@ -36,8 +36,11 @@ const (
 	// KindSessionUpdate changes session metadata (title, model) reported by
 	// the agent, without changing status.
 	KindSessionUpdate Kind = "session.update"
-	KindError         Kind = "error"
-	KindNote          Kind = "note"
+	// KindLimit is the state of a plan usage window (5-hour, weekly) as
+	// the agent reports it: how much is used and when it resets.
+	KindLimit Kind = "limit"
+	KindError Kind = "error"
+	KindNote  Kind = "note"
 )
 
 var knownKinds = map[Kind]bool{
@@ -46,7 +49,7 @@ var knownKinds = map[Kind]bool{
 	KindFileEdit: true, KindMCPCall: true, KindWaitingStart: true, KindWaitingEnd: true,
 	KindSubagentStart: true, KindSubagentEnd: true, KindUsage: true, KindCompact: true,
 	KindGitCommit: true, KindGitBranch: true, KindGitPush: true, KindGitPR: true,
-	KindSessionUpdate: true, KindError: true, KindNote: true,
+	KindSessionUpdate: true, KindLimit: true, KindError: true, KindNote: true,
 }
 
 // Known reports whether k is a kind defined by schema v1.

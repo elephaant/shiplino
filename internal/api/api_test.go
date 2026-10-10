@@ -82,6 +82,21 @@ func (f *fixture) get(t *testing.T, path string, mod func(*http.Request)) (*http
 
 func bearer(r *http.Request) { r.Header.Set("Authorization", "Bearer "+token) }
 
+func TestLimits(t *testing.T) {
+	f := setup(t)
+	if resp, _ := f.get(t, "/api/v1/limits", bearer); resp.StatusCode != http.StatusNotImplemented {
+		t.Fatalf("without limits: %d", resp.StatusCode)
+	}
+	if resp, _ := f.get(t, "/api/v1/limits", nil); resp.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("no token: %d", resp.StatusCode)
+	}
+	f.s.Limits = func(context.Context) (any, error) { return map[string]any{"windows": []any{}}, nil }
+	resp, body := f.get(t, "/api/v1/limits", bearer)
+	if resp.StatusCode != 200 || !strings.Contains(string(body), `"windows":[]`) {
+		t.Fatalf("limits: %d %s", resp.StatusCode, body)
+	}
+}
+
 func TestHostHeaderBlocksDNSRebinding(t *testing.T) {
 	f := setup(t)
 	for _, host := range []string{"evil.example.com", "evil.example.com:4777", "192.168.1.5"} {

@@ -255,5 +255,28 @@
       "total_cost_usd": 0.25
     },
     "dedup_key": "claude-code:sess-0001:cost-state:1791367200000:0.250000000"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:05:00Z",
+    "received_at": "2026-10-09T10:00:00Z",
+    "kind": "limit",
+    "agent": {
+      "name": "claude-code",
+      "version": "2.1.290"
+    },
+    "collector": "transcript",
+    "session_id": "claude-code:sess-0001",
+    "actor_id": "claude-code:sess-0001",
+    "data": {
+      "limit_reached": true,
+      "limit_source": "reported",
+      "limit_window": "5h",
+      "resets_at": "2026-10-09T12:40:00Z",
+      "used_percent": 100,
+      "window_minutes": 300
+    },
+    "dedup_key": "claude-code:limit:five_hour:1791549600"
   }
 ]

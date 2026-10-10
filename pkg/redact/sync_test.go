@@ -66,6 +66,11 @@ func TestForSyncSendsMetadataOnly(t *testing.T) {
 		{model.KindUsage,
 			map[string]any{"model": "m", "input_tokens": 10, "cost_usd": 0.5, "model_usage": map[string]any{"m": map[string]any{"inputTokens": 10.0, "note": "x"}}},
 			map[string]any{"model": "m", "input_tokens": 10, "cost_usd": 0.5, "model_usage": map[string]any{"m": map[string]any{"inputTokens": 10.0}}}},
+		{model.KindLimit,
+			map[string]any{"limit_window": "5h", "window_minutes": 300, "used_percent": 62.5, "limit_reached": false, "resets_at": "2026-10-09T12:20:00Z",
+				"limit_id": "codex", "plan_type": "plus", "limit_source": "reported", "message": "You've hit your limit"},
+			map[string]any{"limit_window": "5h", "window_minutes": 300, "used_percent": 62.5, "limit_reached": false, "resets_at": "2026-10-09T12:20:00Z",
+				"limit_id": "codex", "plan_type": "plus", "limit_source": "reported"}},
 	}
 	for _, c := range cases {
 		e := model.Event{Kind: c.kind, User: "dev", Raw: &model.RawRef{Ref: "x"}, Data: c.data}

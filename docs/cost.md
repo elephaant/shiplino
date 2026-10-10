@@ -79,6 +79,30 @@ Aider writes a usage line to its chat history after each response: `Tokens: 2.1k
 
 OpenCode prices every response itself, from its own model catalog, and Shiplino's plugin passes that through: each completed assistant message becomes one usage record with OpenCode's tokens and `cost_usd` (`cost_source: reported`). OpenCode reports input without cached tokens and output without reasoning tokens; Shiplino stores reasoning as output too (`reasoning_tokens` keeps the split). A session whose priced responses were all priced by OpenCode shows `cost_source: reported`. OpenCode reports $0 for models it has no price for and for some subscription providers; those responses are priced from Shiplino's table instead (API-equivalent), or stay unpriced, and the session then shows `computed`.
 
+## Plan limits
+
+On a flat-rate plan (Claude Pro/Max, ChatGPT plans for Codex) what matters is how much of your usage windows is left, not dollars. Shiplino shows each agent's windows and when they reset: in the header (`Codex 62% · resets 14:20`), on Insights, and at `GET /api/v1/limits`. Dollar figures for these agents are labeled **API-equivalent**.
+
+| Agent | What it records | Shiplino shows |
+|-------|-----------------|----------------|
+| **Codex** | `rate_limits` in the `token_count` lines of its rollouts: used percent, window length and reset time of each window (usually 5 hours and weekly), and the plan | The agent's numbers (`source: reported`) |
+| **Claude Code** | Only when a request is refused at a limit: a `rate_limit` error line with the window (`five_hour`, `seven_day`) and its reset time | "Limit reached · resets 14:20" (reported) |
+| Claude Code, otherwise | Nothing on disk. Claude Code passes the used percentages only to [status line](https://code.claude.com/docs/en/statusline) commands | An **estimate**: tokens used in the current 5-hour window and the last 7 days, with no percentage |
+
+Notes:
+- **The agent's numbers win.** Estimates are shown only for an agent on a plan that reports no percentages, and only for windows it reports nothing about.
+- **Estimates have no percentage.** Plan quotas aren't published and change, so Shiplino doesn't guess them. A 5-hour estimate starts at the hour (UTC) of the first response after the previous window ended, as other usage tools count it; the real window may differ. The weekly estimate is a rolling 7 days, since the real week starts at a time only the provider knows.
+- **Why not the status line?** Reading Claude Code's percentages would mean registering a status line command, which replaces the one you see (or have set up) at the bottom of Claude Code. Shiplino doesn't change what the agent shows, so it doesn't.
+- **Which agents are on a plan:** an agent counts as on a plan once it reports a limit (Codex does whenever you're signed in with ChatGPT). Set it yourself in `~/.shiplino/config.toml`; `api` hides an agent's windows:
+
+  ```toml
+  [limits.plans]
+  claude-code = "plan"   # or "api"
+  ```
+- **Alerts:** a desktop notification once per window when an agent reports `limit_percent` or more used (default 80; `0` turns it off). Estimates never notify.
+- **A window is dropped once it resets**, as the agents themselves do, until the agent reports the new one.
+- **Privacy:** limit events hold only numbers, window names and times. They sync (if you turn sync on) like token counts.
+
 ## How others do it
 
 - **Transcript-only tools** sum transcript usage × a price table. They're simple and per-response, but they miss background calls and fees, as measured above.

@@ -1,13 +1,17 @@
 "use client";
 
-import { Monitor, Moon, Sun } from "lucide-react";
+import { Gauge, Monitor, Moon, Sun } from "lucide-react";
 import Link from "next/link";
 import { useTheme } from "next-themes";
 import { useEffect, useMemo, useState } from "react";
+import { AgentDot } from "@/components/common/agent-dot";
+import { limitTone } from "@/components/insights/plan-limits";
 import { CommandMenu } from "@/components/shell/command-menu";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import { agentName, formatTokens } from "@/lib/format";
+import { describeWindow, formatReset, type LimitWindow, useLimits, windowValue } from "@/lib/limits";
 import { useLive } from "@/lib/live";
 
 function LiveStrip() {
@@ -48,6 +52,47 @@ function LiveStrip() {
   );
 }
 
+/** The window closest to its limit per agent: "Codex 62% · resets 14:20". */
+function LimitStrip() {
+  const limits = useLimits();
+  const shown = useMemo(() => {
+    const best = new Map<string, LimitWindow>();
+    for (const w of limits?.windows ?? []) {
+      const pct = (x: LimitWindow) => (x.reached ? 101 : (x.used_percent ?? -1));
+      const cur = best.get(w.agent);
+      // Reported percentages first, else the current 5-hour estimate.
+      if (!cur || pct(w) > pct(cur) || (pct(cur) < 0 && pct(w) < 0 && w.window_minutes < cur.window_minutes))
+        best.set(w.agent, w);
+    }
+    return [...best.values()];
+  }, [limits]);
+  if (shown.length === 0) return null;
+  return (
+    <Link
+      href="/insights/#limits"
+      className="hidden shrink-0 items-center gap-3 whitespace-nowrap rounded-md px-2 py-1 text-sm hover:bg-accent md:flex"
+      aria-label={`Plan limits: ${shown.map(describeWindow).join("; ")}`}
+      title={(limits?.windows ?? []).map(describeWindow).join("\n")}
+    >
+      <Gauge className="size-3.5 text-muted-foreground" aria-hidden />
+      {shown.map((w) => (
+        <span key={w.agent} className="flex items-center gap-1.5">
+          <AgentDot agent={w.agent} className="size-2" />
+          <span className="hidden lg:inline">{agentName(w.agent)}</span>
+          <span className={`font-mono tabular-nums ${limitTone(w)}`}>
+            {w.source === "estimate" ? `${w.window} ~${formatTokens(w.tokens ?? 0)}` : windowValue(w)}
+          </span>
+          {w.resets_at && (
+            <span className="font-mono text-muted-foreground text-xs tabular-nums">
+              · resets {formatReset(w.resets_at)}
+            </span>
+          )}
+        </span>
+      ))}
+    </Link>
+  );
+}
+
 function ThemeToggle() {
   const { theme: chosen, setTheme } = useTheme();
   // The prerendered page can't know the stored choice: render "system"
@@ -75,6 +120,7 @@ export function SiteHeader() {
       <SidebarTrigger className="-ml-1" />
       <Separator orientation="vertical" className="mr-1 h-4" />
       <LiveStrip />
+      <LimitStrip />
       <div className="ml-auto flex items-center gap-2">
         <CommandMenu />
         <ThemeToggle />

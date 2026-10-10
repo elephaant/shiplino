@@ -42,6 +42,8 @@ type Server struct {
 
 	// Status, if set, reports daemon health for /api/v1/status.
 	Status func() any
+	// Limits, if set, reports plan usage windows for /api/v1/limits.
+	Limits func(ctx context.Context) (any, error)
 	// Admin, if set, backs the settings endpoints.
 	Admin Admin
 	// Ingest, if set, stores events from /api/v1/ingest and the OTLP
@@ -91,6 +93,7 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("GET /api/v1/export", s.auth(s.export))
 	mux.Handle("GET /api/v1/insights", s.auth(s.insights))
 	mux.Handle("GET /api/v1/settings", s.auth(s.settings))
+	mux.Handle("GET /api/v1/limits", s.auth(s.limits))
 	mux.Handle("POST /api/v1/pause", s.auth(s.pause))
 	mux.Handle("POST /api/v1/resume", s.auth(s.resume))
 	mux.Handle("POST /api/v1/notify/test", s.auth(s.testNotification))
@@ -189,6 +192,20 @@ func (s *Server) index(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) health(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "version": s.version})
+}
+
+// limits: plan usage windows (5-hour, weekly) per agent.
+func (s *Server) limits(w http.ResponseWriter, r *http.Request) {
+	if s.Limits == nil {
+		writeError(w, http.StatusNotImplemented, "limits unavailable")
+		return
+	}
+	v, err := s.Limits(r.Context())
+	if err != nil {
+		s.internal(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, v)
 }
 
 func (s *Server) status(w http.ResponseWriter, r *http.Request) {
