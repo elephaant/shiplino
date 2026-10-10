@@ -113,11 +113,12 @@ export function CommandMenu() {
       <Button
         variant="outline"
         size="sm"
-        className="h-8 w-40 justify-start gap-2 text-muted-foreground sm:w-56"
+        aria-label="Search"
+        className="h-8 w-8 justify-center gap-2 text-muted-foreground sm:w-56 sm:justify-start"
         onClick={() => setOpen(true)}
       >
         <Search className="size-3.5" />
-        <span className="flex-1 text-left">Search…</span>
+        <span className="hidden flex-1 text-left sm:inline">Search…</span>
         <kbd className="hidden rounded border bg-muted px-1.5 font-mono text-[10px] sm:inline">{mod} K</kbd>
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>

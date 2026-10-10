@@ -200,18 +200,20 @@ func TestEventPatch(t *testing.T) {
 		wantPatch bool
 		check     func(d map[string]any) bool
 	}{
-		{"standard keeps and redacts", edit("/app/a.go", patch), Standard, true, func(d map[string]any) bool {
+		{"full keeps and redacts", edit("/app/a.go", patch), Full, true, func(d map[string]any) bool {
 			p := d["patch"].(string)
-			return strings.Contains(p, Marker("secret_assignment")) && !strings.Contains(p, "abc123")
+			return strings.Contains(p, Marker("secret_assignment")) && !strings.Contains(p, "abc123") && d["patch_source"] == "agent"
 		}},
-		{"full keeps", edit("/app/a.go", patch), Full, true, nil},
+		{"standard drops the diff, keeps counts", edit("/app/a.go", patch), Standard, false, func(d map[string]any) bool {
+			return d["patch_omitted"] == "capture_level" && d["patch_source"] == "agent" && d["lines_added"] == 1 && d["path"] == "/app/a.go"
+		}},
 		{"minimal drops", edit("/app/a.go", patch), Minimal, false, func(d map[string]any) bool {
 			return d["patch_source"] == nil && d["lines_added"] == 1 && d["path"] == "/app/a.go"
 		}},
 		{"secret file drops", edit("/app/.env.local", patch), Full, false, func(d map[string]any) bool {
 			return d["patch_omitted"] == "secret_file"
 		}},
-		{"capped at a line boundary", edit("/app/a.go", big), Standard, true, func(d map[string]any) bool {
+		{"capped at a line boundary", edit("/app/a.go", big), Full, true, func(d map[string]any) bool {
 			p := d["patch"].(string)
 			return len(p) <= MaxPatchBytes && strings.HasSuffix(p, "\n") && d["patch_truncated"] == true
 		}},

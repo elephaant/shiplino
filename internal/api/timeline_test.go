@@ -16,14 +16,32 @@ import (
 
 func TestTimelineEndpoint(t *testing.T) {
 	f := setup(t)
+	// A session that started ten minutes ago and is still in its turn
+	// (the fixture's own sessions start "now", so they may have no length).
+	ctx := context.Background()
+	start := time.Now().UTC().Add(-10 * time.Minute).Truncate(time.Millisecond)
+	tx, _ := f.s.st.Begin(ctx)
+	tx.PutSession(ctx, &engine.Session{ID: "codex:s2", RootID: "codex:s2", Agent: "codex", Status: engine.StatusRunning,
+		StartedAt: start, LastEventAt: start.Add(9 * time.Minute), Title: "Tidy CSS"})
+	tx.InsertEvent(ctx, model.Event{ID: model.NewULID(start), V: 1, TS: start, Kind: model.KindTurnStart, Agent: model.Agent{Name: "codex"},
+		Collector: model.CollectorHook, SessionID: "codex:s2", DedupKey: "s2-turn"})
+	if err := tx.Commit(); err != nil {
+		t.Fatal(err)
+	}
+
 	resp, body := f.get(t, "/api/v1/timeline", bearer)
 	var tl Timeline
 	if resp.StatusCode != 200 || json.Unmarshal(body, &tl) != nil {
 		t.Fatalf("timeline: %d %s", resp.StatusCode, body)
 	}
-	// The running root (turn started at setup time) and its finished
-	// subagent, which has a zero-length life and so no segment.
-	if len(tl.Rows) != 1 || tl.Rows[0].ID != "claude-code:s1" || tl.Rows[0].Segments[0].State != engine.SegRunning {
+	var row *TimelineRow
+	for i := range tl.Rows {
+		if tl.Rows[i].ID == "codex:s2" {
+			row = &tl.Rows[i]
+		}
+	}
+	if row == nil || len(row.Segments) != 1 || row.Segments[0].State != engine.SegRunning ||
+		!row.Segments[0].Start.Equal(start) || row.Segments[0].End.Sub(start) < 10*time.Minute {
 		t.Fatalf("rows: %s", body)
 	}
 	for _, q := range []string{"from=yesterday", "from=2026-10-10T00:00:00Z&to=2026-10-09T00:00:00Z", "from=2026-01-01T00:00:00Z&to=2026-10-01T00:00:00Z"} {

@@ -10,8 +10,8 @@ import (
 
 // Patches on file.edit events ("patch" in data) are unified-diff hunks
 // without file headers: "@@ … @@" lines, then " ", "-" and "+" lines.
-// They are content: the daemon drops them at the minimal capture level,
-// drops them for secret files, caps them and redacts them (pkg/redact).
+// They are content: the daemon keeps them only at the full capture level,
+// never for secret files, capped and redacted (pkg/redact).
 // "patch_source" says where a patch came from: "agent" (the agent's own
 // diff) or "computed" (built by Shiplino from the edit's old and new text).
 

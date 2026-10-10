@@ -36,9 +36,9 @@ func ParseLevel(s string) (Level, error) {
 }
 
 // MaxPatchBytes caps the diff kept per file edit ("patch" on file.edit,
-// a standard-level field). Longer patches are cut at a line boundary and
-// marked patch_truncated. Patches are never kept at minimal, nor for
-// secret files (see SecretFile).
+// a full-level field: code is content). Longer patches are cut at a line
+// boundary and marked patch_truncated. Below full, and for secret files
+// (see SecretFile), the patch is dropped and patch_omitted says why.
 const MaxPatchBytes = 64 << 10
 
 const (
@@ -93,6 +93,9 @@ func (r *Redactor) Event(e *model.Event, level Level) {
 		case minimal:
 			delete(d, "patch")
 			delete(d, "patch_source")
+		case level != Full:
+			delete(d, "patch")
+			d["patch_omitted"] = "capture_level"
 		case SecretFile(str(d, "path")):
 			delete(d, "patch")
 			d["patch_omitted"] = "secret_file"

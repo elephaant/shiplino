@@ -115,7 +115,8 @@ const defaultFile = `# Shiplino settings. Changes apply when the daemon restarts
 #   minimal  - timing, tool names, file paths, exit codes, tokens and cost.
 #              No prompts, commands, messages or outputs.
 #   standard - also prompts (truncated), commands and short summaries (default)
-#   full     - everything Shiplino captures
+#   full     - everything Shiplino captures, including the diff of each file
+#              edit (up to 64 KB; never for secret files such as .env)
 # Secrets are redacted at every level before anything is stored.
 capture_level = "standard"
 

@@ -27,7 +27,7 @@ Every adapter converts its agent's native hooks and transcripts into this format
 | `turn.start` / `turn.end` | `prompt` (by capture level) / `status` |
 | `tool.start` / `tool.end` | `tool_call_id`, `tool` (edit, write, read, shell, search, web, mcp, task, other), `ok`, `duration_ms` |
 | `shell.exec` | `command`, `exit_code`, `duration_ms` |
-| `file.read` / `file.edit` | `path`, `op`, `lines_added`, `lines_removed`, `lines_source`; edits also carry `patch` (unified-diff hunks, capture level standard and up, at most 64 KB, `patch_truncated` when cut), `patch_source` (`agent`: the agent's own diff, `computed`: built from the edit's old and new text) and `patch_omitted: secret_file` for files whose contents are never stored |
+| `file.read` / `file.edit` | `path`, `op`, `lines_added`, `lines_removed`, `lines_source`; edits also carry `patch` (unified-diff hunks, capture level full only, at most 64 KB, `patch_truncated` when cut), `patch_source` (`agent`: the agent's own diff, `computed`: built from the edit's old and new text) and `patch_omitted` when the diff was dropped (`capture_level` below full, `secret_file` for files whose contents are never stored) |
 | `mcp.call` | `server`, `tool`, `ok` |
 | `waiting.start` / `waiting.end` | `reason` / `resolution` |
 | `subagent.start` / `subagent.end` | `child_session_id`, `agent_type`, `status` |

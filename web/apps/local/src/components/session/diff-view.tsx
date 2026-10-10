@@ -5,6 +5,7 @@
 
 import { cn } from "cn";
 import { ChevronRight, FileMinus, FilePen, FilePlus, Info, ShieldAlert } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -146,6 +147,10 @@ function Edits({
                   <>
                     <ShieldAlert className="size-3.5" aria-hidden /> Secret file: Shiplino never stores its contents.
                   </>
+                ) : str(d, "patch_omitted") === "capture_level" ? (
+                  <>
+                    <Info className="size-3.5" aria-hidden /> Recorded below capture level full: line counts only.
+                  </>
                 ) : (
                   <>
                     <Info className="size-3.5" aria-hidden /> No diff stored for this edit, only its line counts.
@@ -214,10 +219,16 @@ export function DiffView({
             <span className="font-mono tabular-nums">
               <span className="text-status-done">+{added}</span> <span className="text-status-failed">−{removed}</span>
             </span>
-            {level === "minimal" ? (
-              <span className="flex items-center gap-1.5">
-                <Info className="size-3.5" aria-hidden /> Capture level is minimal: Shiplino keeps file names and line
-                counts, not the changes.
+            {level && level !== "full" ? (
+              <span className="flex basis-full items-start gap-1.5 sm:basis-auto">
+                <Info className="mt-px size-3.5 shrink-0" aria-hidden />
+                <span>
+                  Diffs are stored only at capture level full. Change <code className="font-mono">capture_level</code>{" "}
+                  in <code className="font-mono">~/.shiplino/config.toml</code>.{" "}
+                  <Link href="/settings/#privacy" className="text-foreground underline underline-offset-2">
+                    Settings
+                  </Link>
+                </span>
               </span>
             ) : (
               !anyPatch && (
