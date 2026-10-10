@@ -36,6 +36,9 @@ type Sync struct {
 	Projects []string `toml:"projects"`
 	// Exclude removes projects (ids or globs) the allow list matched.
 	Exclude []string `toml:"exclude"`
+	// SendUser sends the OS user name recorded with each event. Off by
+	// default, and never sent at the minimal level.
+	SendUser bool `toml:"send_user"`
 }
 
 // SyncEndpoint returns the sync base URL without a trailing slash.
@@ -101,6 +104,8 @@ const syncHeader = `[sync]
 # Nothing is sent until a project is allowed: projects lists project ids or
 # globs ("github.com/acme/*", "*" for everything); exclude removes matches.
 # capture_level (minimal by default) can't exceed the local capture_level.
+# At minimal, file paths are sent relative to the project root.
+# send_user also sends your OS user name (never at minimal).
 # Sync settings apply within seconds, without a daemon restart.
 # Exactly what is sent: docs/sync-protocol.md, or ` + "`shiplino sync status --dry-run`" + `.
 `

@@ -86,7 +86,7 @@ func TestSyncCommands(t *testing.T) {
 	}
 
 	got = run(t, e, out, 0, "status")
-	for _, want := range []string{"Sync is on", "dev@example.com", "workspace Acme", "example.com/acme/api", "minimal", "daemon isn't running"} {
+	for _, want := range []string{"Sync is on", "dev@example.com", "workspace Acme", "example.com/acme/api", "minimal (paths relative to the project, no user name)", "daemon isn't running"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("status lacks %q:\n%s", want, got)
 		}

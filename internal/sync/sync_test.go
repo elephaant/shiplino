@@ -350,7 +350,7 @@ func TestUploadsOnlyAllowedProjectsStrippedAndRedacted(t *testing.T) {
 	fx.add(t, "github.com/acme/secret", model.KindTurnStart, map[string]any{"prompt": "secret plans"})
 	fx.add(t, "github.com/other/x", model.KindTurnStart, map[string]any{"prompt": "other"})
 	fx.add(t, "", model.KindNote, map[string]any{"message": "no project"})
-	fx.add(t, "github.com/acme/web", model.KindFileEdit, map[string]any{"path": "/home/dev/web/a.go", "lines_added": 3})
+	fx.add(t, "github.com/acme/web", model.KindFileEdit, map[string]any{"path": "/home/dev/github.com/acme/web/src/a.go", "lines_added": 3})
 
 	if wait := fx.u.Step(ctx); wait != uploadEvery {
 		t.Fatalf("wait = %v", wait)
@@ -376,7 +376,7 @@ func TestUploadsOnlyAllowedProjectsStrippedAndRedacted(t *testing.T) {
 	if _, ok := d1["command"]; ok || d1["exit_code"] != float64(0) {
 		t.Errorf("shell.exec at minimal: %v", d1)
 	}
-	if d2["path"] != "/home/dev/web/a.go" {
+	if d2["path"] != "src/a.go" {
 		t.Errorf("file path: %v", d2)
 	}
 	st := fx.state(t)
@@ -782,5 +782,72 @@ func TestDescribeAndDryRun(t *testing.T) {
 	out, _ := json.Marshal(v)
 	if strings.Contains(string(out), "access-1") || strings.Contains(string(out), "refresh-") {
 		t.Fatalf("view leaks a token: %s", out)
+	}
+}
+
+func TestMinimalSendsProjectRelativePaths(t *testing.T) {
+	ev := func(p *model.Project, data map[string]any) model.Event {
+		return model.Event{ID: "e1", V: 1, Kind: model.KindToolStart, User: "dev", Project: p, Data: data}
+	}
+	scope := func(level string, sendUser bool) Scope {
+		return ScopeFor(config.Config{CaptureLevel: "full", Sync: config.Sync{CaptureLevel: level, SendUser: sendUser, Projects: []string{"*"}}})
+	}
+	repo := &model.Project{ID: "example.com/acme/api", CWD: "/home/dev/api/sub", RepoRoot: "/home/dev/api", Remote: "example.com/acme/api", Branch: "main", Head: "abc123"}
+	data := func() map[string]any {
+		return map[string]any{
+			"tool": "edit", "input_summary": "/home/dev/api/src/a.go",
+			"path": "/home/dev/api/src/a.go", "file_path": "/etc/hosts", "cwd": "/home/dev/api",
+			"transcript_path": "/home/dev/.agent/sessions/s1.jsonl",
+			"files":           []any{"README.md", "/home/dev/api/b/c.go", "/tmp/x.txt"}, "lines_added": 3,
+		}
+	}
+
+	got := scope("minimal", true).Outgoing(ev(repo, data()))
+	if got.User != "" {
+		t.Errorf("user sent at minimal: %q", got.User)
+	}
+	if p := got.Project; p.CWD != "" || p.RepoRoot != "" || p.ID != repo.ID || p.Branch != "main" || p.Remote != repo.Remote || p.Head != "abc123" {
+		t.Errorf("project: %+v", p)
+	}
+	if repo.CWD == "" {
+		t.Fatal("the stored event was changed")
+	}
+	want := map[string]any{
+		"input_summary": "src/a.go", "path": "src/a.go", "file_path": "…/hosts", "cwd": ".",
+		"transcript_path": "…/s1.jsonl", "lines_added": 3,
+	}
+	for k, v := range want {
+		if got.Data[k] != v {
+			t.Errorf("%s = %v, want %v", k, got.Data[k], v)
+		}
+	}
+	if f := got.Data["files"].([]any); f[0] != "README.md" || f[1] != "b/c.go" || f[2] != "…/x.txt" {
+		t.Errorf("files = %v", f)
+	}
+	out, _ := json.Marshal(got)
+	if strings.Contains(string(out), "/home/dev") {
+		t.Errorf("an absolute path was sent: %s", out)
+	}
+
+	// A folder project without a repo root uses the folder from its id.
+	dir := &model.Project{ID: "dir:/home/dev/notes", CWD: "/home/dev/notes"}
+	got = scope("minimal", false).Outgoing(ev(dir, map[string]any{"tool": "read", "path": "/home/dev/notes/todo.md"}))
+	if got.Data["path"] != "todo.md" || got.Project.CWD != "" {
+		t.Errorf("dir project: %v %+v", got.Data, got.Project)
+	}
+
+	// Standard keeps paths; the user name goes only with send_user.
+	got = scope("standard", false).Outgoing(ev(repo, data()))
+	if got.User != "" || got.Data["path"] != "/home/dev/api/src/a.go" || got.Project.CWD != repo.CWD {
+		t.Errorf("standard: user %q, %v, %+v", got.User, got.Data["path"], got.Project)
+	}
+	if got = scope("standard", true).Outgoing(ev(repo, data())); got.User != "dev" {
+		t.Errorf("send_user ignored: %q", got.User)
+	}
+}
+
+func TestRelPathWindows(t *testing.T) {
+	if got := relPath(`C:\Users\dev\api`, `D:\other\file.go`); got != "…/file.go" {
+		t.Errorf("got %q", got)
 	}
 }

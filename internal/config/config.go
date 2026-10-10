@@ -135,6 +135,7 @@ failed = true       # a session failed
 capture_level = "minimal"
 projects = []
 exclude = []
+send_user = false
 `
 
 // WriteDefault creates a commented config file if none exists.
