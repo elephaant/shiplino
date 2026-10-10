@@ -16,5 +16,5 @@ paths:
 - **Tolerant parsing:** ignore unknown fields, and keep unknown event types as `raw` with a counter. Never fail on agent format drift.
 - **Errors:** wrap with `%w` and context. The daemon logs to `~/.shiplino/logs/daemon.log` and never to stdout when it runs as a service.
 - **Cross-platform paths:** use `filepath` and `os.UserHomeDir()`. Remember that Windows uses `%USERPROFILE%\.shiplino`.
-- **Style:** `gofmt`, `go vet`, table-driven tests, small packages, a license header on every file (see [public-repo.md](public-repo.md)).
+- **Style:** `gofmt`, `go vet`, table-driven tests, small packages. No per-file license headers.
 - Bind network listeners to `127.0.0.1` only.

@@ -1,6 +1,3 @@
-// Copyright 2026 The Shiplino Authors
-// SPDX-License-Identifier: FSL-1.1-ALv2
-
 // Helpers shared by the global setup and the tests: where the binary is,
 // the environment of the test daemon, and the real hook shim.
 

@@ -1,6 +1,3 @@
-// Copyright 2026 The Shiplino Authors
-// SPDX-License-Identifier: FSL-1.1-ALv2
-
 import path from "node:path";
 import { boardURL, card, column, drag, dropZone, expect, test } from "../fixtures";
 import { claude, env, hook, seed } from "../shiplino";

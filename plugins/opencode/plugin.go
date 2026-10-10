@@ -1,6 +1,3 @@
-// Copyright 2026 The Shiplino Authors
-// SPDX-License-Identifier: FSL-1.1-ALv2
-
 // Package opencodeplugin holds the OpenCode plugin (shiplino.js) that
 // `shiplino setup` installs; see pkg/adapters/opencode.
 package opencodeplugin

@@ -1,6 +1,3 @@
-# Copyright 2026 The Shiplino Authors
-# SPDX-License-Identifier: FSL-1.1-ALv2
-#
 # Shiplino installer (Windows, PowerShell 5.1+).
 #
 #   irm https://raw.githubusercontent.com/elephaant/shiplino/main/scripts/install.ps1 | iex

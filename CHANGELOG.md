@@ -17,7 +17,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Claude Code token counts. Responses copied into resumed or continued sessions counted again (input was ~24% high), and responses written over several lines kept their first, smaller count (output ~8% low). Each response now counts once at its final size, and stored history is cleaned and rebuilt on upgrade.
 
 ### Changed
-- The license identifier is now the official SPDX id `FSL-1.1-ALv2` (file headers, package metadata, LICENSE title). The license terms are unchanged.
+- **Shiplino is now licensed under the Apache License 2.0** (previously the Functional Source License). Releases up to 0.1.0-alpha.2 stay under their original license. Source files no longer carry per-file license headers; `LICENSE` covers the repository.
 
 ## [0.1.0-alpha.2] - 2026-10-10
 

@@ -1,6 +1,3 @@
-// Copyright 2026 The Shiplino Authors
-// SPDX-License-Identifier: FSL-1.1-ALv2
-
 // Package cline is the Cline adapter: hook registration and hook payload
 // parsing, for the VS Code (and JetBrains) extension and for the CLI and
 // SDK hosts (CLI, Kanban, Desktop).

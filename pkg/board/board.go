@@ -1,6 +1,3 @@
-// Copyright 2026 The Shiplino Authors
-// SPDX-License-Identifier: FSL-1.1-ALv2
-
 // Package board turns sessions into kanban cards: columns from live
 // status, pins from user drags, and automatic weekly sprints.
 package board

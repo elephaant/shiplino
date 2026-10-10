@@ -1,6 +1,3 @@
-// Copyright 2026 The Shiplino Authors
-// SPDX-License-Identifier: FSL-1.1-ALv2
-
 // Package notify sends desktop notifications when an agent is waiting on
 // you, finished a long turn, or failed.
 //

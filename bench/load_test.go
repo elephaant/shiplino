@@ -1,6 +1,3 @@
-// Copyright 2026 The Shiplino Authors
-// SPDX-License-Identifier: FSL-1.1-ALv2
-
 // Package bench holds end-to-end load tests: hook payloads go through the
 // real shim into the spool, the daemon ingests them, and a WebSocket
 // client measures when they reach the UI.
