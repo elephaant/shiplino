@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.1.0-alpha.2] - 2026-10-10
+
+Codex, Cursor, Gemini CLI, Copilot CLI, Windsurf and Aider support; search, notifications, Insights, Timeline and Settings; history backfill; opt-in cloud sync client.
+
 ### Added
 - Pricing supports announced price changes: models can list dated rates, and every response is priced at the rates in effect when it was made, so past sessions keep their cost after a change. Adds Gemini 3.6/3.8 Flash's 2027-01-01 prices.
 - Windsurf: the JetBrains plugin is supported too. `shiplino setup`, `doctor` and `uninstall` handle its `~/.codeium/hooks.json` beside the editor's `~/.codeium/windsurf/hooks.json`, and it appears as "Windsurf (JetBrains)" in settings.
@@ -72,5 +76,6 @@ First alpha: Claude Code support end to end.
 - User and contributor docs in `docs/`.
 - Repository skeleton: Go module, package layout, web/SDK/plugin folders, event JSON Schema, CI and community files.
 
-[Unreleased]: https://github.com/elephaant/shiplino/compare/v0.1.0-alpha.1...HEAD
+[Unreleased]: https://github.com/elephaant/shiplino/compare/v0.1.0-alpha.2...HEAD
+[0.1.0-alpha.2]: https://github.com/elephaant/shiplino/compare/v0.1.0-alpha.1...v0.1.0-alpha.2
 [0.1.0-alpha.1]: https://github.com/elephaant/shiplino/releases/tag/v0.1.0-alpha.1
