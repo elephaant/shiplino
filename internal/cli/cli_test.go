@@ -19,6 +19,7 @@ import (
 	"github.com/elephaant/shiplino/pkg/adapters/claudecode"
 	"github.com/elephaant/shiplino/pkg/adapters/codex"
 	"github.com/elephaant/shiplino/pkg/adapters/cursor"
+	"github.com/elephaant/shiplino/pkg/adapters/windsurf"
 )
 
 // builtBinary compiles the real shiplino binary once per test run.
@@ -209,5 +210,21 @@ func TestSetupCursor(t *testing.T) {
 	uninstall(context.Background(), e, nil)
 	if ok, _, _ := cursor.Installed(hooks); ok {
 		t.Fatal("cursor hooks still present")
+	}
+}
+
+func TestSetupWindsurf(t *testing.T) {
+	e, out := testEnv(t)
+	os.MkdirAll(filepath.Join(e.userHome, ".codeium", "windsurf"), 0o700)
+	if code := setup(context.Background(), e, []string{"--no-service"}); code != 0 {
+		t.Fatalf("setup exit %d:\n%s", code, out)
+	}
+	hooks := filepath.Join(e.userHome, ".codeium", "windsurf", "hooks.json")
+	if ok, cmd, _ := windsurf.Installed(hooks); !ok || !strings.Contains(cmd, e.binPath()) || !strings.Contains(out.String(), "restart Windsurf") {
+		t.Fatalf("installed=%v cmd=%q\n%s", ok, cmd, out)
+	}
+	uninstall(context.Background(), e, nil)
+	if ok, _, _ := windsurf.Installed(hooks); ok {
+		t.Fatal("windsurf hooks still present")
 	}
 }

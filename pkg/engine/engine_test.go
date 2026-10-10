@@ -291,3 +291,18 @@ func TestMarkIdle(t *testing.T) {
 		t.Fatalf("an event brings it back: %s", s.Status)
 	}
 }
+
+// A session whose first event has no folder takes one from a later event.
+func TestCWDFromLaterEvent(t *testing.T) {
+	e := New(nil, nil)
+	first := ev(0, model.KindTurnStart, map[string]any{"prompt": "hi"})
+	first.Project = nil
+	e.Apply(first)
+	edit := ev(1, model.KindFileEdit, map[string]any{"path": "/work/demo/src/a.go"})
+	edit.Project = &model.Project{CWD: "/work/demo/src"}
+	e.Apply(edit)
+	e.Apply(ev(2, model.KindShellExec, map[string]any{"command": "ls"}))
+	if s := e.Get(sid); s.CWD != "/work/demo/src" {
+		t.Fatalf("cwd = %q", s.CWD)
+	}
+}

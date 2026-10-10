@@ -8,7 +8,10 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
+
+	"github.com/elephaant/shiplino/internal/shim"
 )
 
 func gitIn(t *testing.T, dir string, args ...string) {
@@ -103,5 +106,45 @@ func TestCommitLinksSessionAndMovesCardToDone(t *testing.T) {
 	e.poll()
 	if s := e.session("claude-code:c1"); len(s.Links) != 1 {
 		t.Fatalf("duplicate link: %+v", s.Links)
+	}
+}
+
+// Windsurf's prompt hook has no folder: the project, git watch and commit
+// link come from the first file event.
+func TestWindsurfSessionFindsItsProject(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git not installed")
+	}
+	withHome(t)
+	e := newEnv(t)
+	repo := filepath.Join(t.TempDir(), "api")
+	os.MkdirAll(filepath.Join(repo, "src"), 0o755)
+	gitIn(t, repo, "init", "-q", "-b", "main")
+	os.WriteFile(filepath.Join(repo, "README.md"), []byte("x\n"), 0o644)
+	gitIn(t, repo, "add", ".")
+	gitIn(t, repo, "commit", "-q", "-m", "init")
+
+	file := filepath.Join(repo, "src", "auth.ts")
+	for _, h := range []map[string]any{
+		{"agent_action_name": "pre_user_prompt", "trajectory_id": "w1", "execution_id": "x1", "tool_info": map[string]any{"user_prompt": "fix auth"}},
+		{"agent_action_name": "post_write_code", "trajectory_id": "w1", "execution_id": "x1", "tool_info": map[string]any{"file_path": file,
+			"edits": []map[string]string{{"old_string": "", "new_string": "a\nb\n"}}}},
+		{"agent_action_name": "post_cascade_response", "trajectory_id": "w1", "execution_id": "x1", "tool_info": map[string]any{"response": "done"}},
+	} {
+		b, _ := json.Marshal(h)
+		shim.Run([]string{"--agent", "windsurf"}, strings.NewReader(string(b)))
+	}
+	e.poll()
+	s := e.session("windsurf:w1")
+	if s.Status != "review" || s.ProjectID == "" || s.CWD != filepath.Join(repo, "src") || s.LinesAdded != 2 || s.Title != "fix auth" {
+		t.Fatalf("session: %+v", s)
+	}
+
+	os.WriteFile(file, []byte("a\nb\n"), 0o644)
+	gitIn(t, repo, "add", ".")
+	gitIn(t, repo, "commit", "-q", "-m", "fix: auth")
+	e.poll()
+	if s := e.session("windsurf:w1"); s.Status != "done" || len(s.Links) != 1 {
+		t.Fatalf("after commit: %s %+v", s.Status, s.Links)
 	}
 }

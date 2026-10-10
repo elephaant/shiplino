@@ -44,12 +44,14 @@ func Run(args []string, stdin io.Reader) {
 		var probe struct {
 			SessionID      string `json:"session_id"`
 			ConversationID string `json:"conversation_id"`
+			TrajectoryID   string `json:"trajectory_id"` // Windsurf
 			HookEventName  string `json:"hook_event_name"`
+			ActionName     string `json:"agent_action_name"` // Windsurf
 		}
 		_ = json.Unmarshal(in, &probe)
-		session = firstNonEmpty(probe.SessionID, probe.ConversationID)
+		session = firstNonEmpty(probe.SessionID, probe.ConversationID, probe.TrajectoryID)
 		if env.Event == "" {
-			env.Event = probe.HookEventName
+			env.Event = firstNonEmpty(probe.HookEventName, probe.ActionName)
 		}
 		if _, err := os.Stat(filepath.Join(home, spool.MinimalMarker)); err == nil {
 			in = stripContent(in)
@@ -128,6 +130,10 @@ var contentKeys = []string{"prompt", "tool_response", "last_assistant_message", 
 // keepInput are tool_input fields allowed at minimal (file paths only).
 var keepInput = map[string]bool{"file_path": true, "notebook_path": true, "path": true}
 
+// keepInfo are Windsurf tool_info fields allowed at minimal: paths and MCP
+// names, never the prompt, response, edits, command or MCP arguments.
+var keepInfo = map[string]bool{"file_path": true, "cwd": true, "mcp_server_name": true, "mcp_tool_name": true}
+
 // stripContent removes content fields from a JSON object payload. On any
 // parse problem it returns {} rather than risk writing content.
 func stripContent(in []byte) []byte {
@@ -138,18 +144,22 @@ func stripContent(in []byte) []byte {
 	for _, k := range contentKeys {
 		delete(m, k)
 	}
-	if raw, ok := m["tool_input"]; ok {
+	for key, keep := range map[string]map[string]bool{"tool_input": keepInput, "tool_info": keepInfo} {
+		raw, ok := m[key]
+		if !ok {
+			continue
+		}
 		var ti map[string]json.RawMessage
 		if json.Unmarshal(raw, &ti) == nil {
 			for k := range ti {
-				if !keepInput[k] {
+				if !keep[k] {
 					delete(ti, k)
 				}
 			}
 			b, _ := json.Marshal(ti)
-			m["tool_input"] = b
+			m[key] = b
 		} else {
-			delete(m, "tool_input")
+			delete(m, key)
 		}
 	}
 	out, err := json.Marshal(m)

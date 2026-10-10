@@ -1,0 +1,366 @@
+[
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:00.25Z",
+    "received_at": "2026-10-09T10:00:00Z",
+    "kind": "turn.start",
+    "agent": {
+      "name": "windsurf"
+    },
+    "collector": "hook",
+    "session_id": "windsurf:tr-1",
+    "actor_id": "windsurf:tr-1",
+    "turn_id": "ex-1",
+    "data": {
+      "prompt": "fix the cart total rounding",
+      "prompt_chars": 27
+    },
+    "dedup_key": "windsurf:tr-1:turn:ex-1"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:00.25Z",
+    "received_at": "2026-10-09T10:00:00Z",
+    "kind": "session.update",
+    "agent": {
+      "name": "windsurf"
+    },
+    "collector": "hook",
+    "session_id": "windsurf:tr-1",
+    "actor_id": "windsurf:tr-1",
+    "turn_id": "ex-1",
+    "data": {
+      "model": "Claude Opus 5.5"
+    },
+    "dedup_key": "windsurf:tr-1:session.update:env-00"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:01Z",
+    "received_at": "2026-10-09T10:00:01Z",
+    "kind": "tool.start",
+    "agent": {
+      "name": "windsurf"
+    },
+    "collector": "hook",
+    "session_id": "windsurf:tr-1",
+    "actor_id": "windsurf:tr-1",
+    "turn_id": "ex-1",
+    "project": {
+      "cwd": "/home/dev/shop/src"
+    },
+    "data": {
+      "input_summary": "/home/dev/shop/src/cart.ts",
+      "tool": "read",
+      "tool_call_id": "ws-env-01",
+      "tool_raw": "read_code"
+    },
+    "dedup_key": "windsurf:tr-1:ws-env-01:start"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:01Z",
+    "received_at": "2026-10-09T10:00:01Z",
+    "kind": "tool.end",
+    "agent": {
+      "name": "windsurf"
+    },
+    "collector": "hook",
+    "session_id": "windsurf:tr-1",
+    "actor_id": "windsurf:tr-1",
+    "turn_id": "ex-1",
+    "project": {
+      "cwd": "/home/dev/shop/src"
+    },
+    "data": {
+      "ok": true,
+      "tool": "read",
+      "tool_call_id": "ws-env-01"
+    },
+    "dedup_key": "windsurf:tr-1:ws-env-01:end"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:01Z",
+    "received_at": "2026-10-09T10:00:01Z",
+    "kind": "file.read",
+    "agent": {
+      "name": "windsurf"
+    },
+    "collector": "hook",
+    "session_id": "windsurf:tr-1",
+    "actor_id": "windsurf:tr-1",
+    "turn_id": "ex-1",
+    "project": {
+      "cwd": "/home/dev/shop/src"
+    },
+    "data": {
+      "op": "read",
+      "path": "/home/dev/shop/src/cart.ts"
+    },
+    "dedup_key": "windsurf:tr-1:file.read:env-01"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:02Z",
+    "received_at": "2026-10-09T10:00:02Z",
+    "kind": "tool.start",
+    "agent": {
+      "name": "windsurf"
+    },
+    "collector": "hook",
+    "session_id": "windsurf:tr-1",
+    "actor_id": "windsurf:tr-1",
+    "turn_id": "ex-1",
+    "project": {
+      "cwd": "/home/dev/shop/src"
+    },
+    "data": {
+      "input_summary": "/home/dev/shop/src/cart.ts",
+      "tool": "edit",
+      "tool_call_id": "ws-env-02",
+      "tool_raw": "write_code"
+    },
+    "dedup_key": "windsurf:tr-1:ws-env-02:start"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:02Z",
+    "received_at": "2026-10-09T10:00:02Z",
+    "kind": "tool.end",
+    "agent": {
+      "name": "windsurf"
+    },
+    "collector": "hook",
+    "session_id": "windsurf:tr-1",
+    "actor_id": "windsurf:tr-1",
+    "turn_id": "ex-1",
+    "project": {
+      "cwd": "/home/dev/shop/src"
+    },
+    "data": {
+      "ok": true,
+      "tool": "edit",
+      "tool_call_id": "ws-env-02"
+    },
+    "dedup_key": "windsurf:tr-1:ws-env-02:end"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:02Z",
+    "received_at": "2026-10-09T10:00:02Z",
+    "kind": "file.edit",
+    "agent": {
+      "name": "windsurf"
+    },
+    "collector": "hook",
+    "session_id": "windsurf:tr-1",
+    "actor_id": "windsurf:tr-1",
+    "turn_id": "ex-1",
+    "project": {
+      "cwd": "/home/dev/shop/src"
+    },
+    "data": {
+      "lines_added": 3,
+      "lines_removed": 1,
+      "lines_source": "computed",
+      "op": "modify",
+      "path": "/home/dev/shop/src/cart.ts"
+    },
+    "dedup_key": "windsurf:tr-1:file.edit:env-02"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:03Z",
+    "received_at": "2026-10-09T10:00:03Z",
+    "kind": "tool.start",
+    "agent": {
+      "name": "windsurf"
+    },
+    "collector": "hook",
+    "session_id": "windsurf:tr-1",
+    "actor_id": "windsurf:tr-1",
+    "turn_id": "ex-1",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "input_summary": "npm test",
+      "tool": "shell",
+      "tool_call_id": "ws-env-03",
+      "tool_raw": "run_command"
+    },
+    "dedup_key": "windsurf:tr-1:ws-env-03:start"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:03Z",
+    "received_at": "2026-10-09T10:00:03Z",
+    "kind": "tool.end",
+    "agent": {
+      "name": "windsurf"
+    },
+    "collector": "hook",
+    "session_id": "windsurf:tr-1",
+    "actor_id": "windsurf:tr-1",
+    "turn_id": "ex-1",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "ok": true,
+      "tool": "shell",
+      "tool_call_id": "ws-env-03"
+    },
+    "dedup_key": "windsurf:tr-1:ws-env-03:end"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:03Z",
+    "received_at": "2026-10-09T10:00:03Z",
+    "kind": "shell.exec",
+    "agent": {
+      "name": "windsurf"
+    },
+    "collector": "hook",
+    "session_id": "windsurf:tr-1",
+    "actor_id": "windsurf:tr-1",
+    "turn_id": "ex-1",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "command": "npm test",
+      "cwd": "/home/dev/shop",
+      "tool_call_id": "ws-env-03"
+    },
+    "dedup_key": "windsurf:tr-1:shell.exec:env-03"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:04Z",
+    "received_at": "2026-10-09T10:00:04Z",
+    "kind": "tool.start",
+    "agent": {
+      "name": "windsurf"
+    },
+    "collector": "hook",
+    "session_id": "windsurf:tr-1",
+    "actor_id": "windsurf:tr-1",
+    "turn_id": "ex-1",
+    "data": {
+      "input_summary": "create_issue",
+      "tool": "mcp",
+      "tool_call_id": "ws-env-04",
+      "tool_raw": "mcp:github/create_issue"
+    },
+    "dedup_key": "windsurf:tr-1:ws-env-04:start"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:04Z",
+    "received_at": "2026-10-09T10:00:04Z",
+    "kind": "tool.end",
+    "agent": {
+      "name": "windsurf"
+    },
+    "collector": "hook",
+    "session_id": "windsurf:tr-1",
+    "actor_id": "windsurf:tr-1",
+    "turn_id": "ex-1",
+    "data": {
+      "ok": true,
+      "tool": "mcp",
+      "tool_call_id": "ws-env-04"
+    },
+    "dedup_key": "windsurf:tr-1:ws-env-04:end"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:04Z",
+    "received_at": "2026-10-09T10:00:04Z",
+    "kind": "mcp.call",
+    "agent": {
+      "name": "windsurf"
+    },
+    "collector": "hook",
+    "session_id": "windsurf:tr-1",
+    "actor_id": "windsurf:tr-1",
+    "turn_id": "ex-1",
+    "data": {
+      "ok": true,
+      "server": "github",
+      "tool": "create_issue"
+    },
+    "dedup_key": "windsurf:tr-1:mcp.call:env-04"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:05Z",
+    "received_at": "2026-10-09T10:00:05Z",
+    "kind": "turn.end",
+    "agent": {
+      "name": "windsurf"
+    },
+    "collector": "hook",
+    "session_id": "windsurf:tr-1",
+    "actor_id": "windsurf:tr-1",
+    "turn_id": "ex-1",
+    "data": {
+      "status": "ok"
+    },
+    "dedup_key": "windsurf:tr-1:turnend:ex-1"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:01:00Z",
+    "received_at": "2026-10-09T10:00:06Z",
+    "kind": "turn.start",
+    "agent": {
+      "name": "windsurf"
+    },
+    "collector": "hook",
+    "session_id": "windsurf:tr-1",
+    "actor_id": "windsurf:tr-1",
+    "turn_id": "ex-2",
+    "data": {
+      "prompt": "now run the linter",
+      "prompt_chars": 18
+    },
+    "dedup_key": "windsurf:tr-1:turn:ex-2"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:07Z",
+    "received_at": "2026-10-09T10:00:07Z",
+    "kind": "turn.end",
+    "agent": {
+      "name": "windsurf"
+    },
+    "collector": "hook",
+    "session_id": "windsurf:tr-1",
+    "actor_id": "windsurf:tr-1",
+    "turn_id": "ex-2",
+    "data": {
+      "status": "ok"
+    },
+    "dedup_key": "windsurf:tr-1:turnend:ex-2"
+  }
+]

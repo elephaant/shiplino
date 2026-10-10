@@ -135,3 +135,42 @@ func TestMinimalStripsContentBeforeDisk(t *testing.T) {
 		}
 	}
 }
+
+func TestRunWindsurfPayload(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("SHIPLINO_HOME", home)
+	Run([]string{"--agent", "windsurf"}, strings.NewReader(`{"agent_action_name":"post_read_code","trajectory_id":"tr-1","tool_info":{"file_path":"/app/x.go"}}`))
+	e := readLines(t, spool.SessionFile(spool.Dir(home), "windsurf", "tr-1"))[0]
+	if e.Event != "post_read_code" {
+		t.Fatalf("event = %q", e.Event)
+	}
+}
+
+func TestMinimalStripsWindsurfToolInfo(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("SHIPLINO_HOME", home)
+	os.WriteFile(filepath.Join(home, spool.MinimalMarker), nil, 0o600)
+	for _, p := range []string{
+		`{"agent_action_name":"pre_user_prompt","trajectory_id":"w1","tool_info":{"user_prompt":"my secret plan"}}`,
+		`{"agent_action_name":"post_cascade_response","trajectory_id":"w1","tool_info":{"response":"private output"}}`,
+		`{"agent_action_name":"post_write_code","trajectory_id":"w1","tool_info":{"file_path":"/app/x.go","edits":[{"old_string":"a","new_string":"private edit"}]}}`,
+		`{"agent_action_name":"post_run_command","trajectory_id":"w1","tool_info":{"command_line":"cat notes.txt","cwd":"/app"}}`,
+		`{"agent_action_name":"post_mcp_tool_use","trajectory_id":"w1","tool_info":{"mcp_server_name":"github","mcp_tool_name":"create_issue","mcp_tool_arguments":{"body":"private body"},"mcp_result":"private result"}}`,
+	} {
+		Run([]string{"--agent", "windsurf"}, strings.NewReader(p))
+	}
+	raw, err := os.ReadFile(spool.SessionFile(spool.Dir(home), "windsurf", "w1"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, leaked := range []string{"secret plan", "private output", "private edit", "cat notes.txt", "private body", "private result"} {
+		if strings.Contains(string(raw), leaked) {
+			t.Errorf("%q reached the spool at minimal level", leaked)
+		}
+	}
+	for _, kept := range []string{"/app/x.go", "cwd", "github", "create_issue"} {
+		if !strings.Contains(string(raw), kept) {
+			t.Errorf("%s missing: %s", kept, raw)
+		}
+	}
+}
