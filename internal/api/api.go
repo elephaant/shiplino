@@ -248,6 +248,13 @@ func (s *Server) getSession(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "session not found")
 		return
 	}
+	if prs, err := s.st.PRs(r.Context()); err == nil {
+		for j, l := range sess.Links {
+			if pr, ok := prs[l.URL]; l.Kind == "pr" && ok {
+				sess.Links[j].State, sess.Links[j].Checks, sess.Links[j].Review, sess.Links[j].Title = pr.State, pr.Checks, pr.Review, pr.Title
+			}
+		}
+	}
 	writeJSON(w, http.StatusOK, sess)
 }
 

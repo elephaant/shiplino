@@ -7,6 +7,8 @@ import (
 	"context"
 	"errors"
 	"github.com/elephaant/shiplino/internal/budget"
+	"github.com/elephaant/shiplino/internal/integrations/github"
+	"github.com/elephaant/shiplino/pkg/model"
 	"log"
 	"net"
 	"os"
@@ -85,6 +87,18 @@ func Main(ctx context.Context, version string) error {
 	// goroutine reading committed rows, so it never slows recording.
 	uploader := cloudsync.NewUploader(home, st, logger, version)
 	go uploader.Run(ctx)
+	var prs *github.Poller
+	if cfg.Integrations.GitHub.Enabled {
+		record := func(ctx context.Context, evs []model.Event) error {
+			_, _, err := d.Ingest(ctx, evs)
+			if errors.Is(err, api.ErrPaused) {
+				return nil
+			}
+			return err
+		}
+		prs = github.NewPoller(st, record, hub.Publish, cfg.GitHubPoll())
+		go prs.Run(ctx)
+	}
 	var budgets *budget.Watcher
 	if bc := (budget.Config{DailyUSD: cfg.Budget.DailyUSD, MonthlyUSD: cfg.Budget.MonthlyUSD, Projects: cfg.Budget.Projects, Digest: cfg.Budget.Digest}); bc.Enabled() {
 		budgets = budget.New(bc, st, nil)
@@ -94,7 +108,7 @@ func Main(ctx context.Context, version string) error {
 	go func() {
 		srv := api.New(st, hub, token, version, logger)
 		srv.Status = func() any { return d.Health() }
-		srv.Admin = &admin{d: d, home: home, cfg: cfg, version: version, sync: uploader, budget: budgets, port: ln.Addr().(*net.TCPAddr).Port, send: notify.Send}
+		srv.Admin = &admin{d: d, home: home, cfg: cfg, version: version, sync: uploader, budget: budgets, github: prs, port: ln.Addr().(*net.TCPAddr).Port, send: notify.Send}
 		srv.Ingest = d
 		srv.DevOrigin = os.Getenv("SHIPLINO_DEV_ORIGIN")
 		apiErr <- srv.Serve(ctx, ln)

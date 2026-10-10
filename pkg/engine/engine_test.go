@@ -306,3 +306,22 @@ func TestCWDFromLaterEvent(t *testing.T) {
 		t.Fatalf("cwd = %q", s.CWD)
 	}
 }
+
+func TestMergedPRMovesReviewToDone(t *testing.T) {
+	e := New(nil, nil)
+	at := time.Date(2026, 10, 9, 10, 0, 0, 0, time.UTC)
+	ev := func(kind model.Kind, data map[string]any) model.Event {
+		return model.Event{Kind: kind, TS: at, SessionID: "a:1", ActorID: "a:1", Agent: model.Agent{Name: "a"}, Data: data}
+	}
+	e.Apply(ev(model.KindTurnStart, nil))
+	e.Apply(ev(model.KindFileEdit, map[string]any{"path": "x.go", "lines_added": 1}))
+	e.Apply(ev(model.KindTurnEnd, map[string]any{"status": "ok"}))
+	e.Apply(ev(model.KindGitPR, map[string]any{"url": "https://github.com/a/b/pull/1", "number": 1, "action": "linked"}))
+	if s := e.Get("a:1"); s.Status != StatusReview || len(s.Links) != 1 {
+		t.Fatalf("linked: %s %v", s.Status, s.Links)
+	}
+	e.Apply(ev(model.KindGitPR, map[string]any{"url": "https://github.com/a/b/pull/1", "number": 1, "action": "merged"}))
+	if s := e.Get("a:1"); s.Status != StatusDone || len(s.Links) != 1 || s.Links[0].Action != "merged" {
+		t.Fatalf("merged: %s %v", s.Status, s.Links)
+	}
+}

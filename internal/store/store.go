@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/elephaant/shiplino/internal/integrations/github"
 	"os"
 	"path/filepath"
 	"strings"
@@ -258,6 +259,8 @@ var migrations = []string{
 	`ALTER TABLE sessions ADD COLUMN cost_usd REAL NOT NULL DEFAULT 0;
 	UPDATE sessions SET cost_usd = COALESCE(json_extract(body, '$.best_cost_usd'), 0);
 	CREATE INDEX sessions_board ON sessions(project_id, status, parent_id, last_event_at, root_id, cost_usd);`,
+	// v8: GitHub pull request state (opt-in integration), by PR URL
+	`CREATE TABLE pr_state (url TEXT PRIMARY KEY, body TEXT NOT NULL, updated_at INTEGER NOT NULL);`,
 }
 
 func (s *Store) migrate(ctx context.Context) error {
@@ -749,6 +752,38 @@ func (s *Store) SessionsIn(ctx context.Context, projectID string, limit int) ([]
 		return nil, err
 	}
 	return scanSessions(rows)
+}
+
+// PRs returns the stored pull request states by URL.
+func (s *Store) PRs(ctx context.Context) (map[string]github.PR, error) {
+	rows, err := s.db.QueryContext(ctx, `SELECT body FROM pr_state`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[string]github.PR{}
+	for rows.Next() {
+		var body []byte
+		if err := rows.Scan(&body); err != nil {
+			return nil, err
+		}
+		var pr github.PR
+		if json.Unmarshal(body, &pr) == nil {
+			out[pr.URL] = pr
+		}
+	}
+	return out, rows.Err()
+}
+
+// PutPR stores a pull request's state.
+func (s *Store) PutPR(ctx context.Context, pr github.PR) error {
+	body, err := json.Marshal(pr)
+	if err != nil {
+		return err
+	}
+	_, err = s.db.ExecContext(ctx, `INSERT INTO pr_state (url, body, updated_at) VALUES (?, ?, ?)
+		ON CONFLICT(url) DO UPDATE SET body = excluded.body, updated_at = excluded.updated_at`, pr.URL, body, time.Now().UnixMilli())
+	return err
 }
 
 // SessionsActiveSince returns sessions (and subagents) with activity at or
