@@ -8,6 +8,8 @@ import {
   CircleAlert,
   CircleCheck,
   CircleDashed,
+  Cloud,
+  CloudOff,
   Download,
   Pause,
   Play,
@@ -23,8 +25,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { API_BASE, api, type Settings } from "@/lib/api";
-import { formatDuration } from "@/lib/format";
+import { API_BASE, api, type Settings, type SyncState } from "@/lib/api";
+import { formatAgo, formatDuration } from "@/lib/format";
 
 function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -49,6 +51,118 @@ function formatBytes(n: number): string {
   if (n < 1024 * 1024) return `${Math.max(1, Math.round(n / 1024))} KB`;
   if (n < 1024 * 1024 * 1024) return `${(n / 1024 / 1024).toFixed(1)} MB`;
   return `${(n / 1024 / 1024 / 1024).toFixed(2)} GB`;
+}
+
+function SyncCard({ sync }: { sync: SyncState }) {
+  const on = sync.enabled && sync.signed_in;
+  return (
+    <Card className="gap-3">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          {on ? <Cloud className="size-4" aria-hidden /> : <CloudOff className="size-4" aria-hidden />}
+          {on ? "Sync is on" : "Sync is off"}
+        </CardTitle>
+        <CardDescription>
+          {on
+            ? "Events from allowed projects are uploaded to your workspace, stripped to the sync capture level and redacted again first."
+            : "Nothing leaves this machine. Sync is opt-in, and only projects you allow are ever sent."}
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {sync.signed_in ? (
+          <>
+            <Row label="Signed in as">
+              {sync.account || "—"}
+              {sync.role && <span className="text-muted-foreground text-xs"> · {sync.role}</span>}
+            </Row>
+            <Row label="Workspace">
+              {sync.workspace_name || sync.workspace_id}{" "}
+              <span className="text-muted-foreground text-xs">
+                · <Mono>{sync.endpoint}</Mono>
+              </span>
+            </Row>
+            <Row label="Credentials">
+              {sync.credential_store === "file" ? (
+                <>
+                  <span className="text-status-waiting">In a file only you can read</span>
+                  <p className="text-muted-foreground text-xs">{sync.credential_note}</p>
+                </>
+              ) : (
+                "In the OS keychain"
+              )}
+            </Row>
+          </>
+        ) : (
+          <Row label="Account">{sync.needs_login ? "Signed out by the sync service" : "Not signed in"}</Row>
+        )}
+        <Row label="Capture level">
+          <span className="font-medium capitalize">{sync.capture_level}</span>
+          {sync.capture_level_capped && (
+            <span className="text-muted-foreground text-xs"> · lowered to match the local capture level</span>
+          )}
+          <p className="text-muted-foreground text-xs">{levels[sync.capture_level]}</p>
+        </Row>
+        <Row label="Allowed projects">
+          {sync.projects.length ? (
+            <div className="flex flex-wrap gap-1">
+              {sync.projects.map((p) => (
+                <Badge key={p} variant="secondary" className="max-w-full font-mono" title={p}>
+                  <span className="truncate">{p}</span>
+                </Badge>
+              ))}
+            </div>
+          ) : (
+            <span className="text-muted-foreground">None, so nothing is sent</span>
+          )}
+        </Row>
+        {sync.exclude.length > 0 && (
+          <Row label="Excluded">
+            <div className="flex flex-wrap gap-1">
+              {sync.exclude.map((p) => (
+                <Badge key={p} variant="outline" className="max-w-full font-mono" title={p}>
+                  <span className="truncate">{p}</span>
+                </Badge>
+              ))}
+            </div>
+          </Row>
+        )}
+        {sync.signed_in && (
+          <>
+            <Row label="Last sync">
+              {formatAgo(sync.last_upload)}
+              <span className="text-muted-foreground text-xs"> · {sync.uploaded.toLocaleString()} events uploaded</span>
+              {sync.rejected > 0 && (
+                <span className="text-status-waiting text-xs">
+                  {" "}
+                  · {sync.rejected.toLocaleString()} refused by the service as invalid
+                </span>
+              )}
+            </Row>
+            <Row label="Backlog">
+              {sync.backlog > 0 ? `${sync.backlog.toLocaleString()} events to check` : "Up to date"}
+            </Row>
+          </>
+        )}
+        {sync.last_error && (
+          <Row label="Problem">
+            <span className="flex items-start gap-1.5 text-status-failed">
+              <CircleAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+              <span className="break-words">{sync.last_error}</span>
+            </span>
+            {sync.next_retry && (
+              <p className="text-muted-foreground text-xs">
+                Retrying at {new Date(sync.next_retry).toLocaleTimeString()}
+              </p>
+            )}
+          </Row>
+        )}
+        <p className="pt-2 text-muted-foreground text-xs">
+          Manage it in a terminal: <Mono>shiplino sync login</Mono>, <Mono>shiplino sync allow &lt;project&gt;</Mono>,{" "}
+          <Mono>shiplino sync status --dry-run</Mono> (shows exactly what would be sent).
+        </p>
+      </CardContent>
+    </Card>
+  );
 }
 
 export default function SettingsPage() {
@@ -236,6 +350,8 @@ export default function SettingsPage() {
           <div className="pt-2">{restartNote}</div>
         </CardContent>
       </Card>
+
+      {s.sync && <SyncCard sync={s.sync} />}
 
       <Card className="gap-3">
         <CardHeader>

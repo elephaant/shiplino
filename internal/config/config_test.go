@@ -85,3 +85,74 @@ func TestNotifySettings(t *testing.T) {
 		t.Fatalf("bad min_turn: %v", err)
 	}
 }
+
+func TestSyncDefaultsAndValidation(t *testing.T) {
+	home := t.TempDir()
+	if err := WriteDefault(home); err != nil {
+		t.Fatal(err)
+	}
+	c, err := Load(home)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.Sync.Enabled || c.SyncEndpoint() != DefaultSyncEndpoint || len(c.Sync.Projects) != 0 {
+		t.Fatalf("defaults: %+v", c.Sync)
+	}
+	if l, _ := c.SyncLevel(); l != redact.Minimal {
+		t.Fatalf("default sync level %s", l)
+	}
+	for name, content := range map[string]string{
+		"http endpoint": "[sync]\nendpoint = \"http://sync.example.com\"\n",
+		"bad level":     "[sync]\ncapture_level = \"all\"\n",
+		"unknown key":   "[sync]\nenabeld = true\n",
+	} {
+		os.WriteFile(Path(home), []byte(content), 0o600)
+		if _, err := Load(home); err == nil {
+			t.Errorf("%s accepted", name)
+		}
+	}
+	os.WriteFile(Path(home), []byte("[sync]\nendpoint = \"http://127.0.0.1:9999/\"\n"), 0o600)
+	if c, err := Load(home); err != nil || c.SyncEndpoint() != "http://127.0.0.1:9999" {
+		t.Fatalf("loopback endpoint: %v %q", err, c.SyncEndpoint())
+	}
+}
+
+func TestUpdateSyncKeepsTheRestOfTheFile(t *testing.T) {
+	home := t.TempDir()
+	if err := WriteDefault(home); err != nil {
+		t.Fatal(err)
+	}
+	before := readFile(t, Path(home))
+	if err := UpdateSync(home, func(s *Sync) {
+		s.Enabled = true
+		s.Projects = append(s.Projects, "example.com/acme/api")
+	}); err != nil {
+		t.Fatal(err)
+	}
+	after := readFile(t, Path(home))
+	head := before[:strings.Index(before, "[sync]")]
+	if !strings.HasPrefix(after, head) || strings.Count(after, "[sync]") != 1 {
+		t.Fatalf("rest of the file changed:\n%s", after)
+	}
+	c, err := Load(home)
+	if err != nil || !c.Sync.Enabled || len(c.Sync.Projects) != 1 || c.Sync.CaptureLevel != "minimal" {
+		t.Fatalf("after update: %+v %v", c.Sync, err)
+	}
+	// A section in the middle of a file, followed by another one.
+	os.WriteFile(Path(home), []byte("# mine\ncapture_level = \"full\"\n\n[sync]\nenabled = true\n\n[notify]\nenabled = false # keep\n"), 0o600)
+	if err := UpdateSync(home, func(s *Sync) { s.Enabled = false }); err != nil {
+		t.Fatal(err)
+	}
+	after = readFile(t, Path(home))
+	if !strings.HasPrefix(after, "# mine\ncapture_level = \"full\"\n") || !strings.HasSuffix(after, "[notify]\nenabled = false # keep\n") {
+		t.Fatalf("neighbours changed:\n%s", after)
+	}
+	if c, err := Load(home); err != nil || c.Sync.Enabled || c.Level() != redact.Full {
+		t.Fatalf("reload: %+v %v", c, err)
+	}
+	// A broken file is never rewritten.
+	os.WriteFile(Path(home), []byte("capture_level = \n"), 0o600)
+	if err := UpdateSync(home, func(s *Sync) { s.Enabled = true }); err == nil || readFile(t, Path(home)) != "capture_level = \n" {
+		t.Fatalf("broken file: %v", err)
+	}
+}

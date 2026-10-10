@@ -30,6 +30,7 @@ Commands:
   export            sessions as CSV or JSON (--format, --project, --since 7d, --out)
   notify test       show a sample desktop notification
   backfill          import agent history from before setup (--since 30d)
+  sync              opt-in cloud sync: login, status [--dry-run], allow, deny, logout
   doctor            check everything and explain problems (--fix to repair)
   pause             stop recording (--for 30m); hooks stay installed
   resume            start recording again
@@ -83,6 +84,8 @@ func Run(args []string, stdout, stderr io.Writer, version string) int {
 		return backfill(ctx, e, args[1:])
 	case "notify":
 		return notifyCmd(ctx, e, args[1:])
+	case "sync":
+		return syncCmd(ctx, e, args[1:])
 	case "doctor":
 		return doctor(ctx, e, args[1:])
 	case "pause":

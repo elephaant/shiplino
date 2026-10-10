@@ -16,6 +16,7 @@ import (
 	"github.com/elephaant/shiplino/internal/notify"
 	"github.com/elephaant/shiplino/internal/spool"
 	"github.com/elephaant/shiplino/internal/store"
+	cloudsync "github.com/elephaant/shiplino/internal/sync"
 	"github.com/elephaant/shiplino/pkg/engine"
 	"github.com/elephaant/shiplino/pkg/redact"
 )
@@ -79,11 +80,15 @@ func Main(ctx context.Context, version string) error {
 		}
 		go n.Run(ctx)
 	}
+	// Opt-in cloud sync: idle unless enabled and signed in, on its own
+	// goroutine reading committed rows, so it never slows recording.
+	uploader := cloudsync.NewUploader(home, st, logger, version)
+	go uploader.Run(ctx)
 	apiErr := make(chan error, 1)
 	go func() {
 		srv := api.New(st, hub, token, version, logger)
 		srv.Status = func() any { return d.Health() }
-		srv.Admin = &admin{d: d, home: home, cfg: cfg, version: version, port: ln.Addr().(*net.TCPAddr).Port, send: notify.Send}
+		srv.Admin = &admin{d: d, home: home, cfg: cfg, version: version, sync: uploader, port: ln.Addr().(*net.TCPAddr).Port, send: notify.Send}
 		srv.DevOrigin = os.Getenv("SHIPLINO_DEV_ORIGIN")
 		apiErr <- srv.Serve(ctx, ln)
 		cancel() // if the API dies, stop the daemon too

@@ -25,6 +25,9 @@ import (
 // Store is the local SQLite database.
 type Store struct {
 	db *sql.DB
+	// ro is a separate read-only pool for background readers (sync), so
+	// they never queue behind, or hold up, the single writer connection.
+	ro *sql.DB
 }
 
 // Open opens (and creates or migrates) the database at path.
@@ -46,11 +49,18 @@ func Open(path string) (*Store, error) {
 		db.Close()
 		return nil, fmt.Errorf("store: migrate: %w", err)
 	}
+	ro, err := sql.Open("sqlite", dsn+"&_pragma=query_only(1)")
+	if err != nil {
+		db.Close()
+		return nil, err
+	}
+	ro.SetMaxOpenConns(2)
+	s.ro = ro
 	return s, nil
 }
 
 // Close closes the database.
-func (s *Store) Close() error { return s.db.Close() }
+func (s *Store) Close() error { return errors.Join(s.ro.Close(), s.db.Close()) }
 
 // migrations are applied in order; PRAGMA user_version records progress.
 var migrations = []string{
@@ -133,6 +143,19 @@ var migrations = []string{
 	) WHERE t IS NOT NULL AND t != '';`,
 	// v5: small key/value settings (e.g. which engine built the sessions)
 	`CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);`,
+	// v6: cloud sync progress per workspace. cursor is the last events
+	// rowid uploaded or skipped (rowids only grow: events are never
+	// deleted and the database is never vacuumed).
+	`CREATE TABLE sync_state (
+		workspace_id TEXT PRIMARY KEY,
+		cursor INTEGER NOT NULL DEFAULT 0,
+		scope TEXT NOT NULL DEFAULT '',
+		uploaded INTEGER NOT NULL DEFAULT 0,
+		rejected INTEGER NOT NULL DEFAULT 0,
+		last_upload_at INTEGER NOT NULL DEFAULT 0,
+		last_error TEXT NOT NULL DEFAULT '',
+		last_error_at INTEGER NOT NULL DEFAULT 0
+	);`,
 }
 
 func (s *Store) migrate(ctx context.Context) error {

@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"sort"
@@ -231,16 +230,7 @@ func open(ctx context.Context, e *env, args []string) int {
 		return 1
 	}
 	url := strings.Replace(c.base, "127.0.0.1", "localhost", 1)
-	var cmd *exec.Cmd
-	switch runtime.GOOS {
-	case "darwin":
-		cmd = exec.Command("open", url)
-	case "windows":
-		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", url)
-	default:
-		cmd = exec.Command("xdg-open", url)
-	}
-	if err := cmd.Start(); err != nil {
+	if err := e.browse(url); err != nil {
 		fmt.Fprintf(e.out, "Open %s in your browser.\n", url)
 		return 0
 	}
@@ -359,6 +349,7 @@ func doctor(ctx context.Context, e *env, args []string) int {
 	if spool.Paused(e.home, time.Now()) {
 		checks = append(checks, check{ok: true, warn: true, name: "Recording", detail: "paused", fixHint: "shiplino resume"})
 	}
+	checks = append(checks, syncChecks(e)...)
 
 	failed := 0
 	for _, ch := range checks {
