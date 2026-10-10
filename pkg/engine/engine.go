@@ -180,7 +180,7 @@ func (s *Session) FilesChanged() int { return len(s.Files) }
 // Rev identifies the engine's folding rules. Bump it whenever Apply would
 // produce different sessions from the same events (a new field, a fix);
 // the daemon then rebuilds stored sessions from their events once.
-const Rev = 9
+const Rev = 10
 
 // Engine folds events into sessions. It is not safe for concurrent use;
 // the daemon feeds it from a single goroutine.
