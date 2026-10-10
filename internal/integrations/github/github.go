@@ -1,5 +1,5 @@
 // Copyright 2026 The Shiplino Authors
-// SPDX-License-Identifier: FSL-1.1-Apache-2.0
+// SPDX-License-Identifier: FSL-1.1-ALv2
 
 // Package github shows the state of the pull requests agents work on:
 // open, draft, merged or closed, CI checks and review decision. It is off

@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Changed
+- The license identifier is now the official SPDX id `FSL-1.1-ALv2` (file headers, package metadata, LICENSE title). The license terms are unchanged.
+
 ## [0.1.0-alpha.2] - 2026-10-10
 
 Codex, Cursor, Gemini CLI, Copilot CLI, Windsurf and Aider support; search, notifications, Insights, Timeline and Settings; history backfill; opt-in cloud sync client.

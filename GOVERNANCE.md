@@ -19,7 +19,7 @@ Contributors with a track record of high-quality contributions and reviews can b
 
 ## Open core
 
-The code in this repository is licensed under FSL-1.1-Apache-2.0 (free for internal and development use, converting to Apache-2.0 after two years). The hosted Shiplino Cloud (team sync, team workspace) is a separate commercial service. Features merged here won't be removed later to move them behind a paywall.
+The code in this repository is licensed under FSL-1.1-ALv2 (free for internal and development use, converting to Apache-2.0 after two years). The hosted Shiplino Cloud (team sync, team workspace) is a separate commercial service. Features merged here won't be removed later to move them behind a paywall.
 
 ## Releases
 

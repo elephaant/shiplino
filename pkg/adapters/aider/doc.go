@@ -1,5 +1,5 @@
 // Copyright 2026 The Shiplino Authors
-// SPDX-License-Identifier: FSL-1.1-Apache-2.0
+// SPDX-License-Identifier: FSL-1.1-ALv2
 
 // Package aider reads Aider's chat history file (.aider.chat.history.md).
 // Aider has no hooks, so sessions are recorded by `shiplino wrap aider`:
