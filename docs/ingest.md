@@ -36,6 +36,35 @@ Rules:
 - **Filled in for you:** `v` (1), `ts` (now), `received_at` and `collector` (`http`). Shiplino assigns its own event ids.
 - **Retries are safe.** Each event's `dedup_key`, or else its `id`, identifies it within its session. Sending the same event again counts as a duplicate. An event with neither is always stored.
 - **Errors are per event.** Invalid events are listed by their position (`{"index": 2, "error": "…"}`) and the valid ones are still stored. The status is 400 only when nothing in the request was valid. Larger requests get 413.
+- **Cost:** a `usage` event's `cost_usd` is kept as sent. A `usage` event with a `model` and tokens but no `cost_usd` is priced from the bundled price table (`cost_source: computed`), or marked `unpriced` for models the table doesn't know. To show your agent's own figure as the session cost (`cost_source: reported`), also send its running total as `{"report": true, "process": "<any id for this run>", "total_cost_usd": …}` (see [cost.md](cost.md)).
+
+### SDKs
+
+The [TypeScript](../sdk/ts/) and [Python](../sdk/python/) SDKs wrap this endpoint. They find the token and port in the Shiplino home, batch events in the background (every second or 100 events, and at exit), give every event a stable id so retries are safe, keep a bounded queue while the daemon is down, and never throw into your agent.
+
+```python
+from shiplino import Shiplino
+
+shiplino = Shiplino(agent="release-bot")
+with shiplino.session(title="Cut the 1.4 release") as s:
+    s.turn("Cut the 1.4 release")
+    with s.tool("Bash", {"command": "make release"}):
+        ...
+    s.usage("claude-sonnet-5", input_tokens=1200, output_tokens=300, cost_usd=0.0081)
+```
+
+```ts
+import { Shiplino } from "@shiplino/sdk";
+
+const shiplino = new Shiplino({ agent: "release-bot" });
+const s = shiplino.session({ title: "Cut the 1.4 release" });
+s.turn("Cut the 1.4 release");
+s.tool("Bash", { command: "make release" }).end(true);
+s.usage({ model: "claude-sonnet-5", inputTokens: 1200, outputTokens: 300, costUsd: 0.0081 });
+s.end();
+```
+
+A usage call with a cost sends both the per-response cost and the running total described above, so the card shows your agent's own figure.
 
 ## OpenTelemetry: `/v1/logs`
 

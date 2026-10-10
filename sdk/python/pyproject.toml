@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "shiplino"
+version = "0.1.0"
+description = "Report sessions, tool calls and usage from custom AI agents to Shiplino"
+readme = "README.md"
+license = { text = "FSL-1.1-Apache-2.0" }
+requires-python = ">=3.9"
+dependencies = []
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Typing :: Typed",
+]
+
+[project.urls]
+Source = "https://github.com/elephaant/shiplino/tree/main/sdk/python"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+shiplino = ["py.typed"]

@@ -1,8 +1,8 @@
 # SDKs
 
-Report events from custom agents (Claude Agent SDK, OpenAI Agents SDK, LangGraph, your own code) to the local daemon or the cloud.
+Report sessions, turns, tool calls and token usage from your own agents (Claude Agent SDK, OpenAI Agents SDK, LangGraph, plain code) to the local Shiplino daemon. They show up on the board like any other agent.
 
-- `ts/`: `@shiplino/sdk` (npm)
-- `python/`: `shiplino` (PyPI)
+- [`ts/`](ts/): `@shiplino/sdk` for Node 20+, no runtime dependencies
+- [`python/`](python/): `shiplino` for Python 3.9+, standard library only
 
-Event format: [docs/event-format.md](../docs/event-format.md).
+Both send [universal events](../docs/event-format.md) to the daemon's [ingest API](../docs/ingest.md). Neither is published to a package registry yet: install from this repository (see each README).

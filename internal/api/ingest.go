@@ -18,6 +18,7 @@ import (
 
 	"github.com/elephaant/shiplino/pkg/model"
 	"github.com/elephaant/shiplino/pkg/otlp"
+	"github.com/elephaant/shiplino/pkg/pricing"
 )
 
 // Ingester stores events posted to the API by custom agents and OTLP
@@ -226,7 +227,39 @@ func ingestEvent(raw json.RawMessage, now time.Time) (model.Event, error) {
 	if err := e.Validate(); err != nil {
 		return e, err
 	}
+	if e.Kind == model.KindUsage {
+		priceUsage(e.Data, e.TS)
+	}
 	return e, nil
+}
+
+// priceUsage prices a usage event that carries tokens but no cost with
+// the bundled price table, as the adapters do for transcripts. A cost the
+// sender reports is kept as is: the agent's own figure wins.
+func priceUsage(d map[string]any, at time.Time) {
+	if d == nil || d["cost_usd"] != nil {
+		return
+	}
+	if report, _ := d["report"].(bool); report {
+		return
+	}
+	m, _ := d["model"].(string)
+	if m == "" {
+		return
+	}
+	tokens := func(k string) int64 {
+		f, _ := d[k].(float64)
+		return int64(max(f, 0))
+	}
+	u := pricing.Usage{
+		Input: tokens("input_tokens"), Output: tokens("output_tokens"),
+		CacheRead: tokens("cache_read_tokens"), CacheWrite5m: tokens("cache_write_tokens"), At: at,
+	}
+	if cost, ok := pricing.Default().Cost(m, u); ok {
+		d["cost_usd"], d["cost_source"] = cost, "computed"
+	} else {
+		d["cost_source"] = "unpriced"
+	}
 }
 
 // under reports whether actor is empty, the session, or one of its subagents.
