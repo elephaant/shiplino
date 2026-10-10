@@ -13,6 +13,7 @@ import (
 
 	"github.com/elephaant/shiplino/internal/daemon"
 	"github.com/elephaant/shiplino/internal/spool"
+	"github.com/elephaant/shiplino/internal/wrap"
 )
 
 const usageText = `shiplino: flight recorder and kanban board for AI coding agents
@@ -32,6 +33,7 @@ Commands:
   doctor            check everything and explain problems (--fix to repair)
   pause             stop recording (--for 30m); hooks stay installed
   resume            start recording again
+  wrap -- <cmd>     run any CLI agent (Aider, ...) and record it (--agent, --title)
   daemon            run the background service in the foreground
   uninstall         remove Shiplino (--purge also deletes all data)
   version           print the version
@@ -44,6 +46,11 @@ func Run(args []string, stdout, stderr io.Writer, version string) int {
 	if len(args) == 0 {
 		fmt.Fprint(stdout, usageText)
 		return 0
+	}
+	// wrap runs another program: it handles its own signals and must run the
+	// command even when Shiplino itself can't set up (e.g. no home dir).
+	if args[0] == "wrap" {
+		return wrap.Run(args[1:], os.Stdin, stdout, stderr)
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()

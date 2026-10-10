@@ -5,7 +5,7 @@ Every project, every session, every subagent, every command, every file, every d
 
 **One command to install. Zero tokens to run.**
 
-> ⚠️ **Status: alpha.** Claude Code, Codex (CLI and desktop app) and Cursor (IDE agent and CLI) are supported today. Expect rough edges and report them in Issues.
+> ⚠️ **Status: alpha.** Claude Code, Codex (CLI and desktop app) and Cursor (IDE agent and CLI) are supported today, and Aider or any other CLI agent through `shiplino wrap`. Expect rough edges and report them in Issues.
 
 ---
 
@@ -47,7 +47,7 @@ Read more: [How it works](docs/how-it-works.md).
 | Windsurf (Cascade) | hooks: prompts, turns, file reads and edits, commands, MCP calls. Windsurf's hooks carry no token counts, so no cost yet |
 | GitHub Copilot CLI | hooks (`~/.copilot/hooks/shiplino.json`; no token usage yet) |
 | Cline, OpenCode | hooks / plugins |
-| Aider, any CLI agent | logs, git, `shiplino wrap` |
+| Aider, any CLI agent | `shiplino wrap -- <command>` + git (Aider: prompts, tokens, cost and edits from its chat history) |
 | Custom agents (Agent SDK, LangGraph, …) | HTTP, OTLP, SDKs |
 
 Want another agent? Open an issue, or read [Adding an agent adapter](docs/adding-an-adapter.md).

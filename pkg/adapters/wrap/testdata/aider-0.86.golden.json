@@ -1,0 +1,381 @@
+[
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T09:00:00Z",
+    "received_at": "2026-10-10T09:00:00Z",
+    "kind": "session.start",
+    "agent": {
+      "name": "aider",
+      "surface": "cli"
+    },
+    "collector": "wrap",
+    "session_id": "aider:01K7A0000000000000000000AA",
+    "actor_id": "aider:01K7A0000000000000000000AA",
+    "project": {
+      "cwd": "/home/dev/app"
+    },
+    "data": {
+      "command": "aider --model sonnet",
+      "wrapped": true
+    },
+    "dedup_key": "aider:01K7A0000000000000000000AA:start"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T09:00:10Z",
+    "received_at": "2026-10-10T09:00:10Z",
+    "kind": "session.update",
+    "agent": {
+      "name": "aider",
+      "version": "0.86.1",
+      "surface": "cli"
+    },
+    "collector": "wrap",
+    "session_id": "aider:01K7A0000000000000000000AA",
+    "actor_id": "aider:01K7A0000000000000000000AA",
+    "project": {
+      "cwd": "/home/dev/app"
+    },
+    "data": {
+      "agent_version": "0.86.1"
+    },
+    "dedup_key": "aider:01K7A0000000000000000000AA:aider:version:46"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T09:00:10Z",
+    "received_at": "2026-10-10T09:00:10Z",
+    "kind": "session.update",
+    "agent": {
+      "name": "aider",
+      "surface": "cli"
+    },
+    "collector": "wrap",
+    "session_id": "aider:01K7A0000000000000000000AA",
+    "actor_id": "aider:01K7A0000000000000000000AA",
+    "project": {
+      "cwd": "/home/dev/app"
+    },
+    "data": {
+      "model": "anthropic/claude-sonnet-4-5"
+    },
+    "dedup_key": "aider:01K7A0000000000000000000AA:aider:model:64"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T09:00:10Z",
+    "received_at": "2026-10-10T09:00:10Z",
+    "kind": "turn.start",
+    "agent": {
+      "name": "aider",
+      "surface": "cli"
+    },
+    "collector": "wrap",
+    "session_id": "aider:01K7A0000000000000000000AA",
+    "actor_id": "aider:01K7A0000000000000000000AA",
+    "project": {
+      "cwd": "/home/dev/app"
+    },
+    "data": {
+      "prompt": "Add a greet function to src/greet.py\nand a test for it"
+    },
+    "dedup_key": "aider:01K7A0000000000000000000AA:aider:prompt:270"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T09:00:10Z",
+    "received_at": "2026-10-10T09:00:10Z",
+    "kind": "usage",
+    "agent": {
+      "name": "aider",
+      "surface": "cli"
+    },
+    "collector": "wrap",
+    "session_id": "aider:01K7A0000000000000000000AA",
+    "actor_id": "aider:01K7A0000000000000000000AA",
+    "project": {
+      "cwd": "/home/dev/app"
+    },
+    "data": {
+      "cache_read_tokens": 0,
+      "cache_write_tokens": 0,
+      "input_tokens": 2100,
+      "output_tokens": 512,
+      "tokens_rounded": true,
+      "tokens_source": "reported"
+    },
+    "dedup_key": "aider:01K7A0000000000000000000AA:aider:tokens:475"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T09:00:10Z",
+    "received_at": "2026-10-10T09:00:10Z",
+    "kind": "usage",
+    "agent": {
+      "name": "aider",
+      "surface": "cli"
+    },
+    "collector": "wrap",
+    "session_id": "aider:01K7A0000000000000000000AA",
+    "actor_id": "aider:01K7A0000000000000000000AA",
+    "project": {
+      "cwd": "/home/dev/app"
+    },
+    "data": {
+      "cost_source": "reported",
+      "message_cost_usd": 0.01,
+      "process": "aider:01K7A0000000000000000000AA",
+      "report": true,
+      "total_cost_usd": 0.01
+    },
+    "dedup_key": "aider:01K7A0000000000000000000AA:aider:cost:475"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T09:00:10Z",
+    "received_at": "2026-10-10T09:00:10Z",
+    "kind": "file.edit",
+    "agent": {
+      "name": "aider",
+      "surface": "cli"
+    },
+    "collector": "wrap",
+    "session_id": "aider:01K7A0000000000000000000AA",
+    "actor_id": "aider:01K7A0000000000000000000AA",
+    "project": {
+      "cwd": "/home/dev/app"
+    },
+    "data": {
+      "path": "/home/dev/app/src/greet.py",
+      "tool": "edit"
+    },
+    "dedup_key": "aider:01K7A0000000000000000000AA:aider:edit:548"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T09:00:10Z",
+    "received_at": "2026-10-10T09:00:10Z",
+    "kind": "file.edit",
+    "agent": {
+      "name": "aider",
+      "surface": "cli"
+    },
+    "collector": "wrap",
+    "session_id": "aider:01K7A0000000000000000000AA",
+    "actor_id": "aider:01K7A0000000000000000000AA",
+    "project": {
+      "cwd": "/home/dev/app"
+    },
+    "data": {
+      "path": "/home/dev/app/tests/test_greet.py",
+      "tool": "edit"
+    },
+    "dedup_key": "aider:01K7A0000000000000000000AA:aider:edit:581"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T09:00:10Z",
+    "received_at": "2026-10-10T09:00:10Z",
+    "kind": "shell.exec",
+    "agent": {
+      "name": "aider",
+      "surface": "cli"
+    },
+    "collector": "wrap",
+    "session_id": "aider:01K7A0000000000000000000AA",
+    "actor_id": "aider:01K7A0000000000000000000AA",
+    "project": {
+      "cwd": "/home/dev/app"
+    },
+    "data": {
+      "command": "git commit",
+      "commit_message": "feat: Add greet function with test",
+      "exit_code": 0,
+      "sha": "1a2b3c4",
+      "tool": "shell"
+    },
+    "dedup_key": "aider:01K7A0000000000000000000AA:aider:commit:621"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T09:00:10Z",
+    "received_at": "2026-10-10T09:00:10Z",
+    "kind": "turn.end",
+    "agent": {
+      "name": "aider",
+      "surface": "cli"
+    },
+    "collector": "wrap",
+    "session_id": "aider:01K7A0000000000000000000AA",
+    "actor_id": "aider:01K7A0000000000000000000AA",
+    "project": {
+      "cwd": "/home/dev/app"
+    },
+    "dedup_key": "aider:01K7A0000000000000000000AA:aider:turn-end:475"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T09:00:40Z",
+    "received_at": "2026-10-10T09:00:40Z",
+    "kind": "turn.start",
+    "agent": {
+      "name": "aider",
+      "surface": "cli"
+    },
+    "collector": "wrap",
+    "session_id": "aider:01K7A0000000000000000000AA",
+    "actor_id": "aider:01K7A0000000000000000000AA",
+    "project": {
+      "cwd": "/home/dev/app"
+    },
+    "data": {
+      "prompt": ""
+    },
+    "dedup_key": "aider:01K7A0000000000000000000AA:aider:prompt:676"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T09:00:40Z",
+    "received_at": "2026-10-10T09:00:40Z",
+    "kind": "turn.start",
+    "agent": {
+      "name": "aider",
+      "surface": "cli"
+    },
+    "collector": "wrap",
+    "session_id": "aider:01K7A0000000000000000000AA",
+    "actor_id": "aider:01K7A0000000000000000000AA",
+    "project": {
+      "cwd": "/home/dev/app"
+    },
+    "data": {
+      "prompt": "rename greet to hello"
+    },
+    "dedup_key": "aider:01K7A0000000000000000000AA:aider:prompt:692"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T09:00:40Z",
+    "received_at": "2026-10-10T09:00:40Z",
+    "kind": "usage",
+    "agent": {
+      "name": "aider",
+      "surface": "cli"
+    },
+    "collector": "wrap",
+    "session_id": "aider:01K7A0000000000000000000AA",
+    "actor_id": "aider:01K7A0000000000000000000AA",
+    "project": {
+      "cwd": "/home/dev/app"
+    },
+    "data": {
+      "cache_read_tokens": 10000,
+      "cache_write_tokens": 1300,
+      "input_tokens": 700,
+      "output_tokens": 260,
+      "tokens_rounded": true,
+      "tokens_source": "reported"
+    },
+    "dedup_key": "aider:01K7A0000000000000000000AA:aider:tokens:729"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T09:00:40Z",
+    "received_at": "2026-10-10T09:00:40Z",
+    "kind": "usage",
+    "agent": {
+      "name": "aider",
+      "surface": "cli"
+    },
+    "collector": "wrap",
+    "session_id": "aider:01K7A0000000000000000000AA",
+    "actor_id": "aider:01K7A0000000000000000000AA",
+    "project": {
+      "cwd": "/home/dev/app"
+    },
+    "data": {
+      "cost_source": "reported",
+      "message_cost_usd": 0.0042,
+      "process": "aider:01K7A0000000000000000000AA",
+      "report": true,
+      "total_cost_usd": 0.0142
+    },
+    "dedup_key": "aider:01K7A0000000000000000000AA:aider:cost:798"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T09:00:40Z",
+    "received_at": "2026-10-10T09:00:40Z",
+    "kind": "file.edit",
+    "agent": {
+      "name": "aider",
+      "surface": "cli"
+    },
+    "collector": "wrap",
+    "session_id": "aider:01K7A0000000000000000000AA",
+    "actor_id": "aider:01K7A0000000000000000000AA",
+    "project": {
+      "cwd": "/home/dev/app"
+    },
+    "data": {
+      "path": "/home/dev/app/src/greet.py",
+      "tool": "edit"
+    },
+    "dedup_key": "aider:01K7A0000000000000000000AA:aider:edit:840"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T09:00:40Z",
+    "received_at": "2026-10-10T09:00:40Z",
+    "kind": "turn.end",
+    "agent": {
+      "name": "aider",
+      "surface": "cli"
+    },
+    "collector": "wrap",
+    "session_id": "aider:01K7A0000000000000000000AA",
+    "actor_id": "aider:01K7A0000000000000000000AA",
+    "project": {
+      "cwd": "/home/dev/app"
+    },
+    "dedup_key": "aider:01K7A0000000000000000000AA:aider:turn-end:798"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T09:00:50Z",
+    "received_at": "2026-10-10T09:00:50Z",
+    "kind": "session.end",
+    "agent": {
+      "name": "aider",
+      "surface": "cli"
+    },
+    "collector": "wrap",
+    "session_id": "aider:01K7A0000000000000000000AA",
+    "actor_id": "aider:01K7A0000000000000000000AA",
+    "project": {
+      "cwd": "/home/dev/app"
+    },
+    "data": {
+      "duration_ms": 50000,
+      "exit_code": 0
+    },
+    "dedup_key": "aider:01K7A0000000000000000000AA:end"
+  }
+]
