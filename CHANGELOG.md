@@ -5,7 +5,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.1.0-alpha.3] - 2026-10-10
+
+Plan limits, todo progress, failure analytics, a local conversation tab, phone and team notifications, evidence badges, safer setup and a demo mode. Cloud sync now sends metadata only, and Shiplino is now Apache-2.0.
+
 ### Added
+- Notifications can now reach your phone or team: opt-in ntfy, signed webhook, Slack and Discord targets (`shiplino notify add|list|test|remove`), with secrets in the OS keychain and metadata-only messages (agent, project, branch, status, why it's waiting, duration, cost, board link). Waiting cards, the "Needs you" queue and desktop notifications now say why an agent waits (approval, question, or your turn), and new waits are marked until opened. (#122, #71)
+- Evidence badges: cost, session status, commit links, projects, subagents, plan limits and line counts now say where they come from (Reported by the agent, Observed by Shiplino, Inferred, or Unknown), with an icon and a tooltip naming the source. Sessions record the least certain source of their line counts (`lines_source`), and the session API returns `project_kind`. (#121)
+- `shiplino setup --dry-run` (and `uninstall --dry-run`) prints a unified diff of every agent config file it would change and writes nothing. `setup --no-service` connects agents without a login item, recorded as `[service] autostart = false` so doctor treats a stopped daemon as expected. Settings → Agents can now connect or remove each agent after showing the same diff. (#118)
+- `shiplino demo` (or `shiplino open --demo`): a throwaway board with a week of synthetic work in four made-up projects, with agents working live. It runs its own daemon on a free port in a temporary folder, never touches your data, agents or hooks, shows a "Demo data" banner, and deletes everything on Ctrl-C. (#117)
 - Insights: failure analytics. Shows failing tools per agent, commands grouped by program and exit code, denied permissions, retry loops (the same tool failing on the same file or program 3+ times in a row) and sessions that ended in an error or were interrupted, per project and agent, with links to the sessions. It's built from metadata only. Shell events now carry a `program` name, and sync sends `program` and `denied` (never the command). (#120)
 - Session detail has a **Conversation** tab: prompts, replies and tool calls read on demand from the agent's own transcript on this machine (Claude Code, Codex, Cursor, Gemini CLI), with secrets redacted. Nothing is stored or synced, and the tab says plainly when it falls back to stored data or shows nothing at `minimal`. Also new: **Export Markdown** (`shiplino export --session <id>`) and **Copy handoff prompt**. (#116)
 - Plan limits: see how close Codex and Claude Code are to your plan's 5-hour and weekly windows, and when they reset, in the header and on Insights (`GET /api/v1/limits`). Codex's own percentages are used. Claude Code shows "limit reached" from its transcripts, otherwise a marked token estimate. You get a desktop alert once per window at `[notify] limit_percent` (default 80). Set `[limits.plans]` to `"plan"` or `"api"` per agent. Dollar figures for plan agents are labeled API-equivalent. (#114)
@@ -18,6 +26,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Browser end-to-end tests (`make e2e`, CI job `e2e`): Playwright drives the web app against the real binary and a daemon fed through the hook shim, covering the overview, board drag/pin and refused drops, live updates, search, session detail and theme. The board now shows when a column won't take a dragged card and explains why, and a hydration error from the theme toggle is fixed.
 
 ### Fixed
+- the local API refuses cookie-authenticated changes (pause, backfill, cards, agent connect/remove, ingest) from any page but Shiplino's own. The UI cookie is `SameSite=Strict`, but a page on another localhost port counts as the same site. (#140)
 - Claude Code token counts. Responses copied into resumed or continued sessions counted again (input was ~24% high), and responses written over several lines kept their first, smaller count (output ~8% low). Each response now counts once at its final size, and stored history is cleaned and rebuilt on upgrade.
 
 ### Changed
@@ -95,6 +104,7 @@ First alpha: Claude Code support end to end.
 - User and contributor docs in `docs/`.
 - Repository skeleton: Go module, package layout, web/SDK/plugin folders, event JSON Schema, CI and community files.
 
-[Unreleased]: https://github.com/elephaant/shiplino/compare/v0.1.0-alpha.2...HEAD
+[Unreleased]: https://github.com/elephaant/shiplino/compare/v0.1.0-alpha.3...HEAD
+[0.1.0-alpha.3]: https://github.com/elephaant/shiplino/compare/v0.1.0-alpha.2...v0.1.0-alpha.3
 [0.1.0-alpha.2]: https://github.com/elephaant/shiplino/compare/v0.1.0-alpha.1...v0.1.0-alpha.2
 [0.1.0-alpha.1]: https://github.com/elephaant/shiplino/releases/tag/v0.1.0-alpha.1
