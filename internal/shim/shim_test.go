@@ -210,3 +210,28 @@ func TestMinimalStripsWindsurfToolInfo(t *testing.T) {
 		}
 	}
 }
+
+func TestMinimalStripsGeminiCLIContent(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("SHIPLINO_HOME", home)
+	os.WriteFile(filepath.Join(home, spool.MinimalMarker), nil, 0o600)
+	for _, payload := range []string{
+		`{"session_id":"g1","hook_event_name":"AfterAgent","prompt":"my secret plan","prompt_response":"private answer"}`,
+		`{"session_id":"g1","hook_event_name":"Notification","notification_type":"ToolPermission","message":"Approve cat notes.txt","details":{"command":"cat notes.txt"}}`,
+		`{"session_id":"g1","hook_event_name":"AfterTool","tool_name":"list_directory","tool_input":{"dir_path":"/app/src","ignore":["secret-dir"]},"tool_response":{"llmContent":"private listing"}}`,
+	} {
+		Run([]string{"--agent", "gemini-cli"}, strings.NewReader(payload))
+	}
+	raw, err := os.ReadFile(spool.SessionFile(spool.Dir(home), "gemini-cli", "g1"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, leaked := range []string{"secret plan", "private answer", "cat notes.txt", "secret-dir", "private listing"} {
+		if strings.Contains(string(raw), leaked) {
+			t.Errorf("%q reached the spool at minimal level", leaked)
+		}
+	}
+	if !strings.Contains(string(raw), "/app/src") || !strings.Contains(string(raw), "ToolPermission") {
+		t.Errorf("paths and event types must survive: %s", raw)
+	}
+}

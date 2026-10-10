@@ -128,12 +128,42 @@ func TestBundledTableIsSane(t *testing.T) {
 			if lc := m.LongContext; lc == nil && m.ID != "gpt-5.3-codex" || lc != nil && (lc.OverPromptTokens != 272000 || lc.Input <= m.Input) {
 				t.Errorf("%s: long context: %+v", m.ID, lc)
 			}
+		case strings.HasPrefix(m.ID, "gemini-"):
+			// Google: cached input is a tenth of input; long context is a
+			// prompt over 200K tokens and costs more.
+			if !near(m.CacheRead, m.Input/10) || m.CacheWrite5m != 0 {
+				t.Errorf("%s: cache rates look wrong: %+v", m.ID, m.Rates)
+			}
+			if lc := m.LongContext; lc != nil && (lc.OverPromptTokens != 200000 || lc.Input <= m.Input || lc.Output <= m.Output) {
+				t.Errorf("%s: long context: %+v", m.ID, lc)
+			}
 		default:
 			t.Errorf("%s: unknown provider; add its structure check", m.ID)
 		}
 	}
 	if _, err := Parse([]byte(`{"models":[{"id":"x"}]}`)); err == nil {
 		t.Error("table with missing prices accepted")
+	}
+}
+
+func TestGeminiRates(t *testing.T) {
+	// gemini-2.5-pro: $1.25 in, $10 out, $0.125 cached; over 200K: $2.50, $15, $0.25.
+	cost, ok := Default().Cost("gemini-2.5-pro", Usage{Input: 100_000, CacheRead: 100_000, Output: 10_000})
+	if !ok || !near(cost, 0.125+0.0125+0.1) {
+		t.Fatalf("standard: %v %v", cost, ok)
+	}
+	cost, _ = Default().Cost("gemini-2.5-pro", Usage{Input: 150_000, CacheRead: 100_000, Output: 10_000})
+	if !near(cost, 0.375+0.025+0.15) {
+		t.Fatalf("long context: %v", cost)
+	}
+	for model, want := range map[string]string{"gemini-2.5-flash": "gemini-2.5-flash", "gemini-2.5-flash-lite": "gemini-2.5-flash-lite", "gemini-3.1-pro-preview-customtools": "gemini-3.1-pro-preview-customtools", "gemini-9-ultra": ""} {
+		m, _ := Default().Lookup(model)
+		if got := ""; m != nil && m.ID != want || m == nil && want != "" {
+			if m != nil {
+				got = m.ID
+			}
+			t.Errorf("Lookup(%q) = %q, want %q", model, got, want)
+		}
 	}
 }
 

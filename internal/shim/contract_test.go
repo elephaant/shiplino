@@ -112,6 +112,40 @@ func TestContractSilentAndExitZero(t *testing.T) {
 	}
 }
 
+// Every event the Gemini CLI adapter registers, with its real payload
+// shape: Gemini CLI parses hook stdout (or stderr) as JSON decisions.
+func TestContractGeminiCLIEvents(t *testing.T) {
+	base := `"session_id":"g1","transcript_path":"/home/dev/.gemini/tmp/demo/chats/session-x.jsonl","cwd":"/home/dev/demo","timestamp":"2026-10-09T10:00:00.000Z"`
+	payloads := map[string]string{
+		"SessionStart": `"source":"startup"`,
+		"SessionEnd":   `"reason":"exit"`,
+		"BeforeAgent":  `"prompt":"add a health endpoint"`,
+		"AfterAgent":   `"prompt":"add a health endpoint","prompt_response":"Done.","stop_hook_active":false`,
+		"BeforeTool":   `"tool_name":"run_shell_command","tool_input":{"command":"ls"}`,
+		"AfterTool":    `"tool_name":"run_shell_command","tool_input":{"command":"ls"},"tool_response":{"llmContent":"Output: a","returnDisplay":"a"}`,
+		"Notification": `"notification_type":"ToolPermission","message":"Approve?","details":{"type":"exec"}`,
+		"PreCompress":  `"trigger":"auto"`,
+	}
+	home := t.TempDir()
+	for ev, fields := range payloads {
+		in := []byte(fmt.Sprintf(`{%s,"hook_event_name":%q,%s}`, base, ev, fields))
+		if out, code := runHook(t, baseEnv(home), in, "--agent", "gemini-cli"); out != "" || code != 0 {
+			t.Errorf("%s: exit=%d output=%q", ev, code, out)
+		}
+	}
+	f, err := os.Open(spool.SessionFile(spool.Dir(home), "gemini-cli", "g1"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	n := 0
+	for sc := bufio.NewScanner(f); sc.Scan(); n++ {
+	}
+	if n != len(payloads) {
+		t.Fatalf("%d spool lines, want %d", n, len(payloads))
+	}
+}
+
 func TestContractHostileEnvironments(t *testing.T) {
 	payload := []byte(`{"session_id":"s1"}`)
 	cases := map[string][]string{
