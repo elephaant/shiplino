@@ -313,3 +313,11 @@ func TestCodeSpan(t *testing.T) {
 		}
 	}
 }
+
+func TestNoHTML(t *testing.T) {
+	in := "see <script>alert(1)</script> and `a<b`\n```html\n<div>kept</div>\n```\n<img src=x>"
+	want := "see &lt;script>alert(1)&lt;/script> and `a<b`\n```html\n<div>kept</div>\n```\n&lt;img src=x>"
+	if got := noHTML(in); got != want {
+		t.Fatalf("got %q", got)
+	}
+}

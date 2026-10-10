@@ -17,7 +17,7 @@ func Markdown(sess *engine.Session, res Result) string {
 	if title == "" {
 		title = sess.ID
 	}
-	fmt.Fprintf(&b, "# %s\n\n", oneLine(title))
+	fmt.Fprintf(&b, "# %s\n\n", noHTML(oneLine(title)))
 	fmt.Fprintf(&b, "- Session: %s\n", codeSpan(sess.ID))
 	agent := sess.Agent
 	if sess.AgentVersion != "" {
@@ -63,7 +63,7 @@ func Markdown(sess *engine.Session, res Result) string {
 			b.WriteString("\n")
 			continue
 		}
-		fmt.Fprintf(&b, "### %s%s\n\n%s\n", who, when, strings.TrimSpace(m.Text))
+		fmt.Fprintf(&b, "### %s%s\n\n%s\n", who, when, noHTML(strings.TrimSpace(m.Text)))
 	}
 	return b.String()
 }
@@ -208,6 +208,37 @@ func cut(s string, n int) string {
 		return string(r[:n]) + "…"
 	}
 	return strings.TrimSpace(s)
+}
+
+// noHTML escapes "<" outside code fences and code spans, so HTML written
+// in a transcript (or a prompt) shows as text in any Markdown viewer
+// instead of being rendered.
+func noHTML(s string) string {
+	lines := strings.Split(s, "\n")
+	fenced := false
+	for i, l := range lines {
+		if strings.HasPrefix(strings.TrimSpace(l), "```") {
+			fenced = !fenced
+			continue
+		}
+		if fenced || !strings.Contains(l, "<") {
+			continue
+		}
+		var b strings.Builder
+		inCode := false
+		for _, c := range l {
+			switch {
+			case c == '`':
+				inCode = !inCode
+			case c == '<' && !inCode:
+				b.WriteString("&lt;")
+				continue
+			}
+			b.WriteRune(c)
+		}
+		lines[i] = b.String()
+	}
+	return strings.Join(lines, "\n")
 }
 
 func oneLine(s string) string { return strings.Join(strings.Fields(s), " ") }
