@@ -5,6 +5,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+- Budgets: daily, monthly and per-project spend limits in `config.toml` ([budget]) with desktop alerts at 80% and when reached, and an optional daily digest of the agents' work. Shown on the Settings page.
+- GitHub pull requests (opt-in, `[integrations.github]`): cards and session pages show each PR's state, CI checks and review decision. A session's branch PR is linked even when the agent didn't report it, and a merged PR moves its card to Done.
+- TypeScript (`@shiplino/sdk`) and Python (`shiplino`) SDKs for custom agents: sessions, turns, timed tool calls, shell commands, file edits, usage, waiting and subagents, batched in the background with idempotent retries and a bounded queue. They never throw into the agent. The ingest API now prices usage events that carry tokens but no cost.
+- OpenCode support: `shiplino setup` installs an observe-only plugin (`~/.config/opencode/plugins/shiplino.js`) that records sessions, subagents, prompts, tool calls, file edits, permission prompts and OpenCode's own tokens and cost (shown as reported cost).
+- Cline support: `shiplino setup` adds hook scripts to `~/Documents/Cline/Hooks` (the VS Code/JetBrains extension and the CLI; also the extension's own Documents folder when it's on OneDrive or a custom XDG folder). It records tasks, prompts, tool calls with Cline's own timings, file reads and edits, commands (with exit codes from the CLI), MCP calls and subagents. Your own Cline hook files are kept, and setup and doctor say which events they occupy. No token usage or cost yet.
+- Browser end-to-end tests (`make e2e`, CI job `e2e`): Playwright drives the web app against the real binary and a daemon fed through the hook shim, covering the overview, board drag/pin and refused drops, live updates, search, session detail and theme. The board now shows when a column won't take a dragged card and explains why, and a hydration error from the theme toggle is fixed.
+
+### Fixed
+- Claude Code token counts. Responses copied into resumed or continued sessions counted again (input was ~24% high), and responses written over several lines kept their first, smaller count (output ~8% low). Each response now counts once at its final size, and stored history is cleaned and rebuilt on upgrade.
+
 ### Changed
 - The license identifier is now the official SPDX id `FSL-1.1-ALv2` (file headers, package metadata, LICENSE title). The license terms are unchanged.
 
