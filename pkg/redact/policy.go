@@ -68,8 +68,14 @@ func (r *Redactor) Event(e *model.Event, level Level) {
 		if e.Kind == model.KindToolStart && !pathTools[str(d, "tool")] {
 			delete(d, "input_summary")
 		}
+		// A waiting card still needs to say what it waits for; any other
+		// message (e.g. a commit subject) is content and goes.
 		if _, ok := d["message"]; ok {
-			d["message"] = waitingText(str(d, "reason"))
+			if e.Kind == model.KindWaitingStart {
+				d["message"] = waitingText(str(d, "reason"))
+			} else {
+				delete(d, "message")
+			}
 		}
 		if e.Kind == model.KindToolEnd {
 			delete(d, "error") // tool errors carry output text

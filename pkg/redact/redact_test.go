@@ -198,3 +198,16 @@ func TestParseLevel(t *testing.T) {
 		t.Fatal("bad level accepted")
 	}
 }
+
+func TestMinimalMessageOnlyOnWaiting(t *testing.T) {
+	commit := model.Event{Kind: model.KindGitCommit, Data: map[string]any{"message": "fix: rotate api key", "sha": "abc123"}}
+	Default.Event(&commit, Minimal)
+	if _, ok := commit.Data["message"]; ok || commit.Data["sha"] != "abc123" {
+		t.Fatalf("commit at minimal: %v", commit.Data)
+	}
+	wait := model.Event{Kind: model.KindWaitingStart, Data: map[string]any{"message": "Approve: rm -rf build", "reason": "permission"}}
+	Default.Event(&wait, Minimal)
+	if wait.Data["message"] != "Waiting for your approval" {
+		t.Fatalf("waiting at minimal: %v", wait.Data)
+	}
+}
