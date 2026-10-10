@@ -3,7 +3,6 @@ package cli
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -19,7 +18,7 @@ import (
 	"github.com/elephaant/shiplino/internal/config"
 	"github.com/elephaant/shiplino/internal/notify"
 	"github.com/elephaant/shiplino/internal/service"
-	"github.com/elephaant/shiplino/internal/spool"
+	"github.com/elephaant/shiplino/internal/update"
 )
 
 // env is what commands need from the outside world; tests replace it.
@@ -33,6 +32,7 @@ type env struct {
 	notifySend  func(context.Context, notify.Note) error // nil = the OS notifier
 	openURL     func(string) error                       // nil = the default browser
 	in          io.Reader                                // nil = os.Stdin
+	upd         *update.Updater                          // nil = GitHub, cosign and real binaries
 }
 
 // browse opens a URL in the user's browser.
@@ -365,25 +365,7 @@ func installBinary(self, dst string) error {
 // selfTest runs the installed hook exactly as an agent would and checks
 // the zero-token contract: no output, exit 0, one spool line written.
 func selfTest(ctx context.Context, e *env, bin string) error {
-	const agent = "shiplino-selftest"
-	cmd := exec.CommandContext(ctx, bin, "hook", "--agent", agent)
-	cmd.Env = append(os.Environ(), "SHIPLINO_HOME="+e.home)
-	cmd.Stdin = strings.NewReader(`{"session_id":"selftest","hook_event_name":"SessionStart"}`)
-	var out bytes.Buffer
-	cmd.Stdout, cmd.Stderr = &out, &out
-	err := cmd.Run()
-	dir := filepath.Join(spool.Dir(e.home), agent)
-	defer os.RemoveAll(dir)
-	if err != nil {
-		return fmt.Errorf("hook failed: %v", err)
-	}
-	if out.Len() > 0 {
-		return fmt.Errorf("hook printed output (would cost tokens): %q", out.String())
-	}
-	if _, err := os.Stat(spool.SessionFile(spool.Dir(e.home), agent, "selftest")); err != nil {
-		return errors.New("hook didn't write to the spool")
-	}
-	return nil
+	return update.HookTest(ctx, e.home, bin)
 }
 
 // healthy reports whether a Shiplino daemon answers on the port.

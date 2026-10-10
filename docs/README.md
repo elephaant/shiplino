@@ -8,3 +8,4 @@
 - [Sync protocol](sync-protocol.md): opt-in cloud sync, exactly what is sent and how to audit it
 - [Notifications](notifications.md): desktop, phone (ntfy) and team (webhook, Slack, Discord) alerts, and exactly what they send
 - [Sending events to Shiplino](ingest.md): the ingest endpoint for custom agents, and the OTLP receiver
+- [Updating](updating.md): `shiplino update`, how downloads are verified, rollback and opt-in checks

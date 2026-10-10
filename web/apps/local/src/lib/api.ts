@@ -289,6 +289,22 @@ export interface Settings {
   };
   sync?: SyncState;
   budget: { spends: { scope: string; label: string; spent_usd: number; limit_usd: number }[]; digest?: string };
+  update: UpdateState;
+}
+
+/** Update checks ([update] in config.toml), from the last check. */
+export interface UpdateState {
+  check: boolean;
+  auto_install: boolean;
+  channel?: string;
+  /** A development build, never updated from releases. */
+  dev: boolean;
+  /** A newer release than the running version, if the last check found one. */
+  available?: string;
+  url?: string;
+  checked_at?: string;
+  error?: string;
+  install_error?: string;
 }
 
 /** Cloud sync state. It never contains tokens. */
