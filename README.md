@@ -36,7 +36,7 @@ Read more: [How it works](docs/how-it-works.md).
 - **Conversation, export and handoff:** a session's prompts, replies and tool calls, read on demand from the agent's own transcript on your machine (never copied into Shiplino's database or synced), with secrets redacted. Export it as Markdown, or copy a short handoff prompt (goal, files changed, open todos, failing commands, last reply) to continue in another agent.
 - **Timeline:** a live Gantt of sessions and subagents (running, waiting on you, idle).
 - **Cost and tokens** per agent, model, project and day. The agent's own figures are used when it reports them, otherwise list prices, and the source of every number is shown.
-- **Insights:** spend, agent working time, time spent waiting on you, and code changed, compared with the previous period.
+- **Insights:** spend, agent working time, time spent waiting on you, and code changed, compared with the previous period. **Share week** turns the last 7 days into a PNG, drawn in your browser (totals and agent names only; project names are opt-in).
 - **Search** across all history (⌘K), and CSV/JSON export.
 - **Notifications** when an agent waits on you (and why: a permission prompt, a question, or your turn), finishes a long turn or fails: on the desktop, and opt-in on your phone or in a team channel via ntfy, a signed webhook, Slack or Discord. Phone and team alerts carry metadata only, never prompts or code ([docs/notifications.md](docs/notifications.md)).
 - **Commits linked** to the sessions that made them.
@@ -135,6 +135,7 @@ shiplino status | ls | open | doctor   what's running, recent sessions, the boar
 shiplino demo [--no-open]              a throwaway board with synthetic data, until Ctrl-C
 shiplino search <words> | export       find anything; sessions as CSV or JSON
 shiplino export --session <id>         one conversation as Markdown
+shiplino report [--since 7d] [--json]  usage from agent transcripts, no setup, writes nothing (docs/report.md)
 shiplino backfill [--since 30d]        import history from before setup
 shiplino pause [--for 1h] | resume     stop and restart recording
 shiplino wrap -- <command>             record a CLI agent that has no hooks
