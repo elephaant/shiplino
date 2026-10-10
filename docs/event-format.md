@@ -25,11 +25,11 @@ Every adapter converts its agent's native hooks and transcripts into this format
 |------|--------------------|
 | `session.start` / `session.end` | `model`, `source` / `reason`, `status` |
 | `turn.start` / `turn.end` | `prompt` (by capture level) / `status` |
-| `tool.start` / `tool.end` | `tool_call_id`, `tool` (edit, write, read, shell, search, web, mcp, task, other), `ok`, `duration_ms` |
-| `shell.exec` | `command`, `exit_code`, `duration_ms` |
+| `tool.start` / `tool.end` | `tool_call_id`, `tool` (edit, write, read, shell, search, web, mcp, task, other), `ok`, `duration_ms`; `tool.end` may add `denied` (the call wasn't allowed to run) and `interrupted` |
+| `shell.exec` | `command`, `exit_code`, `duration_ms`, `program` (the command's program name, e.g. `go`, `npm`: at most 32 characters of `[a-z0-9._-]`, derived by the daemon from the redacted command and kept at every capture level) |
 | `file.read` / `file.edit` | `path`, `op`, `lines_added`, `lines_removed`, `lines_source`; edits also carry `patch` (unified-diff hunks, capture level full only, at most 64 KB, `patch_truncated` when cut), `patch_source` (`agent`: the agent's own diff, `computed`: built from the edit's old and new text) and `patch_omitted` when the diff was dropped (`capture_level` below full, `secret_file` for files whose contents are never stored) |
 | `mcp.call` | `server`, `tool`, `ok` |
-| `waiting.start` / `waiting.end` | `reason` / `resolution` |
+| `waiting.start` / `waiting.end` | `reason` / `resolution`, `denied` when the user refused a permission |
 | `subagent.start` / `subagent.end` | `child_session_id`, `agent_type`, `status` |
 | `usage` | per response: `model`, `message_id`, `input_tokens`, `output_tokens`, `cache_read_tokens`, `cache_write_tokens`, `web_searches`, `cost_usd`, `cost_source` (`computed` / `unpriced`, or `reported` when the agent priced the response itself); agent cost report: `report: true`, `process`, `total_cost_usd`, `cost_source: reported` (see [cost.md](cost.md)) |
 | `compact` | `phase`, `trigger` |

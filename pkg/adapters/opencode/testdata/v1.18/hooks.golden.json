@@ -1065,6 +1065,7 @@
       "cwd": "/home/dev/shop"
     },
     "data": {
+      "denied": true,
       "resolution": "reject"
     },
     "dedup_key": "opencode:ses_root:waiting:per_old:end"

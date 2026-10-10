@@ -322,3 +322,23 @@ func TestMergedPRMovesReviewToDone(t *testing.T) {
 		t.Fatalf("merged: %s %v", s.Status, s.Links)
 	}
 }
+
+func TestFailureTally(t *testing.T) {
+	e := New(nil, nil)
+	e.Apply(ev(0, model.KindToolStart, map[string]any{"tool_call_id": "a", "tool": "read", "tool_raw": "Read"}))
+	e.Apply(ev(1, model.KindToolEnd, map[string]any{"tool_call_id": "a", "tool": "read", "ok": true}))
+	e.Apply(ev(2, model.KindTurnEnd, map[string]any{"status": "ok"}))
+	if s := e.Get(sid); s.Failures != nil {
+		t.Fatalf("a clean session has a tally: %+v", s.Failures)
+	}
+	e.Apply(ev(3, model.KindToolStart, map[string]any{"tool_call_id": "b", "tool": "edit", "tool_raw": "Edit", "input_summary": "/work/demo/a.go"}))
+	e.Apply(ev(4, model.KindToolEnd, map[string]any{"tool_call_id": "b", "tool": "edit", "ok": false}))
+	e.Apply(ev(5, model.KindTurnEnd, map[string]any{"status": "error"}))
+	s := e.Get(sid)
+	if f := s.Failures; f == nil || len(f.Tools) != 1 || f.Tools[0].ToolRaw != "Edit" || f.Tools[0].Failures != 1 || f.Ending != "error" {
+		t.Fatalf("tally: %+v", f)
+	}
+	if s.ToolErrors != 1 {
+		t.Errorf("tool errors: %d", s.ToolErrors)
+	}
+}

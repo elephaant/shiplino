@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/elephaant/shiplino/pkg/insights"
 	"github.com/elephaant/shiplino/pkg/model"
 )
 
@@ -103,6 +104,9 @@ type Session struct {
 	// event (turns, tools). Telemetry activity only fills sessions that
 	// nothing else covers.
 	ActivitySource string `json:"activity_source,omitempty"`
+	// Failures are this actor's failed and denied calls, retry loops and
+	// how its last turn ended (metadata only, see pkg/insights).
+	Failures *insights.Tally `json:"failures,omitempty"`
 }
 
 // Telemetry sums the usage records an agent exported over OpenTelemetry.
@@ -169,7 +173,7 @@ func (s *Session) FilesChanged() int { return len(s.Files) }
 // Rev identifies the engine's folding rules. Bump it whenever Apply would
 // produce different sessions from the same events (a new field, a fix);
 // the daemon then rebuilds stored sessions from their events once.
-const Rev = 8
+const Rev = 9
 
 // Engine folds events into sessions. It is not safe for concurrent use;
 // the daemon feeds it from a single goroutine.
@@ -418,6 +422,15 @@ func (e *Engine) Apply(ev model.Event) []*Session {
 			s.Status = StatusDone
 		}
 	}
+	if failureKinds[ev.Kind] {
+		if s.Failures == nil {
+			s.Failures = &insights.Tally{}
+		}
+		s.Failures.Fold(ev)
+		if s.Failures.Empty() {
+			s.Failures = nil
+		}
+	}
 	if late && ev.Kind != model.KindSessionEnd {
 		s.Status, s.NowDoing = prevStatus, prevNow
 	}
@@ -455,6 +468,12 @@ func (e *Engine) MarkIdle(now time.Time) []*Session {
 		}
 	}
 	return out
+}
+
+// failureKinds are the events failure insights fold.
+var failureKinds = map[model.Kind]bool{
+	model.KindToolStart: true, model.KindToolEnd: true, model.KindShellExec: true,
+	model.KindWaitingEnd: true, model.KindTurnEnd: true, model.KindSessionEnd: true,
 }
 
 // activityKinds are what hooks, transcripts and telemetry all describe,
