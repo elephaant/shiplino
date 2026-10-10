@@ -50,6 +50,8 @@ export interface Session {
   reported_cost_usd?: number;
   best_cost_usd: number;
   cost_source?: "reported" | "computed";
+  /** "none": settled after doing work without recording any token usage. */
+  usage?: "tokens" | "none";
   links?: Link[];
   waiting_ms: number;
   waiting_since?: string;
@@ -284,6 +286,7 @@ export interface BoardCard {
   waiting_ms?: number;
   cost_usd: number;
   cost_source?: "reported" | "computed";
+  usage?: "tokens" | "none";
   files: number;
   lines_added: number;
   lines_removed: number;

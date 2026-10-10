@@ -16,8 +16,9 @@ import {
   Terminal,
 } from "lucide-react";
 import { AgentDot } from "@/components/common/agent-dot";
+import { Badge } from "@/components/ui/badge";
 import type { BoardCard } from "@/lib/api";
-import { formatCost, formatDuration } from "@/lib/format";
+import { formatCost, formatDuration, noUsageReason } from "@/lib/format";
 
 const statusDot: Record<string, string> = {
   running: "bg-status-running",
@@ -123,11 +124,21 @@ export function CardView({ card, dragging, onOpen }: { card: BoardCard; dragging
       {card.origin === "auto" && (
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-xs tabular-nums text-muted-foreground">
           <span>{formatDuration(card.duration_ms)}</span>
-          <span
-            title={card.cost_source === "reported" ? "Reported by the agent" : "Computed from tokens × list prices"}
-          >
-            {formatCost(card.cost_usd)}
-          </span>
+          {card.usage === "none" ? (
+            <Badge
+              variant="outline"
+              className="px-1.5 py-0 font-sans font-normal text-muted-foreground"
+              title={noUsageReason(card.agent)}
+            >
+              no cost data
+            </Badge>
+          ) : (
+            <span
+              title={card.cost_source === "reported" ? "Reported by the agent" : "Computed from tokens × list prices"}
+            >
+              {formatCost(card.cost_usd)}
+            </span>
+          )}
           {card.files > 0 && (
             <span>
               {card.files}f <span className="text-status-done">+{card.lines_added}</span>{" "}

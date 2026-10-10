@@ -31,7 +31,7 @@ func TestCursorHooksEndToEnd(t *testing.T) {
 	if s.Turns != 1 || s.ToolCalls != 4 || s.ToolErrors != 1 || s.LinesAdded != 2 || s.LinesRemoved != 1 {
 		t.Fatalf("session: turns=%d tools=%d errs=%d +%d -%d", s.Turns, s.ToolCalls, s.ToolErrors, s.LinesAdded, s.LinesRemoved)
 	}
-	if s.InputTokens != 1200 || s.CostUSD <= 0 || s.AgentVersion != "2026.09.02" {
+	if s.InputTokens != 1200 || s.Usage != "tokens" || s.CostUSD <= 0 || s.AgentVersion != "2026.09.02" {
 		t.Fatalf("usage: in=%d cost=%v version=%q", s.InputTokens, s.CostUSD, s.AgentVersion)
 	}
 	sub := e.session("cursor:cv-1/sub:sa-9")
@@ -76,8 +76,8 @@ func TestHooklessCursorSessionFromTranscript(t *testing.T) {
 	if s.Turns != 3 || s.ToolCalls != 10 || s.ToolErrors != 0 || s.LinesAdded != 7 || s.LinesRemoved != 2 || len(s.Files) != 6 {
 		t.Fatalf("session: turns=%d tools=%d errs=%d +%d -%d files=%v", s.Turns, s.ToolCalls, s.ToolErrors, s.LinesAdded, s.LinesRemoved, s.Files)
 	}
-	if s.Status != "failed" || s.Title == "" || !s.StartedAt.Equal(time.Date(2026, 8, 6, 5, 11, 0, 1e6, time.UTC)) {
-		t.Fatalf("session: status=%s title=%q started=%v", s.Status, s.Title, s.StartedAt)
+	if s.Status != "failed" || s.Usage != "none" || s.Title == "" || !s.StartedAt.Equal(time.Date(2026, 8, 6, 5, 11, 0, 1e6, time.UTC)) {
+		t.Fatalf("session: usage=%s status=%s title=%q started=%v", s.Usage, s.Status, s.Title, s.StartedAt)
 	}
 	sub := e.session("cursor:cv-7/sub:sa-3")
 	if sub.ParentID != "cursor:cv-7" || sub.ToolCalls != 1 || sub.Status != "done" {

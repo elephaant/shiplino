@@ -52,7 +52,8 @@ export function ByAgent({ rows }: { rows: InsightRow[] }) {
 const sourceText: Record<string, string> = {
   reported: "reported by the agent itself",
   computed: "computed from token usage × list prices",
-  none: "without cost data (no usage reported, or an unpriced model)",
+  unpriced: "with token counts but no price for the model",
+  none: "without cost data: the agent recorded no token usage",
 };
 
 export function CostSources({ sources }: { sources: Record<string, number> }) {
@@ -66,7 +67,7 @@ export function CostSources({ sources }: { sources: Record<string, number> }) {
         </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-1.5 text-sm">
-        {(["reported", "computed", "none"] as const)
+        {(["reported", "computed", "unpriced", "none"] as const)
           .filter((k) => sources[k])
           .map((k) => (
             <div key={k} className="flex gap-2">

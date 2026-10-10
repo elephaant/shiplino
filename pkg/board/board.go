@@ -161,6 +161,7 @@ type Card struct {
 	WaitingMS      int64         `json:"waiting_ms,omitempty"`
 	CostUSD        float64       `json:"cost_usd"`
 	CostSource     string        `json:"cost_source,omitempty"`
+	Usage          string        `json:"usage,omitempty"` // engine.Session.Usage: "none" means no cost data
 	Files          int           `json:"files"`
 	LinesAdded     int           `json:"lines_added"`
 	LinesRemoved   int           `json:"lines_removed"`
@@ -196,7 +197,7 @@ func Build(sessions []*engine.Session, overrides map[string]Override, cal Calend
 			ID: s.ID, Origin: OriginAuto, Title: s.Title, TitleSource: s.TitleSource, Column: ColumnFor(status),
 			ProjectID: s.ProjectID, Agent: s.Agent, Model: s.Model, Status: status, Branch: s.Branch, NowDoing: doing,
 			StartedAt: s.StartedAt, LastEventAt: s.LastEventAt, DurationMS: end.Sub(s.StartedAt).Milliseconds(), WaitingMS: s.WaitingMS,
-			CostUSD: s.BestCostUSD, CostSource: s.CostSource, Files: len(s.Files), LinesAdded: s.LinesAdded, LinesRemoved: s.LinesRemoved,
+			CostUSD: s.BestCostUSD, CostSource: s.CostSource, Usage: s.Usage, Files: len(s.Files), LinesAdded: s.LinesAdded, LinesRemoved: s.LinesRemoved,
 			Links: s.Links, ToolCalls: s.ToolCalls, ActiveMS: s.ActiveMS,
 		}
 		if status == engine.StatusIdle && len(s.Files) == 0 {
