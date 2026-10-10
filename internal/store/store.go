@@ -261,6 +261,18 @@ var migrations = []string{
 	CREATE INDEX sessions_board ON sessions(project_id, status, parent_id, last_event_at, root_id, cost_usd);`,
 	// v8: GitHub pull request state (opt-in integration), by PR URL
 	`CREATE TABLE pr_state (url TEXT PRIMARY KEY, body TEXT NOT NULL, updated_at INTEGER NOT NULL);`,
+	// v9: Claude Code usage was keyed per session, so responses copied into
+	// resumed or continued sessions' files counted again. Keep each
+	// response's earliest usage event (the engine rebuilds sessions after).
+	`DELETE FROM events WHERE rowid IN (
+		SELECT rowid FROM (
+			SELECT rowid, ROW_NUMBER() OVER (PARTITION BY json_extract(body, '$.data.message_id') ORDER BY ts, rowid) AS n
+			FROM events
+			WHERE kind = 'usage' AND agent = 'claude-code'
+			  AND json_extract(body, '$.data.message_id') IS NOT NULL
+			  AND json_extract(body, '$.data.report') IS NULL
+		) WHERE n > 1
+	);`,
 }
 
 func (s *Store) migrate(ctx context.Context) error {

@@ -7,13 +7,16 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"math"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/elephaant/shiplino/pkg/adapters"
 	"github.com/elephaant/shiplino/pkg/model"
+	"github.com/elephaant/shiplino/pkg/pricing"
 )
 
 func parseTranscriptFixture(t *testing.T) []model.Event {
@@ -67,7 +70,7 @@ func TestTranscriptUsage(t *testing.T) {
 	for _, e := range evs {
 		keys[e.DedupKey]++
 	}
-	if keys["claude-code:sess-0001:usage:msg_A"] != 2 || keys["claude-code:sess-0001:cost-state:1791367200000:0.250000000"] != 2 || keys["claude-code:sess-0001:toolu_01:start"] != 1 || len(keys) != 8 {
+	if keys["claude-code:usage:msg_A"] != 2 || keys["claude-code:sess-0001:cost-state:1791367200000:0.250000000"] != 2 || keys["claude-code:sess-0001:toolu_01:start"] != 1 || len(keys) != 8 {
 		t.Fatalf("dedup keys: %v", keys)
 	}
 
@@ -117,3 +120,50 @@ func TestTranscriptBadLine(t *testing.T) {
 }
 
 var _ adapters.TranscriptParser = Adapter{}
+
+// A response written over several lines with growing counts counts once,
+// at its final size; a copy in another session's file adds nothing.
+func TestUsageGrowsAndCountsOnce(t *testing.T) {
+	line := func(sess string, out int) []byte {
+		return []byte(fmt.Sprintf(`{"type":"assistant","sessionId":%q,"timestamp":"2026-10-09T10:00:00Z","message":{"id":"msg_G","model":"claude-opus-5-5","usage":{"input_tokens":10,"output_tokens":%d,"cache_read_input_tokens":1000}}}`, sess, out))
+	}
+	parse := func(st map[string]string, b []byte, warm bool) []model.Event {
+		evs, err := Adapter{}.ParseTranscriptLine(b, adapters.TranscriptMeta{ReceivedAt: time.Now(), State: st, Warmup: warm})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return evs
+	}
+	st := map[string]string{}
+	first := parse(st, line("s1", 5), false)
+	same := parse(st, line("s1", 5), false)
+	grown := parse(st, line("s1", 405), false)
+	if len(first) != 1 || first[0].DedupKey != "claude-code:usage:msg_G" || first[0].Data["output_tokens"] != int64(5) {
+		t.Fatalf("first: %+v", first)
+	}
+	if len(same) != 0 {
+		t.Fatalf("unchanged line produced %+v", same)
+	}
+	if len(grown) != 1 || grown[0].Data["output_tokens"] != int64(400) || grown[0].Data["input_tokens"] != int64(0) || grown[0].Data["correction"] != true {
+		t.Fatalf("growth: %+v", grown)
+	}
+	full, _ := pricing.Default().Cost("claude-opus-5-5", pricing.Usage{Input: 10, Output: 405, CacheRead: 1000})
+	sum := first[0].Data["cost_usd"].(float64) + grown[0].Data["cost_usd"].(float64)
+	if diff := sum - full; diff > 1e-12 || diff < -1e-12 {
+		t.Fatalf("cost of the parts %v != cost of the whole %v", sum, full)
+	}
+	// The same response copied into a resumed session's file: same keys,
+	// so the store keeps one.
+	copyFirst := parse(map[string]string{}, line("s2", 405), false)
+	if copyFirst[0].DedupKey != first[0].DedupKey {
+		t.Fatalf("copy key %s", copyFirst[0].DedupKey)
+	}
+	// After a restart the warmup rebuilds the state without events.
+	st2 := map[string]string{}
+	if evs := parse(st2, line("s1", 5), true); len(evs) != 0 {
+		t.Fatal("warmup emitted")
+	}
+	if evs := parse(st2, line("s1", 405), false); len(evs) != 1 || evs[0].DedupKey != grown[0].DedupKey {
+		t.Fatalf("after warmup: %+v", evs)
+	}
+}
