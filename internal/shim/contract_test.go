@@ -270,3 +270,31 @@ func TestShimImportsStayLight(t *testing.T) {
 		}
 	}
 }
+
+// Every payload the OpenCode plugin sends (the adapter's fixture, written
+// by plugins/opencode/shiplino.js) is silent, exits 0 and is spooled.
+func TestContractOpenCodeEvents(t *testing.T) {
+	b, err := os.ReadFile(filepath.Join("..", "..", "pkg", "adapters", "opencode", "testdata", "v1.18", "hooks.jsonl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	lines := strings.Split(strings.TrimSpace(string(b)), "\n")
+	home := t.TempDir()
+	for i, in := range lines {
+		out, code := runHook(t, baseEnv(home), []byte(in), "--agent", "opencode")
+		if out != "" || code != 0 {
+			t.Errorf("line %d: exit=%d output=%q", i+1, code, out)
+		}
+	}
+	n := 0
+	for _, s := range []string{"ses_root", "ses_child", "ses_prev"} {
+		b, err := os.ReadFile(spool.SessionFile(spool.Dir(home), "opencode", s))
+		if err != nil {
+			t.Fatal(err)
+		}
+		n += strings.Count(string(b), "\n")
+	}
+	if n != len(lines) {
+		t.Errorf("spool has %d lines, want %d", n, len(lines))
+	}
+}

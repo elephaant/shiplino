@@ -130,10 +130,12 @@ var contentKeys = []string{"prompt", "tool_response", "last_assistant_message", 
 	// Copilot CLI (camelCase payloads)
 	"toolResult", "response", "initialPrompt", "transformedPrompt", "customInstructions", "agentDescription",
 	// Gemini CLI
-	"prompt_response", "details", "llm_request", "llm_response"}
+	"prompt_response", "details", "llm_request", "llm_response",
+	// OpenCode (Shiplino's plugin)
+	"diff", "file_patches", "patterns"}
 
 // keepInput are tool_input fields allowed at minimal (file paths only).
-var keepInput = map[string]bool{"file_path": true, "notebook_path": true, "path": true, "dir_path": true}
+var keepInput = map[string]bool{"file_path": true, "notebook_path": true, "path": true, "dir_path": true, "filePath": true}
 
 // keepInfo are Windsurf tool_info fields allowed at minimal: paths and MCP
 // names, never the prompt, response, edits, command or MCP arguments.
