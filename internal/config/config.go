@@ -194,10 +194,9 @@ enabled = false
 poll = "5m"
 
 ` + syncHeader + `enabled = false
-capture_level = "minimal"
 projects = []
 exclude = []
-send_user = false
+send_titles = false
 `
 
 // WriteDefault creates a commented config file if none exists.

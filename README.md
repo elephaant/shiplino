@@ -40,7 +40,7 @@ Read more: [How it works](docs/how-it-works.md).
 - **Desktop notifications** when an agent waits on you, finishes a long turn or fails.
 - **Commits linked** to the sessions that made them.
 - **History backfill** from agents' own transcripts, so the board isn't empty on day one.
-- **Local-first and private:** secrets are redacted before anything is stored, with three capture levels. Nothing leaves your machine unless you turn on [cloud sync](docs/sync-protocol.md).
+- **Local-first and private:** secrets are redacted before anything is stored, with three capture levels. Nothing leaves your machine unless you turn on [cloud sync](docs/sync-protocol.md), and even then only metadata: never prompts, replies, commands, code or diffs.
 - **Budgets and alerts:** daily, monthly and per-project spend limits with alerts at 80% and 100%, and a daily digest.
 - **GitHub pull requests** (opt-in): PR state, CI checks and reviews on cards; a merged PR moves its card to Done.
 - **Custom agents:** TypeScript and Python SDKs, an HTTP ingest API and an OpenTelemetry receiver ([docs/ingest.md](docs/ingest.md)).

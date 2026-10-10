@@ -95,12 +95,11 @@ func TestSyncDefaultsAndValidation(t *testing.T) {
 	if c.Sync.Enabled || c.SyncEndpoint() != DefaultSyncEndpoint || len(c.Sync.Projects) != 0 {
 		t.Fatalf("defaults: %+v", c.Sync)
 	}
-	if l, _ := c.SyncLevel(); l != redact.Minimal {
-		t.Fatalf("default sync level %s", l)
+	if c.Sync.SendTitles || len(c.SyncIgnored()) != 0 {
+		t.Fatalf("default sync: %+v", c.Sync)
 	}
 	for name, content := range map[string]string{
 		"http endpoint": "[sync]\nendpoint = \"http://sync.example.com\"\n",
-		"bad level":     "[sync]\ncapture_level = \"all\"\n",
 		"unknown key":   "[sync]\nenabeld = true\n",
 	} {
 		os.WriteFile(Path(home), []byte(content), 0o600)
@@ -132,7 +131,7 @@ func TestUpdateSyncKeepsTheRestOfTheFile(t *testing.T) {
 		t.Fatalf("rest of the file changed:\n%s", after)
 	}
 	c, err := Load(home)
-	if err != nil || !c.Sync.Enabled || len(c.Sync.Projects) != 1 || c.Sync.CaptureLevel != "minimal" {
+	if err != nil || !c.Sync.Enabled || len(c.Sync.Projects) != 1 || c.Sync.CaptureLevel != "" {
 		t.Fatalf("after update: %+v %v", c.Sync, err)
 	}
 	// A section in the middle of a file, followed by another one.

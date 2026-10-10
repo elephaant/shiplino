@@ -17,6 +17,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Claude Code token counts. Responses copied into resumed or continued sessions counted again (input was ~24% high), and responses written over several lines kept their first, smaller count (output ~8% low). Each response now counts once at its final size, and stored history is cleaned and rebuilt on upgrade.
 
 ### Changed
+- **Cloud sync sends metadata only.** Prompts, replies, shell commands, tool input and output, errors, diffs, commit messages and file contents never leave your machine, at any setting. Only an allow list of metadata fields is sent (sessions, status, timing, tokens and cost, tool names, outcomes, project-relative paths, git references), so fields added later stay local until reviewed. Session titles are sent only with the new `[sync] send_titles = true`. The old `[sync] capture_level` and `send_user` settings are ignored, and `shiplino sync status` says so.
 - **Shiplino is now licensed under the Apache License 2.0** (previously the Functional Source License). Releases up to 0.1.0-alpha.2 stay under their original license. Source files no longer carry per-file license headers; `LICENSE` covers the repository.
 
 ## [0.1.0-alpha.2] - 2026-10-10

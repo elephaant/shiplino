@@ -24,8 +24,8 @@ type View struct {
 	// the file is used.
 	CredentialStore string    `json:"credential_store,omitempty"`
 	CredentialNote  string    `json:"credential_note,omitempty"`
-	CaptureLevel    string    `json:"capture_level"`
-	LevelCapped     bool      `json:"capture_level_capped,omitempty"` // lowered to the local level
+	SendTitles      bool      `json:"send_titles"`
+	Ignored         []string  `json:"ignored,omitempty"` // [sync] settings that no longer apply
 	Projects        []string  `json:"projects"`
 	Exclude         []string  `json:"exclude"`
 	LastUpload      time.Time `json:"last_upload,omitzero"`
@@ -43,8 +43,7 @@ type View struct {
 
 // Describe builds a View from the config, stored credentials and progress.
 func Describe(ctx context.Context, home string, cfg config.Config, c *Creds, where, why string, st *store.Store) View {
-	level, capped := cfg.SyncLevel()
-	v := View{Enabled: cfg.Sync.Enabled, Endpoint: cfg.SyncEndpoint(), CaptureLevel: string(level), LevelCapped: capped,
+	v := View{Enabled: cfg.Sync.Enabled, Endpoint: cfg.SyncEndpoint(), SendTitles: cfg.Sync.SendTitles, Ignored: cfg.SyncIgnored(),
 		Projects: nonNil(cfg.Sync.Projects), Exclude: nonNil(cfg.Sync.Exclude), CredentialStore: where, CredentialNote: why}
 	if c == nil {
 		if reason := (Vault{Home: home}).SignedOut(); reason != "" {

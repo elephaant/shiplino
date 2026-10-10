@@ -18,16 +18,14 @@ import (
 // each event.
 type Scope struct {
 	Projects, Exclude []string
-	Level             redact.Level
 	Redactor          *redact.Redactor
-	SendUser          bool // send the OS user name (never at minimal)
+	SendTitles        bool // also send session titles
 	allow, deny       []*regexp.Regexp
 }
 
 // ScopeFor builds the scope from the user's config.
 func ScopeFor(c config.Config) Scope {
-	level, _ := c.SyncLevel()
-	s := Scope{Projects: c.Sync.Projects, Exclude: c.Sync.Exclude, Level: level, Redactor: c.Redactor(), SendUser: c.Sync.SendUser}
+	s := Scope{Projects: c.Sync.Projects, Exclude: c.Sync.Exclude, Redactor: c.Redactor(), SendTitles: c.Sync.SendTitles}
 	for _, p := range s.Projects {
 		s.allow = append(s.allow, glob(p))
 	}
@@ -117,8 +115,8 @@ const envelopeBytes = 4 << 10
 var batchBytes = MaxBatchBytes
 
 // Prepare turns stored rows into events to send: rows of projects that
-// aren't allowed are skipped, and the rest are stripped to the sync
-// capture level and redacted again (with the user's extra rules too).
+// aren't allowed are skipped, and the rest are stripped to metadata and
+// redacted again (with the user's extra rules too).
 // It stops before batchBytes. last is the rowid of the last row
 // consumed (sent or skipped).
 func (s Scope) Prepare(rows []store.SyncRow) (items []item, last int64) {
@@ -148,19 +146,14 @@ func (s Scope) Prepare(rows []store.SyncRow) (items []item, last int64) {
 	return items, last
 }
 
-// Outgoing is an event exactly as it is sent.
+// Outgoing is an event exactly as it is sent: metadata only
+// (redact.ForSync), with local paths made project-relative.
 func (s Scope) Outgoing(e model.Event) model.Event {
 	if e.Data != nil {
 		e.Data = deepCopy(e.Data)
-		s.Redactor.Event(&e, s.Level)
 	}
-	e.Raw = nil // a pointer into local files: meaningless elsewhere
-	if !s.SendUser || s.Level == redact.Minimal {
-		e.User = ""
-	}
-	if s.Level == redact.Minimal {
-		localPaths(&e)
-	}
+	localPaths(&e)
+	s.Redactor.ForSync(&e, s.SendTitles)
 	return e
 }
 
@@ -170,7 +163,7 @@ var pathKeys = []string{"path", "file_path", "cwd", "transcript_path"}
 // pathTools are tools whose input_summary is a file path.
 var pathTools = map[string]bool{model.ToolRead: true, model.ToolEdit: true, model.ToolWrite: true}
 
-// localPaths keeps local paths from leaving the machine at minimal: paths
+// localPaths keeps local paths from leaving the machine: paths
 // become relative to the project root, paths outside it become "…/" plus
 // their base name, and the project's absolute folders are dropped (its
 // id, remote, branch and head stay).

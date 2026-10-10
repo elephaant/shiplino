@@ -93,12 +93,18 @@ function SyncCard({ sync }: { sync: SyncState }) {
         ) : (
           <Row label="Account">{sync.needs_login ? "Signed out by the sync service" : "Not signed in"}</Row>
         )}
-        <Row label="Capture level">
-          <span className="font-medium capitalize">{sync.capture_level}</span>
-          {sync.capture_level_capped && (
-            <span className="text-muted-foreground text-xs"> · lowered to match the local capture level</span>
-          )}
-          <p className="text-muted-foreground text-xs">{levels[sync.capture_level]}</p>
+        <Row label="What is sent">
+          <span className="font-medium">Metadata only</span>
+          <p className="text-muted-foreground text-xs">
+            Sessions, status, timing, tokens and cost, tool names, outcomes, project-relative file paths and git
+            references. Never prompts, replies, commands, tool output, diffs or file contents.
+            {sync.send_titles ? " Session titles are sent too (send_titles)." : " Session titles stay here."}
+          </p>
+          {sync.ignored?.map((n) => (
+            <p key={n} className="text-status-waiting text-xs">
+              {n}
+            </p>
+          ))}
         </Row>
         <Row label="Allowed projects">
           {sync.projects.length ? (
