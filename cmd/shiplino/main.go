@@ -1,5 +1,5 @@
 // Copyright 2026 The Shiplino Authors
-// SPDX-License-Identifier: FSL-1.1-Apache-2.0
+// SPDX-License-Identifier: FSL-1.1-ALv2
 
 // Command shiplino is the single Shiplino binary: CLI, hook shim and daemon.
 package main

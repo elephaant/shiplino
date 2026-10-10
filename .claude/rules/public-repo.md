@@ -1,6 +1,6 @@
 # This repository is public
 
-Everything committed here is published under FSL-1.1-Apache-2.0 (see `LICENSE`), including code comments, docs, commit messages, issue templates and this `.claude/` folder.
+Everything committed here is published under FSL-1.1-ALv2 (see `LICENSE`), including code comments, docs, commit messages, issue templates and this `.claude/` folder.
 
 ## OK to write here
 
@@ -24,7 +24,7 @@ Everything committed here is published under FSL-1.1-Apache-2.0 (see `LICENSE`),
 - Keep license headers. New Go files start with:
   ```go
   // Copyright 2026 The Shiplino Authors
-  // SPDX-License-Identifier: FSL-1.1-Apache-2.0
+  // SPDX-License-Identifier: FSL-1.1-ALv2
   ```
 - Code copied from third-party projects keeps its copyright notice (MIT and Apache require it). Add it to `NOTICE` the first time. Prefer writing our own code with the shadcn CLI over copying files from other projects.
 - Only use dependencies with permissive licenses (MIT, BSD, Apache-2.0, ISC). Ask before adding anything else.

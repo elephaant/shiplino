@@ -145,6 +145,6 @@ The web app's layout and its default color theme are inspired by [next-shadcn-ad
 
 ## License
 
-The code in this repository is licensed under the [Functional Source License (FSL-1.1-Apache-2.0)](LICENSE).
+The code in this repository is licensed under the [Functional Source License (FSL-1.1-ALv2)](LICENSE).
 It is free to use, modify, and self-host for internal development and business use, with a restriction prohibiting competitors from offering it as a competing commercial product or service. Each release converts to Apache-2.0 after two years.
 "Shiplino" and the Shiplino logo are trademarks. See [TRADEMARKS.md](TRADEMARKS.md).

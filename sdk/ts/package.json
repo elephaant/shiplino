@@ -2,7 +2,7 @@
   "name": "@shiplino/sdk",
   "version": "0.1.0",
   "description": "Report sessions, tool calls and usage from custom AI agents to Shiplino",
-  "license": "FSL-1.1-Apache-2.0",
+  "license": "FSL-1.1-ALv2",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/elephaant/shiplino.git",
