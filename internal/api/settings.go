@@ -118,9 +118,10 @@ func (s *Server) agentPreview(w http.ResponseWriter, r *http.Request) {
 }
 
 // agentChange: POST /api/v1/agents/{key}/connect or /remove. It edits
-// the agent's own config file, so it's same-origin only (see sameOrigin).
+// the agent's own config file; like every write, auth only accepts it
+// from this page (see fromThisPage).
 func (s *Server) agentChange(connect bool) http.HandlerFunc {
-	return s.sameOrigin(func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
 		if s.Admin == nil {
 			writeError(w, http.StatusNotImplemented, "settings unavailable")
 			return
@@ -130,7 +131,7 @@ func (s *Server) agentChange(connect bool) http.HandlerFunc {
 			return
 		}
 		writeJSON(w, http.StatusOK, s.Admin.Settings(r.Context()))
-	})
+	}
 }
 
 // agentError shows the reason as is: it's about the user's own config
@@ -141,21 +142,6 @@ func agentError(w http.ResponseWriter, err error) {
 		return
 	}
 	writeError(w, http.StatusConflict, err.Error())
-}
-
-// sameOrigin refuses browser requests sent from another origin. The UI
-// cookie is SameSite=Strict, but a page on another localhost port counts
-// as the same site and would carry it; browsers always send Origin on a
-// POST, so checking it closes that gap. Requests without Origin (the
-// CLI, scripts holding the token) pass.
-func (s *Server) sameOrigin(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if o := r.Header.Get("Origin"); o != "" && o != "http://"+r.Host && (s.DevOrigin == "" || o != s.DevOrigin) {
-			writeError(w, http.StatusForbidden, "cross-origin request refused")
-			return
-		}
-		next(w, r)
-	}
 }
 
 func (s *Server) testNotification(w http.ResponseWriter, r *http.Request) {
