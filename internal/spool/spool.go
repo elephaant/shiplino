@@ -131,6 +131,28 @@ func AppendLine(root, agent, session string, line []byte) error {
 	return cerr
 }
 
+// Write appends env with a JSON payload to the session's spool file, the
+// way the hook shim does: inline when the line fits in MaxLine, otherwise
+// as a blob the line points to.
+func Write(root, session string, env Envelope, payload []byte) error {
+	env.P, env.S, env.B = payload, "", ""
+	line, err := json.Marshal(env)
+	if err != nil {
+		return err
+	}
+	if len(line)+1 > MaxLine {
+		rel, err := WriteBlob(root, env.ID, payload)
+		if err != nil {
+			return err
+		}
+		env.P, env.B = nil, rel
+		if line, err = json.Marshal(env); err != nil {
+			return err
+		}
+	}
+	return AppendLine(root, env.Agent, session, append(line, '\n'))
+}
+
 // WriteBlob stores a large payload as root/blobs/<id>.json and returns its
 // path relative to root. The blob is complete before this returns, so a
 // line referencing it never points at a partial file.

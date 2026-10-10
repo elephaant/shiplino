@@ -63,6 +63,10 @@ For billing, the source of truth is your provider's console or usage and cost AP
 
 Cursor's hooks carry no documented token counts. When its `afterAgentResponse` hook includes them (interactive sessions), Shiplino records them and prices them from the bundled table. Otherwise a Cursor session shows activity but no tokens or cost. Cursor's own usage dashboard is the source for what you were charged.
 
+## Aider (via `shiplino wrap`)
+
+Aider writes a usage line to its chat history after each response: `Tokens: 2.1k sent, 512 received. Cost: $0.01 message, $0.05 session.` Shiplino uses Aider's own **session total** as the reported cost. Aider rounds token counts above 1,000 (`2.1k`), so the token figures are approximate (`tokens_rounded`). Cached prompt tokens are stored as cache reads/writes, not input. When Aider doesn't know a model's price it prints no cost, and the session shows tokens only.
+
 ## How others do it
 
 - **Transcript-only tools** sum transcript usage × a price table. They're simple and per-response, but they miss background calls and fees, as measured above.

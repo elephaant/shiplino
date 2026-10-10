@@ -14,6 +14,19 @@ Modern coding agents (Claude Code, Codex, Cursor, Gemini CLI, Copilot CLI, Winds
 
 Sessions that ran without hooks (before setup, or with hooks turned off) are rebuilt from the agents' transcript files instead; `shiplino backfill` imports older history. When a session has hooks, its activity comes from the hooks only, so nothing is counted twice. Cursor's transcripts are coarser than its hooks: times are to the minute, there are no token counts or exit codes, every tool call counts as succeeded, and line counts are computed from the edits.
 
+### Agents without hooks: `shiplino wrap`
+
+For a CLI agent with no hooks (Aider, or anything else), start it through Shiplino:
+
+```bash
+shiplino wrap -- aider --model sonnet
+shiplino wrap --agent goose --title "fix login" -- goose session
+```
+
+The command runs exactly as if you typed it: same terminal, input, output and exit code, and Ctrl-C reaches it once. Shiplino writes the run's start (directory, redacted command line) and end (exit code, duration) to the spool, and git commits in that directory are linked as for any session. A non-zero exit marks the session failed. If recording fails, the command still runs and Shiplino says so once, after it exits.
+
+For **Aider**, Shiplino also follows its chat history file (`.aider.chat.history.md` at the repo root, or `--chat-history-file`) while it runs, and records each prompt, Aider's own token and cost report, the files it edited and its auto commits. Only those lines are copied; the model's answers stay in Aider's file. A history path set only in `.aider.conf.yml` or `.env` isn't seen: pass it on the command line.
+
 ## Zero tokens
 
 The model never knows Shiplino exists:
