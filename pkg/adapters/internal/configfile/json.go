@@ -1,6 +1,3 @@
-// Copyright 2026 The Shiplino Authors
-// SPDX-License-Identifier: FSL-1.1-ALv2
-
 // Package configfile edits agents' config files safely: order-preserving
 // JSON, backups and atomic writes.
 package configfile

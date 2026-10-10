@@ -1,6 +1,3 @@
-# Copyright 2026 The Shiplino Authors
-# SPDX-License-Identifier: FSL-1.1-ALv2
-#
 # Release builds. The web app must be built first (`make ui`) so it is
 # embedded into the binary; the release workflow does that.
 version: 2

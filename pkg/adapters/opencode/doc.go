@@ -1,6 +1,3 @@
-// Copyright 2026 The Shiplino Authors
-// SPDX-License-Identifier: FSL-1.1-ALv2
-
 // Package opencode is the OpenCode adapter ("opencode").
 //
 // Checked on 2026-10-10 against the official docs (opencode.ai/docs/plugins)

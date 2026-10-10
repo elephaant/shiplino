@@ -1,6 +1,3 @@
-// Copyright 2026 The Shiplino Authors
-// SPDX-License-Identifier: FSL-1.1-ALv2
-
 // Package agents lists the agents Shiplino connects to through hook
 // config files, for setup, uninstall, doctor and the settings page.
 package agents

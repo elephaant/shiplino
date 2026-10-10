@@ -1,6 +1,3 @@
-// Copyright 2026 The Shiplino Authors
-// SPDX-License-Identifier: FSL-1.1-ALv2
-
 // Package wrap implements `shiplino wrap -- <command>`: run any CLI agent
 // unchanged and record the run (start, end, exit code, and for Aider its
 // chat history) through the spool, like the hook shim does for agents

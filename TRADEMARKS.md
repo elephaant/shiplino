@@ -1,6 +1,6 @@
 # Trademarks
 
-The code in this repository is licensed under the Functional Source License (FSL-1.1-ALv2). The license does **not** grant rights to the **Shiplino** name or logo.
+The code in this repository is licensed under the Apache License 2.0. The license does **not** grant rights to the **Shiplino** name or logo.
 
 You may:
 - say that your project "works with Shiplino" or is "based on Shiplino"

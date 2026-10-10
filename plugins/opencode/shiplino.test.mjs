@@ -1,6 +1,3 @@
-// Copyright 2026 The Shiplino Authors
-// SPDX-License-Identifier: FSL-1.1-ALv2
-//
 // Runs the plugin's event handler against a fake `shiplino` binary.
 // Run with `node --test plugins/opencode/` (go test ./plugins/opencode does
 // it too). UPDATE=1 rewrites the adapter fixture hooks.jsonl from bus.jsonl.

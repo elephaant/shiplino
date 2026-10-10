@@ -1,6 +1,3 @@
-// Copyright 2026 The Shiplino Authors
-// SPDX-License-Identifier: FSL-1.1-ALv2
-
 import { Info } from "lucide-react";
 import Link from "next/link";
 import { AgentDot } from "@/components/common/agent-dot";

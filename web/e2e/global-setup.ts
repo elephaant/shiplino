@@ -1,6 +1,3 @@
-// Copyright 2026 The Shiplino Authors
-// SPDX-License-Identifier: FSL-1.1-ALv2
-
 // Starts the real shiplino daemon in a temp HOME, seeds it through the real
 // hook shim, and returns the teardown. Tests read the daemon's address from
 // SHIPLINO_E2E_URL.

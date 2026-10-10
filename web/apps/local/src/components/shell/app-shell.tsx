@@ -1,6 +1,3 @@
-// Copyright 2026 The Shiplino Authors
-// SPDX-License-Identifier: FSL-1.1-ALv2
-
 "use client";
 
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";

@@ -1,6 +1,3 @@
-// Copyright 2026 The Shiplino Authors
-// SPDX-License-Identifier: FSL-1.1-ALv2
-
 // Package cursor is the Cursor adapter (IDE agent and cursor-agent CLI).
 //
 // Hooks, checked against https://cursor.com/docs/agent/hooks on

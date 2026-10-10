@@ -1,7 +1,4 @@
 /*
- * Copyright 2026 The Shiplino Authors
- * SPDX-License-Identifier: FSL-1.1-ALv2
- *
  * Shiplino default theme (the only theme). shadcn/ui token names, Tailwind v4.
  * Orange primary (same as the logo) on cool grey neutrals; navy in dark mode.
  * Import after Tailwind in the app's globals.css. Dark mode = `.dark` on <html>.

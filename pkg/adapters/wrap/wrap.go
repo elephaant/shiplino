@@ -1,6 +1,3 @@
-// Copyright 2026 The Shiplino Authors
-// SPDX-License-Identifier: FSL-1.1-ALv2
-
 // Package wrap parses what `shiplino wrap` records for agents without
 // hooks: the run itself (start, end, exit code) and, for Aider, the chat
 // history lines appended during the run (see package aider).

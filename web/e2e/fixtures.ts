@@ -1,6 +1,3 @@
-// Copyright 2026 The Shiplino Authors
-// SPDX-License-Identifier: FSL-1.1-ALv2
-
 import path from "node:path";
 import { test as base, expect, type Locator, type Page } from "@playwright/test";
 import { env } from "./shiplino";

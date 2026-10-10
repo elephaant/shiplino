@@ -1,7 +1,4 @@
 #!/bin/sh
-# Copyright 2026 The Shiplino Authors
-# SPDX-License-Identifier: FSL-1.1-ALv2
-#
 # Shiplino installer (macOS, Linux).
 #
 #   curl -fsSL https://raw.githubusercontent.com/elephaant/shiplino/main/scripts/install.sh | sh
