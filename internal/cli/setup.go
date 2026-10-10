@@ -19,6 +19,7 @@ import (
 
 	"github.com/elephaant/shiplino/internal/api"
 	"github.com/elephaant/shiplino/internal/config"
+	"github.com/elephaant/shiplino/internal/notify"
 	"github.com/elephaant/shiplino/internal/service"
 	"github.com/elephaant/shiplino/internal/spool"
 )
@@ -30,7 +31,15 @@ type env struct {
 	userHome    string // the user's home directory
 	self        string // path of the running binary
 	version     string
-	svcRun      service.Runner // nil = real OS commands
+	svcRun      service.Runner                           // nil = real OS commands
+	notifySend  func(context.Context, notify.Note) error // nil = the OS notifier
+}
+
+func (e *env) send(ctx context.Context, n notify.Note) error {
+	if e.notifySend != nil {
+		return e.notifySend(ctx, n)
+	}
+	return notify.Send(ctx, n)
 }
 
 func (e *env) serviceConfig() service.Config {

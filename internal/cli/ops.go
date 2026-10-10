@@ -19,6 +19,8 @@ import (
 	"time"
 
 	"github.com/elephaant/shiplino/internal/api"
+	"github.com/elephaant/shiplino/internal/config"
+	"github.com/elephaant/shiplino/internal/notify"
 	"github.com/elephaant/shiplino/internal/service"
 	"github.com/elephaant/shiplino/internal/spool"
 	"github.com/elephaant/shiplino/pkg/engine"
@@ -320,6 +322,15 @@ func doctor(ctx context.Context, e *env, args []string) int {
 			for _, a := range agents {
 				checks = append(checks, check{ok: true, name: "Last event", detail: fmt.Sprintf("%s %s", a, ago(last[a]))})
 			}
+		}
+	}
+	if c, err := config.Load(e.home); err == nil {
+		if _, on := c.NotifySettings(); !on {
+			checks = append(checks, check{ok: true, warn: true, name: "Notify", detail: "turned off in config.toml"})
+		} else if ok, how := notify.Available(); ok {
+			checks = append(checks, check{ok: true, name: "Notify", detail: "desktop notifications via " + how + " (try: shiplino notify test)"})
+		} else {
+			checks = append(checks, check{ok: true, warn: true, name: "Notify", detail: "no notification service found", fixHint: notifyMissingHint()})
 		}
 	}
 	if spool.Paused(e.home, time.Now()) {

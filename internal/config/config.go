@@ -10,9 +10,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/pelletier/go-toml/v2"
 
+	"github.com/elephaant/shiplino/internal/notify"
 	"github.com/elephaant/shiplino/pkg/redact"
 )
 
@@ -20,6 +22,17 @@ import (
 type Config struct {
 	CaptureLevel string    `toml:"capture_level"`
 	Redaction    Redaction `toml:"redaction"`
+	Notify       Notify    `toml:"notify"`
+}
+
+// Notify controls desktop notifications. Unset fields use the defaults
+// (everything on, finished after 30s).
+type Notify struct {
+	Enabled  *bool  `toml:"enabled"`
+	Waiting  *bool  `toml:"waiting"`
+	Finished *bool  `toml:"finished"`
+	Failed   *bool  `toml:"failed"`
+	MinTurn  string `toml:"min_turn"` // e.g. "30s", "2m"
 }
 
 // Redaction holds user-defined patterns on top of the built-in rules.
@@ -49,6 +62,11 @@ func Load(home string) (Config, error) {
 	if _, err := redact.ParseLevel(c.CaptureLevel); err != nil {
 		return c, fmt.Errorf("%s: %w", Path(home), err)
 	}
+	if c.Notify.MinTurn != "" {
+		if d, err := time.ParseDuration(c.Notify.MinTurn); err != nil || d < 0 {
+			return c, fmt.Errorf("%s: notify.min_turn: want a duration like \"30s\" or \"2m\"", Path(home))
+		}
+	}
 	if _, err := redact.New(c.Redaction.ExtraPatterns); err != nil {
 		return c, fmt.Errorf("%s: redaction.extra_patterns: %w", Path(home), err)
 	}
@@ -59,6 +77,23 @@ func Load(home string) (Config, error) {
 func (c Config) Level() redact.Level {
 	l, _ := redact.ParseLevel(c.CaptureLevel)
 	return l
+}
+
+// NotifySettings returns the notification settings, and whether
+// notifications are on at all.
+func (c Config) NotifySettings() (notify.Settings, bool) {
+	s := notify.Defaults
+	on := func(p *bool, def bool) bool {
+		if p == nil {
+			return def
+		}
+		return *p
+	}
+	s.Waiting, s.Finished, s.Failed = on(c.Notify.Waiting, s.Waiting), on(c.Notify.Finished, s.Finished), on(c.Notify.Failed, s.Failed)
+	if d, err := time.ParseDuration(c.Notify.MinTurn); err == nil {
+		s.MinTurn = d
+	}
+	return s, on(c.Notify.Enabled, true)
 }
 
 // Redactor builds the redactor for this config.
@@ -83,6 +118,14 @@ capture_level = "standard"
 [redaction]
 # Extra regular expressions to redact, e.g. internal ticket ids or hostnames.
 extra_patterns = []
+
+[notify]
+# Desktop notifications. Test them with: shiplino notify test
+enabled = true
+waiting = true      # an agent is waiting on you (after 3s, so quick answers don't notify)
+finished = true     # a turn finished...
+min_turn = "30s"    # ...that ran at least this long
+failed = true       # a session failed
 `
 
 // WriteDefault creates a commented config file if none exists.

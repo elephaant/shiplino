@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/elephaant/shiplino/internal/api"
+	"github.com/elephaant/shiplino/internal/notify"
 	"github.com/elephaant/shiplino/internal/spool"
 	"github.com/elephaant/shiplino/internal/store"
 	"github.com/elephaant/shiplino/pkg/engine"
@@ -166,5 +167,17 @@ func TestSearchAndExport(t *testing.T) {
 	}
 	if b, _ := os.ReadFile(file); !strings.HasPrefix(string(b), "[") || strings.Contains(string(b), "Old task") {
 		t.Fatalf("json file (since 1d): %s", b)
+	}
+}
+
+func TestNotifyTest(t *testing.T) {
+	e, out := testEnv(t)
+	var got []notify.Note
+	e.notifySend = func(_ context.Context, n notify.Note) error { got = append(got, n); return nil }
+	if code := notifyCmd(context.Background(), e, []string{"test"}); code != 0 || len(got) != 1 || !strings.Contains(out.String(), "Sent a test notification") {
+		t.Fatalf("notify test %d %v:\n%s", code, got, out)
+	}
+	if code := notifyCmd(context.Background(), e, nil); code != 2 {
+		t.Fatalf("usage: %d", code)
 	}
 }
