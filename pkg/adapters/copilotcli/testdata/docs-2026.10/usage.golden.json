@@ -1,0 +1,90 @@
+[
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T08:01:00Z",
+    "received_at": "2026-10-10T10:00:00Z",
+    "kind": "usage",
+    "agent": {
+      "name": "copilot-cli",
+      "version": "1.0.95",
+      "surface": "cli"
+    },
+    "collector": "transcript",
+    "session_id": "copilot-cli:3f0c9a52-7d1e-4b8a-9c11-2a6e5f4d8b70",
+    "actor_id": "copilot-cli:3f0c9a52-7d1e-4b8a-9c11-2a6e5f4d8b70",
+    "project": {
+      "cwd": "/home/dev/shop",
+      "branch": "main"
+    },
+    "data": {
+      "cache_read_tokens": 9000,
+      "cache_write_tokens": 2000,
+      "cost_source": "reported",
+      "cost_usd": 0.041999999999999996,
+      "input_tokens": 1000,
+      "model": "claude-sonnet-4.5",
+      "output_tokens": 800,
+      "reasoning_tokens": 100
+    },
+    "dedup_key": "copilot-cli:3f0c9a52-7d1e-4b8a-9c11-2a6e5f4d8b70:usage:e-07:claude-sonnet-4.5"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T08:01:00Z",
+    "received_at": "2026-10-10T10:00:00Z",
+    "kind": "usage",
+    "agent": {
+      "name": "copilot-cli",
+      "version": "1.0.95",
+      "surface": "cli"
+    },
+    "collector": "transcript",
+    "session_id": "copilot-cli:3f0c9a52-7d1e-4b8a-9c11-2a6e5f4d8b70",
+    "actor_id": "copilot-cli:3f0c9a52-7d1e-4b8a-9c11-2a6e5f4d8b70",
+    "project": {
+      "cwd": "/home/dev/shop",
+      "branch": "main"
+    },
+    "data": {
+      "cache_read_tokens": 0,
+      "cache_write_tokens": 0,
+      "cost_source": "unpriced",
+      "input_tokens": 3000,
+      "model": "gpt-5-mini",
+      "output_tokens": 200
+    },
+    "dedup_key": "copilot-cli:3f0c9a52-7d1e-4b8a-9c11-2a6e5f4d8b70:usage:e-07:gpt-5-mini"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T09:02:00Z",
+    "received_at": "2026-10-10T10:00:00Z",
+    "kind": "usage",
+    "agent": {
+      "name": "copilot-cli",
+      "version": "1.0.95",
+      "surface": "cli"
+    },
+    "collector": "transcript",
+    "session_id": "copilot-cli:3f0c9a52-7d1e-4b8a-9c11-2a6e5f4d8b70",
+    "actor_id": "copilot-cli:3f0c9a52-7d1e-4b8a-9c11-2a6e5f4d8b70",
+    "project": {
+      "cwd": "/home/dev/shop",
+      "branch": "cart-test"
+    },
+    "data": {
+      "cache_read_tokens": 6000,
+      "cache_write_tokens": 1000,
+      "cost_source": "reported",
+      "cost_usd": 0.027999999999999997,
+      "input_tokens": 1000,
+      "model": "claude-sonnet-4.5",
+      "output_tokens": 700,
+      "reasoning_tokens": 50
+    },
+    "dedup_key": "copilot-cli:3f0c9a52-7d1e-4b8a-9c11-2a6e5f4d8b70:usage:e-10:claude-sonnet-4.5"
+  }
+]

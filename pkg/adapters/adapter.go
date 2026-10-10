@@ -69,6 +69,21 @@ type TranscriptParser interface {
 	ParseTranscriptLine(line []byte, meta TranscriptMeta) ([]model.Event, error)
 }
 
+// DocumentParser is implemented by adapters whose transcripts are whole
+// JSON documents that the agent rewrites in place (Cline's task files),
+// instead of lines it appends. TranscriptRoots finds them by their .json
+// extension.
+type DocumentParser interface {
+	// ParseTranscriptDocument converts a whole document into events. The
+	// daemon calls it again whenever the file changes, so every event
+	// needs a dedup key that stays the same across rewrites, and a value
+	// must only be emitted once it's final. recheck asks for another call
+	// later even if the file doesn't change, for values that become final
+	// with time (meta.ModTime and meta.ReceivedAt tell how long the file
+	// has been quiet).
+	ParseTranscriptDocument(doc []byte, meta TranscriptMeta) (events []model.Event, recheck bool, err error)
+}
+
 var registry = struct {
 	sync.RWMutex
 	m map[string]Adapter

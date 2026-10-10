@@ -63,12 +63,10 @@
 // and may cancel it; PostToolUse already carries the call and its
 // duration) and PreCompact (neither host runs it today).
 //
-// Token usage and cost: hooks carry none. Cline keeps per-message usage
-// and cost (metrics {inputTokens, outputTokens, cacheReadTokens,
-// cacheWriteTokens, cost}) in ~/.cline/data/sessions/<id>/<id>.messages.json,
-// a pretty-printed JSON document rewritten whole on every save. The
-// daemon tails line-based transcripts only, so it isn't read yet; Cline
-// sessions show "no cost data". Tested: Cline as of main on 2026-10-10
-// (fixtures in testdata/ are synthetic, built from the source's payload
-// types).
+// Token usage and cost: hooks carry none. They come from Cline's own task
+// files, JSON documents it rewrites whole on every save (transcript.go):
+// the SDK hosts' sessions/<id>/*.messages.json and the classic
+// extension's tasks/<id>/ui_messages.json, with Cline's own cost per
+// model call. Tested: Cline as of main and v4.0.12 on 2026-10-10
+// (fixtures in testdata/ are synthetic, built from the source's types).
 package cline

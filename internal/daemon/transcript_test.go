@@ -20,6 +20,10 @@ func withHome(t *testing.T) string {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	t.Setenv("USERPROFILE", home)
+	// Agents' own data-folder overrides would point outside the temp home.
+	for _, k := range []string{"XDG_CONFIG_HOME", "COPILOT_HOME", "CLINE_DIR", "CLINE_DATA_DIR", "CLINE_SESSION_DATA_DIR"} {
+		t.Setenv(k, "")
+	}
 	return home
 }
 
