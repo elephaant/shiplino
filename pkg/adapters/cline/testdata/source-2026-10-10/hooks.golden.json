@@ -1,0 +1,890 @@
+[
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T08:00:00Z",
+    "received_at": "2026-10-10T08:00:00Z",
+    "kind": "session.start",
+    "agent": {
+      "name": "cline",
+      "version": "3.40.0"
+    },
+    "collector": "hook",
+    "session_id": "cline:1791619200000",
+    "actor_id": "cline:1791619200000",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "dedup_key": "cline:1791619200000:session.start"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T08:00:00.05Z",
+    "received_at": "2026-10-10T08:00:01Z",
+    "kind": "turn.start",
+    "agent": {
+      "name": "cline",
+      "version": "3.40.0"
+    },
+    "collector": "hook",
+    "session_id": "cline:1791619200000",
+    "actor_id": "cline:1791619200000",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "prompt": "fix the cart total rounding",
+      "prompt_chars": 27
+    },
+    "dedup_key": "cline:1791619200000:turn.start:env-01"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T08:00:01.988Z",
+    "received_at": "2026-10-10T08:00:02Z",
+    "kind": "tool.start",
+    "agent": {
+      "name": "cline",
+      "version": "3.40.0"
+    },
+    "collector": "hook",
+    "session_id": "cline:1791619200000",
+    "actor_id": "cline:1791619200000",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "input_summary": "/home/dev/shop/src/cart.ts",
+      "tool": "read",
+      "tool_call_id": "cl-env-02",
+      "tool_raw": "read_files"
+    },
+    "dedup_key": "cline:1791619200000:cl-env-02:start"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T08:00:02Z",
+    "received_at": "2026-10-10T08:00:02Z",
+    "kind": "tool.end",
+    "agent": {
+      "name": "cline",
+      "version": "3.40.0"
+    },
+    "collector": "hook",
+    "session_id": "cline:1791619200000",
+    "actor_id": "cline:1791619200000",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "duration_ms": 12,
+      "ok": true,
+      "tool": "read",
+      "tool_call_id": "cl-env-02"
+    },
+    "dedup_key": "cline:1791619200000:cl-env-02:end"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T08:00:02Z",
+    "received_at": "2026-10-10T08:00:02Z",
+    "kind": "file.read",
+    "agent": {
+      "name": "cline",
+      "version": "3.40.0"
+    },
+    "collector": "hook",
+    "session_id": "cline:1791619200000",
+    "actor_id": "cline:1791619200000",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "op": "read",
+      "path": "/home/dev/shop/src/cart.ts"
+    },
+    "dedup_key": "cline:1791619200000:cl-env-02:file.read:0"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T08:00:03.96Z",
+    "received_at": "2026-10-10T08:00:03Z",
+    "kind": "tool.start",
+    "agent": {
+      "name": "cline",
+      "version": "3.40.0"
+    },
+    "collector": "hook",
+    "session_id": "cline:1791619200000",
+    "actor_id": "cline:1791619200000",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "input_summary": "/home/dev/shop/src/cart.ts",
+      "tool": "edit",
+      "tool_call_id": "cl-env-03",
+      "tool_raw": "editor"
+    },
+    "dedup_key": "cline:1791619200000:cl-env-03:start"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T08:00:04Z",
+    "received_at": "2026-10-10T08:00:03Z",
+    "kind": "tool.end",
+    "agent": {
+      "name": "cline",
+      "version": "3.40.0"
+    },
+    "collector": "hook",
+    "session_id": "cline:1791619200000",
+    "actor_id": "cline:1791619200000",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "duration_ms": 40,
+      "ok": true,
+      "tool": "edit",
+      "tool_call_id": "cl-env-03"
+    },
+    "dedup_key": "cline:1791619200000:cl-env-03:end"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T08:00:04Z",
+    "received_at": "2026-10-10T08:00:03Z",
+    "kind": "file.edit",
+    "agent": {
+      "name": "cline",
+      "version": "3.40.0"
+    },
+    "collector": "hook",
+    "session_id": "cline:1791619200000",
+    "actor_id": "cline:1791619200000",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "lines_added": 2,
+      "lines_removed": 1,
+      "lines_source": "computed",
+      "op": "modify",
+      "patch": "@@ @@\n-  return total;\n+  const cents = Math.round(total * 100);\n+  return cents / 100;\n",
+      "patch_source": "computed",
+      "path": "/home/dev/shop/src/cart.ts"
+    },
+    "dedup_key": "cline:1791619200000:cl-env-03:file.edit:0"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T08:00:05.8Z",
+    "received_at": "2026-10-10T08:00:04Z",
+    "kind": "tool.start",
+    "agent": {
+      "name": "cline",
+      "version": "3.40.0"
+    },
+    "collector": "hook",
+    "session_id": "cline:1791619200000",
+    "actor_id": "cline:1791619200000",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "input_summary": "npm test",
+      "tool": "shell",
+      "tool_call_id": "cl-env-04",
+      "tool_raw": "run_commands"
+    },
+    "dedup_key": "cline:1791619200000:cl-env-04:start"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T08:00:09Z",
+    "received_at": "2026-10-10T08:00:04Z",
+    "kind": "tool.end",
+    "agent": {
+      "name": "cline",
+      "version": "3.40.0"
+    },
+    "collector": "hook",
+    "session_id": "cline:1791619200000",
+    "actor_id": "cline:1791619200000",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "duration_ms": 3200,
+      "ok": true,
+      "tool": "shell",
+      "tool_call_id": "cl-env-04"
+    },
+    "dedup_key": "cline:1791619200000:cl-env-04:end"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T08:00:09Z",
+    "received_at": "2026-10-10T08:00:04Z",
+    "kind": "shell.exec",
+    "agent": {
+      "name": "cline",
+      "version": "3.40.0"
+    },
+    "collector": "hook",
+    "session_id": "cline:1791619200000",
+    "actor_id": "cline:1791619200000",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "command": "npm test",
+      "cwd": "/home/dev/shop",
+      "duration_ms": 3200,
+      "tool_call_id": "cl-env-04"
+    },
+    "dedup_key": "cline:1791619200000:cl-env-04:shell.exec:0"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T08:00:09.2Z",
+    "received_at": "2026-10-10T08:00:05Z",
+    "kind": "tool.start",
+    "agent": {
+      "name": "cline",
+      "version": "3.40.0"
+    },
+    "collector": "hook",
+    "session_id": "cline:1791619200000",
+    "actor_id": "cline:1791619200000",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "input_summary": "create_issue",
+      "tool": "mcp",
+      "tool_call_id": "cl-env-05",
+      "tool_raw": "github__create_issue"
+    },
+    "dedup_key": "cline:1791619200000:cl-env-05:start"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T08:00:10Z",
+    "received_at": "2026-10-10T08:00:05Z",
+    "kind": "tool.end",
+    "agent": {
+      "name": "cline",
+      "version": "3.40.0"
+    },
+    "collector": "hook",
+    "session_id": "cline:1791619200000",
+    "actor_id": "cline:1791619200000",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "duration_ms": 800,
+      "ok": true,
+      "tool": "mcp",
+      "tool_call_id": "cl-env-05"
+    },
+    "dedup_key": "cline:1791619200000:cl-env-05:end"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T08:00:10Z",
+    "received_at": "2026-10-10T08:00:05Z",
+    "kind": "mcp.call",
+    "agent": {
+      "name": "cline",
+      "version": "3.40.0"
+    },
+    "collector": "hook",
+    "session_id": "cline:1791619200000",
+    "actor_id": "cline:1791619200000",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "duration_ms": 800,
+      "ok": true,
+      "server": "github",
+      "tool": "create_issue"
+    },
+    "dedup_key": "cline:1791619200000:cl-env-05:mcp.call:0"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T08:00:11Z",
+    "received_at": "2026-10-10T08:00:06Z",
+    "kind": "turn.end",
+    "agent": {
+      "name": "cline",
+      "version": "3.40.0"
+    },
+    "collector": "hook",
+    "session_id": "cline:1791619200000",
+    "actor_id": "cline:1791619200000",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "status": "ok"
+    },
+    "dedup_key": "cline:1791619200000:turn.end:env-06"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T08:00:20Z",
+    "received_at": "2026-10-10T08:00:07Z",
+    "kind": "session.start",
+    "agent": {
+      "name": "cline",
+      "version": "3.40.0"
+    },
+    "collector": "hook",
+    "session_id": "cline:1791619200000",
+    "actor_id": "cline:1791619200000",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "dedup_key": "cline:1791619200000:session.start"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T08:00:25Z",
+    "received_at": "2026-10-10T08:00:08Z",
+    "kind": "turn.end",
+    "agent": {
+      "name": "cline",
+      "version": "3.40.0"
+    },
+    "collector": "hook",
+    "session_id": "cline:1791619200000",
+    "actor_id": "cline:1791619200000",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "status": "interrupted"
+    },
+    "dedup_key": "cline:1791619200000:turn.end:env-08"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T09:00:00Z",
+    "received_at": "2026-10-10T08:00:09Z",
+    "kind": "session.start",
+    "agent": {
+      "name": "cline"
+    },
+    "collector": "hook",
+    "session_id": "cline:sess-01",
+    "actor_id": "cline:sess-01",
+    "project": {
+      "cwd": "/home/dev/api",
+      "branch": "fix/timeouts"
+    },
+    "dedup_key": "cline:sess-01:session.start"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T09:00:00.1Z",
+    "received_at": "2026-10-10T08:00:10Z",
+    "kind": "turn.start",
+    "agent": {
+      "name": "cline"
+    },
+    "collector": "hook",
+    "session_id": "cline:sess-01",
+    "actor_id": "cline:sess-01",
+    "project": {
+      "cwd": "/home/dev/api",
+      "branch": "fix/timeouts"
+    },
+    "data": {
+      "prompt": "raise the client timeout",
+      "prompt_chars": 24
+    },
+    "dedup_key": "cline:sess-01:turn.start:env-10"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T09:00:04.95Z",
+    "received_at": "2026-10-10T08:00:11Z",
+    "kind": "tool.start",
+    "agent": {
+      "name": "cline"
+    },
+    "collector": "hook",
+    "session_id": "cline:sess-01",
+    "actor_id": "cline:sess-01",
+    "project": {
+      "cwd": "/home/dev/api",
+      "branch": "fix/timeouts"
+    },
+    "data": {
+      "input_summary": "/home/dev/api/client/http.go, /home/dev/api/client/doc.go",
+      "tool": "edit",
+      "tool_call_id": "call_1",
+      "tool_raw": "apply_patch"
+    },
+    "dedup_key": "cline:sess-01:call_1:start"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T09:00:04.985Z",
+    "received_at": "2026-10-10T08:00:11Z",
+    "kind": "tool.end",
+    "agent": {
+      "name": "cline"
+    },
+    "collector": "hook",
+    "session_id": "cline:sess-01",
+    "actor_id": "cline:sess-01",
+    "project": {
+      "cwd": "/home/dev/api",
+      "branch": "fix/timeouts"
+    },
+    "data": {
+      "duration_ms": 35,
+      "ok": true,
+      "tool": "edit",
+      "tool_call_id": "call_1"
+    },
+    "dedup_key": "cline:sess-01:call_1:end"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T09:00:04.985Z",
+    "received_at": "2026-10-10T08:00:11Z",
+    "kind": "file.edit",
+    "agent": {
+      "name": "cline"
+    },
+    "collector": "hook",
+    "session_id": "cline:sess-01",
+    "actor_id": "cline:sess-01",
+    "project": {
+      "cwd": "/home/dev/api",
+      "branch": "fix/timeouts"
+    },
+    "data": {
+      "lines_added": 1,
+      "lines_removed": 1,
+      "lines_source": "agent",
+      "op": "modify",
+      "patch": "@@ func newClient\n-\tTimeout: 5 * time.Second,\n+\tTimeout: 30 * time.Second,\n",
+      "patch_source": "agent",
+      "path": "/home/dev/api/client/http.go"
+    },
+    "dedup_key": "cline:sess-01:call_1:file.edit:0"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T09:00:04.985Z",
+    "received_at": "2026-10-10T08:00:11Z",
+    "kind": "file.edit",
+    "agent": {
+      "name": "cline"
+    },
+    "collector": "hook",
+    "session_id": "cline:sess-01",
+    "actor_id": "cline:sess-01",
+    "project": {
+      "cwd": "/home/dev/api",
+      "branch": "fix/timeouts"
+    },
+    "data": {
+      "lines_added": 2,
+      "lines_removed": 0,
+      "lines_source": "agent",
+      "op": "create",
+      "patch": "@@ @@\n+// Package client talks to the API.\n+package client\n",
+      "patch_source": "agent",
+      "path": "/home/dev/api/client/doc.go"
+    },
+    "dedup_key": "cline:sess-01:call_1:file.edit:1"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T09:00:05.9Z",
+    "received_at": "2026-10-10T08:00:12Z",
+    "kind": "tool.start",
+    "agent": {
+      "name": "cline"
+    },
+    "collector": "hook",
+    "session_id": "cline:sess-01",
+    "actor_id": "cline:sess-01",
+    "project": {
+      "cwd": "/home/dev/api",
+      "branch": "fix/timeouts"
+    },
+    "data": {
+      "input_summary": "go test ./..., git status --short",
+      "tool": "shell",
+      "tool_call_id": "call_2",
+      "tool_raw": "run_commands"
+    },
+    "dedup_key": "cline:sess-01:call_2:start"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T09:00:19.9Z",
+    "received_at": "2026-10-10T08:00:12Z",
+    "kind": "tool.end",
+    "agent": {
+      "name": "cline"
+    },
+    "collector": "hook",
+    "session_id": "cline:sess-01",
+    "actor_id": "cline:sess-01",
+    "project": {
+      "cwd": "/home/dev/api",
+      "branch": "fix/timeouts"
+    },
+    "data": {
+      "duration_ms": 14000,
+      "ok": true,
+      "tool": "shell",
+      "tool_call_id": "call_2"
+    },
+    "dedup_key": "cline:sess-01:call_2:end"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T09:00:19.9Z",
+    "received_at": "2026-10-10T08:00:12Z",
+    "kind": "shell.exec",
+    "agent": {
+      "name": "cline"
+    },
+    "collector": "hook",
+    "session_id": "cline:sess-01",
+    "actor_id": "cline:sess-01",
+    "project": {
+      "cwd": "/home/dev/api",
+      "branch": "fix/timeouts"
+    },
+    "data": {
+      "command": "go test ./...",
+      "cwd": "/home/dev/api",
+      "exit_code": 1,
+      "tool_call_id": "call_2"
+    },
+    "dedup_key": "cline:sess-01:call_2:shell.exec:0"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T09:00:19.9Z",
+    "received_at": "2026-10-10T08:00:12Z",
+    "kind": "shell.exec",
+    "agent": {
+      "name": "cline"
+    },
+    "collector": "hook",
+    "session_id": "cline:sess-01",
+    "actor_id": "cline:sess-01",
+    "project": {
+      "cwd": "/home/dev/api",
+      "branch": "fix/timeouts"
+    },
+    "data": {
+      "command": "git status --short",
+      "cwd": "/home/dev/api",
+      "exit_code": 0,
+      "tool_call_id": "call_2"
+    },
+    "dedup_key": "cline:sess-01:call_2:shell.exec:1"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T09:00:21.99Z",
+    "received_at": "2026-10-10T08:00:13Z",
+    "kind": "tool.start",
+    "agent": {
+      "name": "cline"
+    },
+    "collector": "hook",
+    "session_id": "cline:sess-01",
+    "actor_id": "cline:sess-01",
+    "project": {
+      "cwd": "/home/dev/api",
+      "branch": "fix/timeouts"
+    },
+    "data": {
+      "input_summary": "/home/dev/api/client/http_test.go",
+      "tool": "edit",
+      "tool_call_id": "call_3",
+      "tool_raw": "editor"
+    },
+    "dedup_key": "cline:sess-01:call_3:start"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T09:00:21.998Z",
+    "received_at": "2026-10-10T08:00:13Z",
+    "kind": "tool.end",
+    "agent": {
+      "name": "cline"
+    },
+    "collector": "hook",
+    "session_id": "cline:sess-01",
+    "actor_id": "cline:sess-01",
+    "project": {
+      "cwd": "/home/dev/api",
+      "branch": "fix/timeouts"
+    },
+    "data": {
+      "duration_ms": 8,
+      "ok": true,
+      "tool": "edit",
+      "tool_call_id": "call_3"
+    },
+    "dedup_key": "cline:sess-01:call_3:end"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T09:00:21.998Z",
+    "received_at": "2026-10-10T08:00:13Z",
+    "kind": "file.edit",
+    "agent": {
+      "name": "cline"
+    },
+    "collector": "hook",
+    "session_id": "cline:sess-01",
+    "actor_id": "cline:sess-01",
+    "project": {
+      "cwd": "/home/dev/api",
+      "branch": "fix/timeouts"
+    },
+    "data": {
+      "lines_added": 3,
+      "lines_removed": 0,
+      "lines_source": "computed",
+      "op": "create",
+      "patch": "@@ -0,0 +1,3 @@\n+package client\n+\n+func TestTimeout(t *testing.T) {}\n",
+      "patch_source": "computed",
+      "path": "/home/dev/api/client/http_test.go"
+    },
+    "dedup_key": "cline:sess-01:call_3:file.edit:0"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T09:00:29.99Z",
+    "received_at": "2026-10-10T08:00:14Z",
+    "kind": "tool.start",
+    "agent": {
+      "name": "cline"
+    },
+    "collector": "hook",
+    "session_id": "cline:sess-01",
+    "actor_id": "cline:sess-01/sub:agent-sub-1",
+    "parent_actor": "cline:sess-01",
+    "actor_type": "subagent",
+    "project": {
+      "cwd": "/home/dev/api",
+      "branch": "fix/timeouts"
+    },
+    "data": {
+      "input_summary": "/home/dev/api/client/retry.go, /home/dev/api/client/http.go",
+      "tool": "read",
+      "tool_call_id": "call_s1",
+      "tool_raw": "read_files"
+    },
+    "dedup_key": "cline:sess-01/sub:agent-sub-1:call_s1:start"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T09:00:29.994Z",
+    "received_at": "2026-10-10T08:00:14Z",
+    "kind": "tool.end",
+    "agent": {
+      "name": "cline"
+    },
+    "collector": "hook",
+    "session_id": "cline:sess-01",
+    "actor_id": "cline:sess-01/sub:agent-sub-1",
+    "parent_actor": "cline:sess-01",
+    "actor_type": "subagent",
+    "project": {
+      "cwd": "/home/dev/api",
+      "branch": "fix/timeouts"
+    },
+    "data": {
+      "duration_ms": 4,
+      "ok": true,
+      "tool": "read",
+      "tool_call_id": "call_s1"
+    },
+    "dedup_key": "cline:sess-01/sub:agent-sub-1:call_s1:end"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T09:00:29.994Z",
+    "received_at": "2026-10-10T08:00:14Z",
+    "kind": "file.read",
+    "agent": {
+      "name": "cline"
+    },
+    "collector": "hook",
+    "session_id": "cline:sess-01",
+    "actor_id": "cline:sess-01/sub:agent-sub-1",
+    "parent_actor": "cline:sess-01",
+    "actor_type": "subagent",
+    "project": {
+      "cwd": "/home/dev/api",
+      "branch": "fix/timeouts"
+    },
+    "data": {
+      "op": "read",
+      "path": "/home/dev/api/client/retry.go"
+    },
+    "dedup_key": "cline:sess-01/sub:agent-sub-1:call_s1:file.read:0"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T09:00:29.994Z",
+    "received_at": "2026-10-10T08:00:14Z",
+    "kind": "file.read",
+    "agent": {
+      "name": "cline"
+    },
+    "collector": "hook",
+    "session_id": "cline:sess-01",
+    "actor_id": "cline:sess-01/sub:agent-sub-1",
+    "parent_actor": "cline:sess-01",
+    "actor_type": "subagent",
+    "project": {
+      "cwd": "/home/dev/api",
+      "branch": "fix/timeouts"
+    },
+    "data": {
+      "op": "read",
+      "path": "/home/dev/api/client/http.go"
+    },
+    "dedup_key": "cline:sess-01/sub:agent-sub-1:call_s1:file.read:1"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T09:00:40Z",
+    "received_at": "2026-10-10T08:00:16Z",
+    "kind": "turn.end",
+    "agent": {
+      "name": "cline"
+    },
+    "collector": "hook",
+    "session_id": "cline:sess-01",
+    "actor_id": "cline:sess-01",
+    "project": {
+      "cwd": "/home/dev/api",
+      "branch": "fix/timeouts"
+    },
+    "data": {
+      "error": "rate limited (429)",
+      "status": "error"
+    },
+    "dedup_key": "cline:sess-01:turn.end:env-16"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T09:05:00Z",
+    "received_at": "2026-10-10T08:00:17Z",
+    "kind": "session.start",
+    "agent": {
+      "name": "cline"
+    },
+    "collector": "hook",
+    "session_id": "cline:sess-01",
+    "actor_id": "cline:sess-01",
+    "project": {
+      "cwd": "/home/dev/api",
+      "branch": "fix/timeouts"
+    },
+    "data": {
+      "source": "resume"
+    },
+    "dedup_key": "cline:sess-01:session.start:env-17"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T09:05:30Z",
+    "received_at": "2026-10-10T08:00:18Z",
+    "kind": "turn.end",
+    "agent": {
+      "name": "cline"
+    },
+    "collector": "hook",
+    "session_id": "cline:sess-01",
+    "actor_id": "cline:sess-01",
+    "project": {
+      "cwd": "/home/dev/api",
+      "branch": "fix/timeouts"
+    },
+    "data": {
+      "status": "ok"
+    },
+    "dedup_key": "cline:sess-01:turn.end:env-18"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T09:06:00Z",
+    "received_at": "2026-10-10T08:00:19Z",
+    "kind": "session.end",
+    "agent": {
+      "name": "cline"
+    },
+    "collector": "hook",
+    "session_id": "cline:sess-01",
+    "actor_id": "cline:sess-01",
+    "project": {
+      "cwd": "/home/dev/api",
+      "branch": "fix/timeouts"
+    },
+    "data": {
+      "reason": "session_disposed",
+      "status": "ended"
+    },
+    "dedup_key": "cline:sess-01:session.end:env-19"
+  }
+]

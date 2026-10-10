@@ -17,6 +17,7 @@ import (
 	"testing"
 
 	"github.com/elephaant/shiplino/pkg/adapters/claudecode"
+	"github.com/elephaant/shiplino/pkg/adapters/cline"
 	"github.com/elephaant/shiplino/pkg/adapters/codex"
 	"github.com/elephaant/shiplino/pkg/adapters/cursor"
 	"github.com/elephaant/shiplino/pkg/adapters/windsurf"
@@ -230,6 +231,44 @@ func TestSetupWindsurf(t *testing.T) {
 	uninstall(context.Background(), e, nil)
 	if ok, _, _ := windsurf.Installed(hooks); ok {
 		t.Fatal("windsurf hooks still present")
+	}
+}
+
+// Cline hooks are script files; the user's own scripts are kept and the
+// events they take are reported by setup and doctor.
+func TestSetupCline(t *testing.T) {
+	e, out := testEnv(t)
+	os.MkdirAll(filepath.Join(e.userHome, ".cline"), 0o700)
+	dir := cline.HooksDir(e.userHome)
+	if code := setup(context.Background(), e, []string{"--no-service"}); code != 0 {
+		t.Fatalf("setup exit %d:\n%s", code, out)
+	}
+	if ok, cmd, err := cline.Installed(dir); !ok || err != nil || !strings.Contains(cmd, e.binPath()) || !strings.Contains(out.String(), "hooks added for 8 events") {
+		t.Fatalf("installed=%v cmd=%q err=%v\n%s", ok, cmd, err, out)
+	}
+	uninstall(context.Background(), e, nil)
+	if ok, _, _ := cline.Installed(dir); ok {
+		t.Fatal("cline hooks still present")
+	}
+
+	name := "PostToolUse"
+	if runtime.GOOS == "windows" {
+		name += ".ps1"
+	}
+	mine := filepath.Join(dir, name)
+	os.WriteFile(mine, []byte("#!/bin/sh\nexit 0\n"), 0o755)
+	out.Reset()
+	if code := setup(context.Background(), e, []string{"--no-service"}); code == 0 || !strings.Contains(out.String(), "PostToolUse") {
+		t.Fatalf("taken event not reported (exit %d):\n%s", code, out)
+	}
+	out.Reset()
+	doctor(context.Background(), e, nil)
+	if !strings.Contains(out.String(), "PostToolUse") {
+		t.Fatalf("doctor:\n%s", out)
+	}
+	uninstall(context.Background(), e, nil)
+	if b, err := os.ReadFile(mine); err != nil || string(b) != "#!/bin/sh\nexit 0\n" {
+		t.Fatalf("user hook changed: %q %v", b, err)
 	}
 }
 
