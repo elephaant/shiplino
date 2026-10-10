@@ -29,6 +29,10 @@ Shiplino's core promise: the model's input and output are byte-for-byte identica
 - Never set `failClosed` (Cursor) or anything that makes a failure block the agent.
 - Never write to a user project's `CLAUDE.md`, `AGENTS.md`, rules files or system prompts. Never add MCP tools for capture.
 
+## The status line wrapper (`shiplino statusline`, opt-in)
+
+Claude Code shows a status line command's output in its UI; it never reaches the model. The wrapper still follows the hook's rules for its own part (stdin capped at 1 MB, one `O_APPEND` spool line, no network, no DB, `defer recover()`), then runs the user's own command with the same stdin and passes its stdout, stderr and exit code through byte for byte. Without a user command it prints nothing (or the short `--minimal` line the user asked for). Tests: `internal/statusline`, `internal/shim/statusline_contract_test.go`.
+
 ## Optional features that do cost tokens
 
 The read-only MCP server and AI summaries are **off by default**. They explain their token cost before enabling and never run inside the user's agent loop.

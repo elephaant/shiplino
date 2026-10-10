@@ -22,7 +22,9 @@ Usage:
 
 Commands:
   setup             install Shiplino, connect detected agents, start the daemon
-                    (--dry-run: show the diffs, write nothing; --no-service: run the daemon yourself)
+                    (--dry-run: show the diffs, write nothing; --no-service: run the daemon yourself;
+                    --statusline: also record Claude Code's plan usage % from its status line,
+                    which keeps showing exactly the same; --no-statusline: undo that)
   status            daemon state and what's running right now
   ls                recent sessions (--running, --today)
   open              open the board in your browser (--demo: try it with synthetic data)

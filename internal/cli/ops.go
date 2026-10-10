@@ -22,6 +22,7 @@ import (
 	"github.com/elephaant/shiplino/internal/notify"
 	"github.com/elephaant/shiplino/internal/service"
 	"github.com/elephaant/shiplino/internal/spool"
+	"github.com/elephaant/shiplino/pkg/adapters/claudecode"
 	"github.com/elephaant/shiplino/pkg/engine"
 )
 
@@ -251,6 +252,28 @@ type check struct {
 	fixHint string
 }
 
+// optInCheck is doctor's line for the opt-in status line wrapper: off is
+// fine, and a config problem is already reported on the agent's own line.
+func optInCheck(e *env, a agents.Hooks, path, bin string, ok bool, cmd string, err error, reinstall func(context.Context) error) (check, bool) {
+	switch {
+	case err != nil:
+		return check{}, false
+	case !ok:
+		return check{ok: true, name: a.Name, detail: "off (opt-in: `shiplino setup --statusline` records Claude Code's plan usage %)"}, true
+	case !strings.Contains(cmd, bin):
+		return check{name: a.Name, detail: "runs " + cmd + ", not " + bin, fix: reinstall, fixHint: "shiplino doctor --fix"}, true
+	}
+	st, _ := claudecode.ReadStatusLine(path, e.userHome)
+	detail := "on: wraps your status line command, which shows exactly what it did before"
+	switch {
+	case st.Minimal:
+		detail = "on: shows Shiplino's short plan usage line (you had no status line)"
+	case st.Original == "":
+		detail = "on: shows an empty status line (you had none); `shiplino setup --no-statusline` removes it"
+	}
+	return check{ok: true, name: a.Name, detail: detail}, true
+}
+
 // doctor checks every part of the installation and explains problems.
 func doctor(ctx context.Context, e *env, args []string) int {
 	fix := hasFlag(args, "--fix")
@@ -266,13 +289,21 @@ func doctor(ctx context.Context, e *env, args []string) int {
 	for _, a := range agents.All {
 		found, version, path := a.Detect(ctx, e.userHome)
 		if !found {
-			checks = append(checks, check{ok: true, warn: true, name: a.Name, detail: "not found"})
+			if !a.OptIn {
+				checks = append(checks, check{ok: true, warn: true, name: a.Name, detail: "not found"})
+			}
 			continue
 		}
 		ok, cmd, err := a.Installed(path)
 		reinstall := func(ctx context.Context) error {
 			_, _, err := a.Install(path, bin, version, e.backupDir(a.ID))
 			return err
+		}
+		if a.OptIn {
+			if c, show := optInCheck(e, a, path, bin, ok, cmd, err, reinstall); show {
+				checks = append(checks, c)
+			}
+			continue
 		}
 		switch {
 		case agents.IsUnparseable(err):
@@ -337,7 +368,7 @@ func doctor(ctx context.Context, e *env, args []string) int {
 			checks = append(checks, check{ok: true, warn: true, name: "Parsing", detail: fmt.Sprintf("%d unreadable and %d unknown lines since start (an agent update may have changed its format)", d.Bad, d.Unknown)})
 		}
 		for _, a := range agents.All {
-			if n := d.Imported[a.ID]; n > 0 {
+			if n := d.Imported[a.ID]; n > 0 && !a.OptIn {
 				checks = append(checks, check{ok: true, name: "Imports", detail: fmt.Sprintf("%d %s sessions imported from other agents skipped; the original agent's record is used", n, a.Name)})
 			}
 		}

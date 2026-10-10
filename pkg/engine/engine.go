@@ -199,7 +199,7 @@ func (s *Session) FilesChanged() int { return len(s.Files) }
 // Rev identifies the engine's folding rules. Bump it whenever Apply would
 // produce different sessions from the same events (a new field, a fix);
 // the daemon then rebuilds stored sessions from their events once.
-const Rev = 13
+const Rev = 14
 
 // Engine folds events into sessions. It is not safe for concurrent use;
 // the daemon feeds it from a single goroutine.
@@ -229,6 +229,11 @@ func (e *Engine) Get(id string) *Session { return e.sessions[id] }
 // Apply folds one event into state and returns the sessions it changed.
 // Callers must apply each event at most once (dedup happens in the store).
 func (e *Engine) Apply(ev model.Event) []*Session {
+	// A limit is the account's state, not something the session did:
+	// Claude Code's status line reports it on timers, even while idle.
+	if ev.Kind == model.KindLimit {
+		return nil
+	}
 	actorID := ev.ActorID
 	if actorID == "" {
 		actorID = ev.SessionID

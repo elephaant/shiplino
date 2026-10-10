@@ -137,27 +137,38 @@ func (o *Object) MarshalJSON() ([]byte, error) {
 		if i > 0 {
 			buf.WriteByte(',')
 		}
-		k, _ := json.Marshal(m.Key)
-		buf.Write(k)
-		buf.WriteByte(':')
-		v, err := json.Marshal(m.Value)
-		if err != nil {
+		if err := marshal(&buf, m.Key); err != nil {
 			return nil, err
 		}
-		buf.Write(v)
+		buf.WriteByte(':')
+		if err := marshal(&buf, m.Value); err != nil {
+			return nil, err
+		}
 	}
 	buf.WriteByte('}')
 	return buf.Bytes(), nil
 }
 
+// marshal writes v as JSON without escaping <, > and &, so commands like
+// `a && b` stay readable in the user's file.
+func marshal(buf *bytes.Buffer, v any) error {
+	enc := json.NewEncoder(buf)
+	enc.SetEscapeHTML(false)
+	if err := enc.Encode(v); err != nil {
+		return err
+	}
+	buf.Truncate(buf.Len() - 1) // Encode adds a newline
+	return nil
+}
+
 // Format renders the object as indented JSON with a trailing newline.
 func Format(o *Object) ([]byte, error) {
-	raw, err := json.Marshal(o)
-	if err != nil {
+	var raw bytes.Buffer
+	if err := marshal(&raw, o); err != nil {
 		return nil, err
 	}
 	var out bytes.Buffer
-	if err := json.Indent(&out, raw, "", "  "); err != nil {
+	if err := json.Indent(&out, raw.Bytes(), "", "  "); err != nil {
 		return nil, err
 	}
 	out.WriteByte('\n')

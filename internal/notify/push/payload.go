@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 	"unicode/utf8"
 
@@ -30,8 +31,9 @@ var (
 	reasons  = set("permission", "question", "idle")
 	// token is an id, agent, branch, window or scope: no spaces, short.
 	token = regexp.MustCompile(`^[A-Za-z0-9_.:/@+#\-]{1,128}$`)
-	// name is a project's short name, which may have spaces.
-	name = regexp.MustCompile(`^[\p{L}\p{N}_.@+\- ]{1,64}$`)
+	// name is a project's short name, which may have spaces. Compiled on
+	// first use: Unicode classes cost ~2 ms, paid by every hook otherwise.
+	name = sync.OnceValue(func() *regexp.Regexp { return regexp.MustCompile(`^[\p{L}\p{N}_.@+\- ]{1,64}$`) })
 )
 
 func set(v ...string) map[string]bool {
@@ -80,7 +82,7 @@ func Payload(a notify.Alert, board string) map[string]any {
 	if p["agent"] != nil {
 		p["agent_name"] = notify.AgentName(a.Agent)
 	}
-	str("project", strings.TrimSpace(a.Project), name.MatchString)
+	str("project", strings.TrimSpace(a.Project), name().MatchString)
 	str("branch", a.Branch, token.MatchString)
 	str("status", a.Status, in(statuses))
 	str("reason", a.Reason, in(reasons))
@@ -94,7 +96,7 @@ func Payload(a notify.Alert, board string) map[string]any {
 	str("scope", a.Scope, func(s string) bool {
 		rest, project := strings.CutPrefix(s, "project:")
 		if project {
-			return name.MatchString(rest)
+			return name().MatchString(rest)
 		}
 		return s == "today" || s == "month"
 	})
