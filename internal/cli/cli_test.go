@@ -13,6 +13,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/elephaant/shiplino/internal/config"
 	"github.com/elephaant/shiplino/pkg/adapters/claudecode"
 	"github.com/elephaant/shiplino/pkg/adapters/cline"
 	"github.com/elephaant/shiplino/pkg/adapters/codex"
@@ -97,6 +98,119 @@ func TestSetupAndUninstall(t *testing.T) {
 	uninstall(context.Background(), e, []string{"--purge"})
 	if _, err := os.Stat(e.home); !os.IsNotExist(err) {
 		t.Fatal("--purge kept data")
+	}
+}
+
+// files reads every file under dir.
+func files(t *testing.T, dir string) map[string]string {
+	t.Helper()
+	out := map[string]string{}
+	filepath.WalkDir(dir, func(p string, d os.DirEntry, err error) error {
+		if err == nil && !d.IsDir() {
+			b, _ := os.ReadFile(p)
+			out[p] = string(b)
+		}
+		return nil
+	})
+	return out
+}
+
+func TestSetupDryRunWritesNothing(t *testing.T) {
+	e, out := testEnv(t)
+	settings := filepath.Join(e.userHome, ".claude", "settings.json")
+	os.MkdirAll(filepath.Dir(settings), 0o700)
+	os.WriteFile(settings, []byte("{\n  \"model\": \"opus\"\n}\n"), 0o600)
+	os.MkdirAll(filepath.Join(e.userHome, ".codex"), 0o700)
+	before := files(t, e.userHome)
+	cs, cx := tilde(settings, e.userHome), tilde(filepath.Join(e.userHome, ".codex", "hooks.json"), e.userHome)
+
+	if code := setup(context.Background(), e, []string{"--dry-run"}); code != 0 {
+		t.Fatalf("exit %d:\n%s", code, out)
+	}
+	for _, want := range []string{
+		"writing nothing",
+		"--- " + cs + "\n+++ " + cs + "\n@@ -1,3 +1,",
+		"-  \"model\": \"opus\"\n+  \"model\": \"opus\",\n+  \"hooks\": {",
+		"--- /dev/null\n+++ " + cx + "\n@@ -0,0 +1,",
+		"hook --agent codex",
+		"register the daemon to start at login",
+		"Nothing was written",
+	} {
+		if !strings.Contains(out.String(), want) {
+			t.Errorf("missing %q in:\n%s", want, out)
+		}
+	}
+	if after := files(t, e.userHome); len(after) != len(before) || after[settings] != before[settings] {
+		t.Fatalf("dry run wrote files: %v", after)
+	}
+	if _, err := os.Stat(e.home); !os.IsNotExist(err) {
+		t.Fatalf("dry run created %s (backups, binary or config): %v", e.home, err)
+	}
+
+	out.Reset()
+	setup(context.Background(), e, []string{"--dry-run", "--no-service"})
+	if !strings.Contains(out.String(), "not register the daemon") {
+		t.Fatalf("--no-service dry run:\n%s", out)
+	}
+
+	// After setup: nothing left to change, and uninstall shows the removal.
+	setup(context.Background(), e, []string{"--no-service"})
+	out.Reset()
+	setup(context.Background(), e, []string{"--dry-run"})
+	if strings.Contains(out.String(), "@@") || !strings.Contains(out.String(), "no changes: hooks already up to date") {
+		t.Fatalf("dry run after setup:\n%s", out)
+	}
+	before = files(t, e.userHome)
+	out.Reset()
+	if code := uninstall(context.Background(), e, []string{"--dry-run", "--purge"}); code != 0 {
+		t.Fatalf("uninstall dry run exit %d:\n%s", code, out)
+	}
+	for _, want := range []string{"+++ " + cs, "-    \"SessionStart\": [", "+++ " + cx, "delete " + e.home} {
+		if !strings.Contains(out.String(), want) {
+			t.Errorf("missing %q in:\n%s", want, out)
+		}
+	}
+	after := files(t, e.userHome)
+	if len(after) != len(before) {
+		t.Fatalf("uninstall dry run changed files: %d → %d", len(before), len(after))
+	}
+	for p, b := range before {
+		if after[p] != b {
+			t.Fatalf("uninstall dry run changed %s", p)
+		}
+	}
+}
+
+func TestSetupNoService(t *testing.T) {
+	e, out := testEnv(t)
+	os.MkdirAll(filepath.Join(e.userHome, ".claude"), 0o700)
+	var calls []string
+	e.svcRun = func(_ context.Context, name string, args ...string) ([]byte, error) {
+		calls = append(calls, name+" "+strings.Join(args, " "))
+		return nil, nil
+	}
+	if code := setup(context.Background(), e, []string{"--no-service"}); code != 0 {
+		t.Fatalf("exit %d:\n%s", code, out)
+	}
+	if !strings.Contains(out.String(), "not registered to start at login") || !strings.Contains(out.String(), "Run `shiplino daemon`") {
+		t.Fatalf("output:\n%s", out)
+	}
+	for _, c := range calls {
+		if strings.Contains(c, "enable") || strings.Contains(c, "bootstrap") || strings.Contains(c, "/Create") {
+			t.Fatalf("service registered: %v", calls)
+		}
+	}
+	if c, err := config.Load(e.home); err != nil || c.Autostart() {
+		t.Fatalf("choice not recorded: %+v %v", c.Service, err)
+	}
+
+	// Doctor: a stopped daemon is what the user chose, not an error.
+	out.Reset()
+	if code := doctor(context.Background(), e, nil); code != 0 || !strings.Contains(out.String(), "⚠️  Daemon") || !strings.Contains(out.String(), "shiplino daemon") {
+		t.Fatalf("doctor exit %d:\n%s", code, out)
+	}
+	if strings.Contains(out.String(), "❌") {
+		t.Fatalf("doctor reports an error:\n%s", out)
 	}
 }
 

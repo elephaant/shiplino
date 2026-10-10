@@ -24,6 +24,35 @@ type Config struct {
 	Budget       Budget       `toml:"budget"`
 	Limits       Limits       `toml:"limits"`
 	Integrations Integrations `toml:"integrations"`
+	Service      Service      `toml:"service"`
+}
+
+// Service says how the daemon runs.
+type Service struct {
+	// Autostart: `shiplino setup` registered the daemon to start at login
+	// (the default). false means the user runs `shiplino daemon` themselves
+	// (`setup --no-service`), so a stopped daemon isn't an error.
+	Autostart *bool `toml:"autostart"`
+}
+
+// Autostart reports whether the daemon is registered to start at login.
+func (c Config) Autostart() bool {
+	return c.Service.Autostart == nil || *c.Service.Autostart
+}
+
+const serviceHeader = `[service]
+# Whether ` + "`shiplino setup`" + ` registers the daemon to start at login. false
+# means you run ` + "`shiplino daemon`" + ` yourself, so doctor doesn't count a
+# stopped daemon as an error. Rewritten by ` + "`shiplino setup [--no-service]`" + `.
+`
+
+// SetAutostart records whether setup registered the daemon, keeping the
+// rest of config.toml as it was.
+func SetAutostart(home string, on bool) error {
+	if _, err := Load(home); err != nil {
+		return err
+	}
+	return rewriteSection(home, "service", fmt.Sprintf("%sautostart = %t\n", serviceHeader, on))
 }
 
 // Integrations are opt-in connections to outside services.
@@ -244,6 +273,8 @@ digest = ""
 # by default. Only PRs of recent sessions are checked.
 enabled = false
 poll = "5m"
+
+` + serviceHeader + `autostart = true
 
 ` + syncHeader + `enabled = false
 projects = []

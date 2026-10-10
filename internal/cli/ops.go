@@ -298,9 +298,18 @@ func doctor(ctx context.Context, e *env, args []string) int {
 		_, err := service.WaitHealthy(wctx, e.home, healthy)
 		return err
 	}
-	if err != nil {
+	cfg, cfgErr := config.Load(e.home)
+	switch {
+	case err != nil && cfgErr == nil && !cfg.Autostart():
+		// The user chose to run it (setup --no-service): expected, not broken.
+		checks = append(checks, check{ok: true, warn: true, name: "Daemon", detail: "not running; you start it yourself (setup --no-service), events wait in the spool until you do",
+			fixHint: "shiplino daemon, or `shiplino setup` to start it at login"})
+	case err != nil:
 		checks = append(checks, check{name: "Daemon", detail: "not running", fix: startService, fixHint: "shiplino doctor --fix"})
-	} else {
+	default:
+		if cfgErr == nil && !cfg.Autostart() {
+			checks = append(checks, check{ok: true, name: "Service", detail: "not started at login (setup --no-service); you run `shiplino daemon` yourself"})
+		}
 		checks = append(checks, check{ok: true, name: "Daemon", detail: "running at " + strings.Replace(c.base, "127.0.0.1", "localhost", 1)})
 		if !strings.HasSuffix(c.base, ":"+strconv.Itoa(api.DefaultPort)) {
 			checks = append(checks, check{ok: true, warn: true, name: "Port", detail: fmt.Sprintf("%d was busy, so the board moved; bookmarks of localhost:%d won't reach it", api.DefaultPort, api.DefaultPort),

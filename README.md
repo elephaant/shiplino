@@ -82,7 +82,11 @@ irm https://raw.githubusercontent.com/elephaant/shiplino/main/scripts/install.ps
 
 The installer downloads the release for your OS and CPU, **verifies its SHA-256 checksum** (and, if [cosign](https://docs.sigstore.dev/cosign/system_config/installation/) is installed, the Sigstore signature that ties the release to this repository's build), installs to `~/.shiplino/bin`, then runs `shiplino setup`: agents are detected and connected, the daemon starts at login, and the board is at http://localhost:4777.
 
-Remove everything with `shiplino uninstall` (add `--purge` to delete recorded data).
+To see exactly what setup would change in each agent's config first, run `shiplino setup --dry-run`: it prints a unified diff per file and writes nothing. The Settings → Agents page shows the same diff before you connect or remove an agent. Every file Shiplino edits is backed up to `~/.shiplino/backups/` first.
+
+Prefer to run the daemon yourself (a terminal, tmux, your own process manager)? `shiplino setup --no-service` connects the agents without registering a login item; then start `shiplino daemon` when you want recording. Until it runs, hook events wait in `~/.shiplino/spool/`.
+
+Remove everything with `shiplino uninstall` (add `--purge` to delete recorded data, or `--dry-run` to see what would change).
 
 ## Build from source
 
@@ -122,6 +126,9 @@ make bench     # full load test
 
 ```
 shiplino setup | uninstall [--purge]   connect agents, install the background service
+shiplino setup --dry-run               show the diff of every agent config setup would change; write nothing
+shiplino setup --no-service            connect agents only; you run `shiplino daemon` yourself
+shiplino uninstall --dry-run           show what uninstall would remove; write nothing
 shiplino status | ls | open | doctor   what's running, recent sessions, the board, health checks
 shiplino search <words> | export       find anything; sessions as CSV or JSON
 shiplino export --session <id>         one conversation as Markdown

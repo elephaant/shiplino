@@ -6,8 +6,8 @@ import (
 	"github.com/elephaant/shiplino/internal/integrations/github"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/elephaant/shiplino/internal/agents"
@@ -28,6 +28,7 @@ type admin struct {
 	sync    *cloudsync.Uploader // nil in tests
 	budget  *budget.Watcher     // nil when no budget or digest is set
 	github  *github.Poller      // nil unless the GitHub integration is on
+	agentMu sync.Mutex          // one agent config change at a time
 }
 
 // SettingsView is what GET /api/v1/settings returns.
@@ -70,10 +71,7 @@ type NotifyView struct {
 
 func (a *admin) Settings(ctx context.Context) any {
 	userHome, _ := os.UserHomeDir()
-	bin := filepath.Join(a.home, "bin", "shiplino")
-	if runtime.GOOS == "windows" {
-		bin += ".exe"
-	}
+	bin := a.bin()
 	set, on := a.cfg.NotifySettings()
 	ok, via := notify.Available()
 	v := SettingsView{

@@ -20,6 +20,7 @@ Usage:
 
 Commands:
   setup             install Shiplino, connect detected agents, start the daemon
+                    (--dry-run: show the diffs, write nothing; --no-service: run the daemon yourself)
   status            daemon state and what's running right now
   ls                recent sessions (--running, --today)
   open              open the board in your browser
@@ -35,7 +36,7 @@ Commands:
   resume            start recording again
   wrap -- <cmd>     run any CLI agent (Aider, ...) and record it (--agent, --title)
   daemon            run the background service in the foreground
-  uninstall         remove Shiplino (--purge also deletes all data)
+  uninstall         remove Shiplino (--purge also deletes all data; --dry-run writes nothing)
   version           print the version
   help              show this help
 `

@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"time"
 )
@@ -17,7 +18,16 @@ type Admin interface {
 	// Backfill imports transcripts modified since `since` and returns how
 	// many files were added.
 	Backfill(since time.Time) int
+	// AgentPreview shows the diff connecting (or removing) an agent's
+	// hooks would make, writing nothing. key is agents.Hooks.Key.
+	AgentPreview(ctx context.Context, key string, connect bool) (any, error)
+	// AgentChange connects or removes an agent's hooks, as setup and
+	// uninstall do.
+	AgentChange(ctx context.Context, key string, connect bool) error
 }
+
+// ErrUnknownAgent is returned by Admin for an agent key it doesn't know.
+var ErrUnknownAgent = errors.New("unknown agent")
 
 func (s *Server) settings(w http.ResponseWriter, r *http.Request) {
 	if s.Admin == nil {
@@ -82,6 +92,70 @@ func (s *Server) backfill(w http.ResponseWriter, r *http.Request) {
 	}
 	n := s.Admin.Backfill(time.Now().AddDate(0, 0, -body.Days))
 	writeJSON(w, http.StatusOK, map[string]int{"transcripts": n, "days": body.Days})
+}
+
+// agentPreview: GET /api/v1/agents/{key}/preview?action=connect|remove
+func (s *Server) agentPreview(w http.ResponseWriter, r *http.Request) {
+	if s.Admin == nil {
+		writeError(w, http.StatusNotImplemented, "settings unavailable")
+		return
+	}
+	var connect bool
+	switch r.URL.Query().Get("action") {
+	case "connect":
+		connect = true
+	case "remove":
+	default:
+		writeError(w, http.StatusBadRequest, "action must be connect or remove")
+		return
+	}
+	v, err := s.Admin.AgentPreview(r.Context(), r.PathValue("key"), connect)
+	if err != nil {
+		agentError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, v)
+}
+
+// agentChange: POST /api/v1/agents/{key}/connect or /remove. It edits
+// the agent's own config file, so it's same-origin only (see sameOrigin).
+func (s *Server) agentChange(connect bool) http.HandlerFunc {
+	return s.sameOrigin(func(w http.ResponseWriter, r *http.Request) {
+		if s.Admin == nil {
+			writeError(w, http.StatusNotImplemented, "settings unavailable")
+			return
+		}
+		if err := s.Admin.AgentChange(r.Context(), r.PathValue("key"), connect); err != nil {
+			agentError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, s.Admin.Settings(r.Context()))
+	})
+}
+
+// agentError shows the reason as is: it's about the user's own config
+// (not installed, a file Shiplino won't edit) and says how to fix it.
+func agentError(w http.ResponseWriter, err error) {
+	if errors.Is(err, ErrUnknownAgent) {
+		writeError(w, http.StatusNotFound, err.Error())
+		return
+	}
+	writeError(w, http.StatusConflict, err.Error())
+}
+
+// sameOrigin refuses browser requests sent from another origin. The UI
+// cookie is SameSite=Strict, but a page on another localhost port counts
+// as the same site and would carry it; browsers always send Origin on a
+// POST, so checking it closes that gap. Requests without Origin (the
+// CLI, scripts holding the token) pass.
+func (s *Server) sameOrigin(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if o := r.Header.Get("Origin"); o != "" && o != "http://"+r.Host && (s.DevOrigin == "" || o != s.DevOrigin) {
+			writeError(w, http.StatusForbidden, "cross-origin request refused")
+			return
+		}
+		next(w, r)
+	}
 }
 
 func (s *Server) testNotification(w http.ResponseWriter, r *http.Request) {

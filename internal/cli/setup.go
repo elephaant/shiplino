@@ -74,7 +74,13 @@ func (e *env) binPath() string {
 func (e *env) backupDir(agent string) string { return filepath.Join(e.home, "backups", agent) }
 
 // setup installs the binary, connects detected agents and checks the hook.
+// --dry-run prints what it would change and writes nothing; --no-service
+// leaves the daemon for the user to run.
 func setup(ctx context.Context, e *env, args []string) int {
+	noService := hasFlag(args, "--no-service")
+	if hasFlag(args, "--dry-run") {
+		return setupDryRun(ctx, e, noService)
+	}
 	fmt.Fprintf(e.out, "Shiplino %s setup\n\n", e.version)
 
 	for _, d := range []string{"bin", "spool", "data", "backups", "logs"} {
@@ -138,9 +144,17 @@ func setup(ctx context.Context, e *env, args []string) int {
 		fmt.Fprintf(e.out, "  ✅ %-20s prints nothing, exits 0\n", "Hook test")
 	}
 
+	// Record the choice, so doctor knows a stopped daemon is expected.
+	if err := config.SetAutostart(e.home, !noService); err != nil {
+		ok = false
+		fmt.Fprintf(e.out, "  ❌ %-20s can't record the service choice: %v\n", "Config", err)
+	}
 	daemonURL := ""
-	if hasFlag(args, "--no-service") {
-		fmt.Fprintf(e.out, "  ➖ %-20s not installed (--no-service): run `shiplino daemon` yourself\n", "Daemon")
+	if noService {
+		// An earlier setup may have registered it: undo that, so the
+		// daemon runs only when the user starts it.
+		_ = service.Uninstall(ctx, e.serviceConfig())
+		fmt.Fprintf(e.out, "  ➖ %-20s not registered to start at login (--no-service)\n", "Daemon")
 	} else if how, err := service.Install(ctx, e.serviceConfig()); err != nil {
 		ok = false
 		fmt.Fprintf(e.out, "  ❌ %-20s %v\n", "Daemon", err)
@@ -168,6 +182,10 @@ func setup(ctx context.Context, e *env, args []string) int {
 	case daemonURL != "":
 		fmt.Fprintf(e.out, "Nothing else to do. Open %s, then start any agent. Zero tokens used.\n", daemonURL)
 		fmt.Fprintln(e.out, "Sessions already running pick up the hooks after a restart.")
+	case noService:
+		fmt.Fprintln(e.out, "Run `shiplino daemon` to record (keep it running in a terminal or your own process manager),")
+		fmt.Fprintln(e.out, "then open http://localhost:4777. Until it runs, hook events wait in the spool and are recorded when it starts.")
+		fmt.Fprintln(e.out, "To start it at login instead, run `shiplino setup` again without --no-service.")
 	default:
 		fmt.Fprintln(e.out, "Start the daemon with `shiplino daemon`, then open http://localhost:4777.")
 	}
@@ -180,9 +198,71 @@ func setup(ctx context.Context, e *env, args []string) int {
 	return 0
 }
 
+// setupDryRun prints what setup would do, with a diff of every agent
+// config it would change. It writes nothing: no hooks, backups, binary,
+// config, service or history import.
+func setupDryRun(ctx context.Context, e *env, noService bool) int {
+	fmt.Fprintf(e.out, "Shiplino %s setup --dry-run: showing what would change, writing nothing\n\n", e.version)
+	bin := e.binPath()
+	ok := true
+	for _, a := range agents.All {
+		found, version, path := a.Detect(ctx, e.userHome)
+		if !found {
+			fmt.Fprintf(e.out, "  ➖ %-20s not found\n", a.Name)
+			continue
+		}
+		changes, err := a.PreviewInstall(path, bin, version)
+		ok = printPlan(e, a.Name, path, changes, err, "hooks already up to date") && ok
+	}
+	fmt.Fprintln(e.out, "\nSetup would also:")
+	fmt.Fprintf(e.out, "  • copy this binary to %s (the hooks above run it)\n", tilde(bin, e.userHome))
+	if _, err := os.Stat(config.Path(e.home)); err != nil {
+		fmt.Fprintf(e.out, "  • create %s and an API token\n", tilde(config.Path(e.home), e.userHome))
+	}
+	if noService {
+		fmt.Fprintln(e.out, "  • not register the daemon (--no-service): you run `shiplino daemon` yourself")
+	} else {
+		fmt.Fprintln(e.out, "  • register the daemon to start at login, start it, and import the last 30 days of history")
+	}
+	fmt.Fprintln(e.out, "\nNothing was written. Run the same command without --dry-run to apply it.")
+	if !ok {
+		return 1
+	}
+	return 0
+}
+
+// printPlan prints one agent's dry-run result: a unified diff per file,
+// or why there is none. It reports whether the change could be made.
+func printPlan(e *env, name, path string, changes []agents.Change, err error, none string) bool {
+	switch {
+	case agents.IsUnparseable(err):
+		fmt.Fprintf(e.out, "  ⚠️  %-20s %s isn't plain JSON (comments?): it would be left untouched\n", name, tilde(path, e.userHome))
+		return false
+	case err != nil && len(changes) == 0:
+		fmt.Fprintf(e.out, "  ❌ %-20s %v\n", name, err)
+		return false
+	case len(changes) == 0:
+		fmt.Fprintf(e.out, "  ✅ %-20s no changes: %s (%s)\n", name, none, tilde(path, e.userHome))
+		return true
+	}
+	fmt.Fprintf(e.out, "  ✏️  %-20s would change %d file%s:\n\n", name, len(changes), plural(len(changes)))
+	for _, c := range changes {
+		fmt.Fprintln(e.out, c.Diff(tilde(c.Path, e.userHome)))
+	}
+	if err != nil {
+		fmt.Fprintf(e.out, "  ⚠️  %-20s %v\n", name, err)
+		return false
+	}
+	return true
+}
+
 // uninstall removes our hooks; with --purge it also deletes all data.
+// --dry-run prints what it would remove and changes nothing.
 func uninstall(ctx context.Context, e *env, args []string) int {
 	purge := hasFlag(args, "--purge")
+	if hasFlag(args, "--dry-run") {
+		return uninstallDryRun(ctx, e, purge)
+	}
 	ok := true
 	if err := service.Uninstall(ctx, e.serviceConfig()); err != nil {
 		ok = false
@@ -211,6 +291,33 @@ func uninstall(ctx context.Context, e *env, args []string) int {
 	} else {
 		fmt.Fprintf(e.out, "\nYour data is kept in %s (use --purge to delete it).\n", e.home)
 	}
+	if !ok {
+		return 1
+	}
+	return 0
+}
+
+// uninstallDryRun prints what uninstall would remove, writing nothing.
+func uninstallDryRun(ctx context.Context, e *env, purge bool) int {
+	fmt.Fprintf(e.out, "Shiplino %s uninstall --dry-run: showing what would change, writing nothing\n\n", e.version)
+	ok := true
+	for _, a := range agents.All {
+		_, _, path := a.Detect(ctx, e.userHome)
+		changes, err := a.PreviewUninstall(path)
+		if err == nil && len(changes) == 0 {
+			fmt.Fprintf(e.out, "  ➖ %-20s no Shiplino hooks found\n", a.Name)
+			continue
+		}
+		ok = printPlan(e, a.Name, path, changes, err, "") && ok
+	}
+	fmt.Fprintln(e.out, "\nUninstall would also:")
+	fmt.Fprintln(e.out, "  • stop the daemon and remove it from login items")
+	if purge {
+		fmt.Fprintf(e.out, "  • delete %s: every recorded session, backups and settings\n", e.home)
+	} else {
+		fmt.Fprintf(e.out, "  • keep your data in %s (--purge deletes it)\n", e.home)
+	}
+	fmt.Fprintln(e.out, "\nNothing was written. Run the same command without --dry-run to apply it.")
 	if !ok {
 		return 1
 	}
