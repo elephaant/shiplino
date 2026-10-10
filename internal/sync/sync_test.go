@@ -851,8 +851,3 @@ func TestSendsProjectRelativePaths(t *testing.T) {
 	}
 }
 
-func TestRelPathWindows(t *testing.T) {
-	if got := relPath(`C:\Users\dev\api`, `D:\other\file.go`); got != "…/file.go" {
-		t.Errorf("got %q", got)
-	}
-}

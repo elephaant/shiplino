@@ -46,10 +46,12 @@ send_titles = false                     # also send session titles (redacted, 12
 Events go in the [universal event format](event-format.md), one JSON object per event. Before each event is sent, the client:
 
 1. drops it unless its project is allowed and not excluded (the project is the event's own, or its session's),
-2. makes local paths project-relative (below),
+2. makes local paths project-relative (below) and drops the project's local folders (`cwd`, `repo_root`),
 3. keeps only the **metadata fields** listed below and drops every other `data` field, including fields added in later versions until they're reviewed,
-4. runs the redaction rules again on what's left (built-in rules plus your `[redaction] extra_patterns`) and caps each string at 512 characters,
-5. removes `raw` (a pointer into local files) and the OS `user` name.
+4. checks values: fields other than paths, the waiting text and a pull request URL must be a short token (letters, digits and `_.:/@+-`, up to 128 characters) or they're dropped, so free text can't travel in a field like `status`; a URL must be a plain `https://host/path` with no query,
+5. runs the redaction rules again (built-in rules plus your `[redaction] extra_patterns`) on what's left and on the envelope ids, and caps each string at 512 characters,
+6. replaces `dedup_key` with a hash of it (keys can contain a path or a title fingerprint), reduces `project.remote` to `host/owner/repo` (no credentials), and keeps `agent.version`, `agent.surface`, `project.branch` and `project.head` only when they're tokens,
+7. removes `raw` (a pointer into local files) and the OS `user` name.
 
 The sync service applies the same filter again when it receives events, so an older or modified client can't make it store more.
 
@@ -67,7 +69,7 @@ The sync service applies the same filter again when it receives events, so an ol
 
 The list is `syncKeys` in [`pkg/redact/sync.go`](../pkg/redact/sync.go).
 
-**Paths.** The data fields `path`, `file_path`, `files[]` and a file tool's `input_summary` are made relative to the event's project root. That root is `project.repo_root`, else the folder in a `local:` or `dir:` project id, else the working directory. For example, `/home/alex/code/api/src/auth.go` becomes `src/auth.go` and the root itself becomes `.`. A path outside the project keeps only its base name with a `…/` prefix: `/home/alex/.ssh/config` becomes `…/config`. Paths that were already relative are left as they are. The project id itself is sent as it is, and for repos without a remote (`local:…`) and plain folders (`dir:…`) that id contains the folder's absolute path.
+**Paths.** The data fields `path`, `file_path`, the lists `files`, `file_paths` and `paths`, and a file tool's `input_summary` (each path, when it lists several) are made relative to the event's project root. That root is `project.repo_root`, else the folder in a `local:` or `dir:` project id, else the working directory. For example, `/home/alex/code/api/src/auth.go` becomes `src/auth.go` and the root itself becomes `.`. A path outside the project keeps only its base name with a `…/` prefix: `/home/alex/.ssh/config` becomes `…/config`. Paths that were already relative are left as they are. The project id itself is sent as it is, and for repos without a remote (`local:…`) and plain folders (`dir:…`) that id contains the folder's absolute path.
 
 The sign-in request carries the hostname as `device_name`. Each upload also carries a `device_id` (a random id created once and kept in `~/.shiplino/device_id`) and a `device_name` (the computer's hostname).
 

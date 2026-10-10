@@ -93,3 +93,32 @@ func TestForSyncCapsStrings(t *testing.T) {
 		t.Fatalf("not capped: %d", len([]rune(e.Data["path"].(string))))
 	}
 }
+
+func TestRelPathWindows(t *testing.T) {
+	if got := relPath(`C:\Users\dev\api`, `D:\other\file.go`); got != "…/file.go" {
+		t.Errorf("got %q", got)
+	}
+}
+
+func TestForSyncPathsAndEnvelope(t *testing.T) {
+	e := model.Event{Kind: model.KindToolStart, SessionID: "sdk:s1", TurnID: "please deploy with ghp_0123456789abcdefghijklmnopqrstuvwxyzAB",
+		Agent:    model.Agent{Name: "sdk", Version: "fix the login page now"},
+		DedupKey: "claude-code:s1:title:ab12cd34",
+		Project:  &model.Project{ID: "github.com/acme/api", CWD: "/home/alice/api", RepoRoot: "/home/alice/api", Remote: "https://alice:ghp_x@github.com/acme/api.git", Branch: "main"},
+		Data: map[string]any{"tool": "edit", "input_summary": "/home/alice/api/a.go, /home/alice/api/b.go",
+			"paths": []any{"/home/alice/secret/plan.md"}, "file_paths": []any{"/home/alice/api/c.go"},
+			"status": "the user asked to delete prod", "reason": "permission"}}
+	Default.ForSync(&e, false)
+	out, _ := json.Marshal(e)
+	for _, leak := range []string{"/home/alice", "ghp_", "alice:", "fix the login", "delete prod", "title:"} {
+		if strings.Contains(string(out), leak) {
+			t.Errorf("%q sent: %s", leak, out)
+		}
+	}
+	if e.Data["input_summary"] != "a.go, b.go" || e.Data["reason"] != "permission" || e.Project.Remote != "github.com/acme/api" || e.Project.Branch != "main" {
+		t.Errorf("metadata changed: %s", out)
+	}
+	if !strings.HasPrefix(e.DedupKey, "h:") {
+		t.Errorf("dedup key %q", e.DedupKey)
+	}
+}

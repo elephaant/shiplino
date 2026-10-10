@@ -2,8 +2,6 @@ package sync
 
 import (
 	"encoding/json"
-	"path"
-	"path/filepath"
 	"regexp"
 	"slices"
 	"strings"
@@ -152,86 +150,8 @@ func (s Scope) Outgoing(e model.Event) model.Event {
 	if e.Data != nil {
 		e.Data = deepCopy(e.Data)
 	}
-	localPaths(&e)
 	s.Redactor.ForSync(&e, s.SendTitles)
 	return e
-}
-
-// pathKeys are data fields holding a file or folder path.
-var pathKeys = []string{"path", "file_path", "cwd", "transcript_path"}
-
-// pathTools are tools whose input_summary is a file path.
-var pathTools = map[string]bool{model.ToolRead: true, model.ToolEdit: true, model.ToolWrite: true}
-
-// localPaths keeps local paths from leaving the machine: paths
-// become relative to the project root, paths outside it become "…/" plus
-// their base name, and the project's absolute folders are dropped (its
-// id, remote, branch and head stay).
-func localPaths(e *model.Event) {
-	root := ""
-	if p := e.Project; p != nil {
-		root = p.RepoRoot
-		if root == "" {
-			for _, prefix := range []string{"local:", "dir:"} {
-				if rest, ok := strings.CutPrefix(p.ID, prefix); ok {
-					root = rest
-				}
-			}
-		}
-		if root == "" {
-			root = p.CWD
-		}
-		cp := *p
-		cp.CWD, cp.RepoRoot = "", ""
-		e.Project = &cp
-	}
-	d := e.Data
-	if d == nil {
-		return
-	}
-	for _, k := range pathKeys {
-		if s, ok := d[k].(string); ok {
-			d[k] = relPath(root, s)
-		}
-	}
-	if s, ok := d["input_summary"].(string); ok && pathTools[str(d, "tool")] {
-		d["input_summary"] = relPath(root, s)
-	}
-	if list, ok := d["files"].([]any); ok {
-		out := make([]any, len(list))
-		for i, v := range list {
-			if s, ok := v.(string); ok {
-				v = relPath(root, s)
-			}
-			out[i] = v
-		}
-		d["files"] = out
-	}
-}
-
-// relPath makes an absolute path relative to root ("." for root itself);
-// one outside root becomes "…/<base name>". Relative paths are kept.
-func relPath(root, p string) string {
-	if !isAbs(p) {
-		return p
-	}
-	sp := filepath.ToSlash(p)
-	if r := strings.TrimRight(filepath.ToSlash(root), "/"); r != "" && isAbs(root) {
-		if sp == r {
-			return "."
-		}
-		if rest, ok := strings.CutPrefix(sp, r+"/"); ok {
-			return rest
-		}
-	}
-	return "…/" + path.Base(strings.ReplaceAll(sp, `\`, "/"))
-}
-
-// isAbs accepts Unix and Windows absolute paths on every OS, since events
-// may describe either.
-func isAbs(p string) bool {
-	return filepath.IsAbs(p) || strings.HasPrefix(p, "/") || strings.HasPrefix(p, `\`) ||
-		len(p) > 2 && p[1] == ':' && (p[2] == '\\' || p[2] == '/')
 }
 
 func str(m map[string]any, k string) string {
