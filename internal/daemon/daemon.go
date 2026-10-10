@@ -410,6 +410,10 @@ func (d *Daemon) Poll(ctx context.Context) error {
 	var tsrcs []source
 	mainFile := map[string]string{} // source → its transcript, for main files
 	docs := map[string]string{}
+	// A subagent file can be both a transcript of its own (a hook named it)
+	// and found next to its session. It must be read once per pass: two
+	// readers would race on its parser state and offset.
+	seen := map[string]bool{}
 	for path, agent := range d.transcripts {
 		if isDocument(path, agent) {
 			docs[path] = agent
@@ -420,6 +424,10 @@ func (d *Daemon) Poll(ctx context.Context) error {
 		files = append(files, subs...)
 		for _, f := range files {
 			src := "transcript:" + f
+			if seen[src] {
+				continue
+			}
+			seen[src] = true
 			var mod time.Time
 			if fi, err := os.Stat(f); err == nil {
 				mod = fi.ModTime()
