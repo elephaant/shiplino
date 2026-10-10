@@ -4,7 +4,7 @@ Shiplino is a flight recorder and kanban board for AI coding agents. It records 
 
 **This repository is public (FSL-1.1-Apache-2.0: Functional Source License, each release becomes Apache-2.0 after two years; see [LICENSE](LICENSE)).** Everything you write here, including this file and `.claude/`, will be published. Read [.claude/rules/public-repo.md](.claude/rules/public-repo.md) before adding docs or comments.
 
-Status: pre-alpha. Only the skeleton exists.
+Status: alpha (v0.1.0-alpha.2). Claude Code, Codex, Cursor, Gemini CLI, Copilot CLI, Windsurf and `wrap` agents are supported; the web app, search, notifications, insights, timeline and the opt-in sync client are built.
 
 ## How it works
 
