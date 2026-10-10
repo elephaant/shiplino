@@ -94,6 +94,7 @@ type statusResp struct {
 		Paused            bool   `json:"paused"`
 		WatchError        string `json:"watch_error"`
 	} `json:"daemon"`
+	Ingest *api.IngestStats `json:"ingest"`
 }
 
 func (c *client) sessions(ctx context.Context, limit int) ([]engine.Session, error) {
@@ -320,6 +321,7 @@ func doctor(ctx context.Context, e *env, args []string) int {
 		if d.Bad > 0 || d.Unknown > 0 {
 			checks = append(checks, check{ok: true, warn: true, name: "Parsing", detail: fmt.Sprintf("%d unreadable and %d unknown lines since start (an agent update may have changed its format)", d.Bad, d.Unknown)})
 		}
+		checks = append(checks, ingestChecks(strings.Replace(c.base, "127.0.0.1", "localhost", 1), tilde(filepath.Join(e.home, "token"), e.userHome), st.Ingest)...)
 		if list, err := c.sessions(ctx, 1000); err == nil {
 			last := map[string]time.Time{}
 			for _, s := range list {
@@ -378,6 +380,30 @@ func doctor(ctx context.Context, e *env, args []string) int {
 		return 1
 	}
 	return 0
+}
+
+// ingestChecks shows where custom agents and OTLP exporters send events,
+// and what arrived since the daemon started.
+func ingestChecks(base, tokenPath string, in *api.IngestStats) []check {
+	out := []check{
+		{ok: true, name: "Ingest", detail: fmt.Sprintf("POST %s/api/v1/ingest (custom agents); OTLP/HTTP endpoint %s (/v1/logs); token in %s, sent as Authorization: Bearer <token>", base, base, tokenPath)},
+	}
+	if in == nil {
+		return out
+	}
+	if in.Rejected > 0 || in.LastError != "" {
+		out = append(out, check{ok: true, warn: true, name: "Ingest", detail: fmt.Sprintf("%d events rejected since start; last error: %s", in.Rejected, in.LastError), fixHint: "see docs/ingest.md"})
+	}
+	if l := in.OTLPLogs; l.Records > 0 {
+		c := check{ok: true, name: "OTLP", detail: fmt.Sprintf("%d log records since start: %d events, %d not mapped (hooks and transcripts cover them), %d unknown", l.Records, l.Events, l.Ignored, l.Unknown)}
+		if l.Unknown > 0 {
+			c.warn, c.fixHint = true, "unknown records come from an exporter Shiplino has no mapping for, or lack session.id"
+		}
+		out = append(out, c)
+	} else if in.OTLPMetrics > 0 {
+		out = append(out, check{ok: true, warn: true, name: "OTLP", detail: "receiving metrics but no logs; metrics are only counted", fixHint: "set OTEL_LOGS_EXPORTER=otlp to record per-request cost"})
+	}
+	return out
 }
 
 func title(s engine.Session) string {

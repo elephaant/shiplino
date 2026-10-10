@@ -4,6 +4,7 @@
 package redact
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -141,6 +142,11 @@ func TestEventStandard(t *testing.T) {
 	Default.Event(nested, Standard)
 	if strings.Contains(nested.Data["model_usage"].(map[string]any)["m"].(map[string]any)["note"].(string), antKey) {
 		t.Fatal("nested string not redacted")
+	}
+	list := ev(model.KindNote, map[string]any{"args": []any{"ok", map[string]any{"k": "key " + antKey}, []any{antKey}}})
+	Default.Event(list, Standard)
+	if b, _ := json.Marshal(list.Data); strings.Contains(string(b), antKey) || !strings.Contains(string(b), `"ok"`) {
+		t.Fatalf("strings in lists not redacted: %s", b)
 	}
 }
 

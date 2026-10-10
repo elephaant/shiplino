@@ -7,7 +7,7 @@ Shiplino shows what each agent session **would cost at the provider's public API
 | Source | What it is | Covers | Granularity |
 |--------|-----------|--------|-------------|
 | **Computed** | Tokens from the agent's transcript × the bundled price table (`pkg/pricing/prices.json`) | Every model response the agent writes to its transcript, including subagents | Per response, live |
-| **Reported** | The agent's own cost accounting, when it writes one (Claude Code records a running total per process) | Everything the agent paid for, including calls that never appear in the transcript | Periodic |
+| **Reported** | The agent's own cost accounting, when it writes one (Claude Code records a running total per process, and can also export per-request cost over [OpenTelemetry](ingest.md)) | Everything the agent paid for, including calls that never appear in the transcript | Periodic |
 
 Each session shows the **reported** figure when the agent provides one, and otherwise the **computed** one. The UI says which (`cost_source`). Per-response computed costs stay available for timelines and per-model breakdowns.
 
@@ -78,7 +78,7 @@ Aider writes a usage line to its chat history after each response: `Tokens: 2.1k
 
 - **Transcript-only tools** sum transcript usage × a price table. They're simple and per-response, but they miss background calls and fees, as measured above.
 - **The agent's built-in cost view** (e.g. Claude Code's session cost) uses its own accounting. It's complete for that agent, but it's session-level and only covers that one agent.
-- **OpenTelemetry export** (where the agent supports it) sends per-request cost and token metrics. It's accurate and live, but it needs telemetry turned on in the agent's environment. Shiplino's OTLP receiver can take these in.
+- **OpenTelemetry export** (where the agent supports it) sends per-request cost and token metrics. It's accurate and live, but it needs telemetry turned on in the agent's environment. Shiplino's OTLP receiver takes these in and compares them with the transcript figures, never adding the two (see [Sending events to Shiplino](ingest.md#how-telemetry-and-transcripts-fit-together)).
 - **The provider's billing API** is authoritative, but organization-level and delayed, with no per-session or per-task breakdown.
 
 Shiplino combines the first two automatically, with no setup, and keeps the source visible.

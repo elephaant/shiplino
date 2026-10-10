@@ -1,0 +1,118 @@
+{
+  "resourceLogs": [
+    {
+      "resource": {
+        "attributes": [
+          {"key": "service.name", "value": {"stringValue": "claude-code"}},
+          {"key": "service.version", "value": {"stringValue": "2.1.300"}}
+        ]
+      },
+      "scopeLogs": [
+        {
+          "scope": {"name": "com.anthropic.claude_code.events", "version": "2.1.300"},
+          "logRecords": [
+            {
+              "timeUnixNano": "1791626400000000000",
+              "body": {"stringValue": "claude_code.user_prompt"},
+              "attributes": [
+                {"key": "event.name", "value": {"stringValue": "user_prompt"}},
+                {"key": "event.timestamp", "value": {"stringValue": "2026-10-10T10:00:00.000Z"}},
+                {"key": "event.sequence", "value": {"intValue": "0"}},
+                {"key": "session.id", "value": {"stringValue": "0f0e0d0c-1111-4222-8333-444455556666"}},
+                {"key": "prompt.id", "value": {"stringValue": "a1b2c3d4-0000-4000-8000-000000000001"}},
+                {"key": "prompt_length", "value": {"intValue": "42"}},
+                {"key": "prompt", "value": {"stringValue": "<REDACTED>"}}
+              ]
+            },
+            {
+              "timeUnixNano": "1791626402000000000",
+              "body": {"stringValue": "claude_code.api_request"},
+              "attributes": [
+                {"key": "event.name", "value": {"stringValue": "api_request"}},
+                {"key": "event.sequence", "value": {"intValue": "1"}},
+                {"key": "session.id", "value": {"stringValue": "0f0e0d0c-1111-4222-8333-444455556666"}},
+                {"key": "prompt.id", "value": {"stringValue": "a1b2c3d4-0000-4000-8000-000000000001"}},
+                {"key": "app.version", "value": {"stringValue": "2.1.300"}},
+                {"key": "model", "value": {"stringValue": "claude-opus-5"}},
+                {"key": "cost_usd", "value": {"doubleValue": 0.125}},
+                {"key": "duration_ms", "value": {"intValue": "2100"}},
+                {"key": "input_tokens", "value": {"intValue": "1200"}},
+                {"key": "output_tokens", "value": {"intValue": "300"}},
+                {"key": "cache_read_tokens", "value": {"intValue": "50000"}},
+                {"key": "cache_creation_tokens", "value": {"intValue": "800"}},
+                {"key": "request_id", "value": {"stringValue": "req_test0001"}},
+                {"key": "query_source", "value": {"stringValue": "repl_main_thread"}}
+              ]
+            },
+            {
+              "timeUnixNano": "1791626403000000000",
+              "body": {"stringValue": "claude_code.api_request"},
+              "attributes": [
+                {"key": "event.name", "value": {"stringValue": "api_request"}},
+                {"key": "event.sequence", "value": {"intValue": "2"}},
+                {"key": "session.id", "value": {"stringValue": "0f0e0d0c-1111-4222-8333-444455556666"}},
+                {"key": "model", "value": {"stringValue": "claude-haiku-5-5"}},
+                {"key": "cost_usd", "value": {"stringValue": "0.0025"}},
+                {"key": "input_tokens", "value": {"stringValue": "900"}},
+                {"key": "output_tokens", "value": {"doubleValue": 40}},
+                {"key": "request_id", "value": {"stringValue": "req_test0002"}},
+                {"key": "query_source", "value": {"stringValue": "web_fetch_apply"}}
+              ]
+            },
+            {
+              "timeUnixNano": "1791626405000000000",
+              "body": {"stringValue": "claude_code.tool_result"},
+              "attributes": [
+                {"key": "event.name", "value": {"stringValue": "tool_result"}},
+                {"key": "session.id", "value": {"stringValue": "0f0e0d0c-1111-4222-8333-444455556666"}},
+                {"key": "tool_name", "value": {"stringValue": "Bash"}},
+                {"key": "tool_use_id", "value": {"stringValue": "toolu_test01"}},
+                {"key": "success", "value": {"stringValue": "true"}},
+                {"key": "duration_ms", "value": {"intValue": "1500"}}
+              ]
+            },
+            {
+              "timeUnixNano": "1791626406000000000",
+              "body": {"stringValue": "claude_code.api_error"},
+              "attributes": [
+                {"key": "event.name", "value": {"stringValue": "api_error"}},
+                {"key": "session.id", "value": {"stringValue": "0f0e0d0c-1111-4222-8333-444455556666"}},
+                {"key": "status_code", "value": {"stringValue": "529"}}
+              ]
+            },
+            {
+              "timeUnixNano": "1791626407000000000",
+              "body": {"stringValue": "claude_code.api_request"},
+              "attributes": [
+                {"key": "event.name", "value": {"stringValue": "api_request"}},
+                {"key": "cost_usd", "value": {"doubleValue": 1.0}}
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "resource": {"attributes": [{"key": "service.name", "value": {"stringValue": "codex_cli_rs"}}]},
+      "scopeLogs": [
+        {
+          "logRecords": [
+            {
+              "timeUnixNano": "1791626408000000000",
+              "attributes": [
+                {"key": "event.name", "value": {"stringValue": "codex.sse_event"}},
+                {"key": "conversation.id", "value": {"stringValue": "conv-test"}}
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "resource": {"attributes": [{"key": "service.name", "value": {"stringValue": "some-web-app"}}]},
+      "scopeLogs": [
+        {"logRecords": [{"timeUnixNano": "1791626409000000000", "body": {"stringValue": "GET /health 200"}}]}
+      ]
+    }
+  ]
+}

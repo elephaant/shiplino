@@ -21,6 +21,7 @@ import (
 	"github.com/elephaant/shiplino/internal/store"
 	"github.com/elephaant/shiplino/pkg/engine"
 	"github.com/elephaant/shiplino/pkg/model"
+	"github.com/elephaant/shiplino/pkg/otlp"
 )
 
 // liveDaemon runs a real API server with a few sessions, writing the port
@@ -128,7 +129,7 @@ func TestDoctor(t *testing.T) {
 	if code := doctor(context.Background(), e, nil); code != 0 {
 		t.Fatalf("doctor after setup:\n%s", out)
 	}
-	for _, want := range []string{"✅ Binary", "✅ Claude Code", "✅ Daemon", "1 unknown lines", "Last event"} {
+	for _, want := range []string{"✅ Binary", "✅ Claude Code", "✅ Daemon", "1 unknown lines", "Last event", "✅ Ingest", "/api/v1/ingest", "Authorization: Bearer"} {
 		if !strings.Contains(out.String(), want) {
 			t.Errorf("missing %q in:\n%s", want, out)
 		}
@@ -139,6 +140,33 @@ func TestDoctor(t *testing.T) {
 	out.Reset()
 	if code := doctor(context.Background(), e, []string{"--fix"}); code != 0 || !strings.Contains(out.String(), "fixed") {
 		t.Fatalf("doctor --fix:\n%s", out)
+	}
+}
+
+func TestIngestChecks(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		in    *api.IngestStats
+		warns int
+		want  string
+	}{
+		{"older daemon", nil, 0, "localhost:4777/api/v1/ingest"},
+		{"quiet", &api.IngestStats{}, 0, "~/.shiplino/token"},
+		{"rejected", &api.IngestStats{Rejected: 2, LastError: "event 0: missing agent.name"}, 1, "missing agent.name"},
+		{"logs", &api.IngestStats{OTLPLogs: otlp.Stats{Records: 9, Events: 5, Ignored: 2, Unknown: 2}}, 1, "9 log records"},
+		{"metrics only", &api.IngestStats{OTLPMetrics: 4}, 1, "OTEL_LOGS_EXPORTER=otlp"},
+	} {
+		checks := ingestChecks("http://localhost:4777", "~/.shiplino/token", tc.in)
+		warns, text := 0, ""
+		for _, c := range checks {
+			if c.warn {
+				warns++
+			}
+			text += c.detail + " " + c.fixHint + "\n"
+		}
+		if warns != tc.warns || !strings.Contains(text, tc.want) {
+			t.Errorf("%s: %d warnings, want %d; %q not in:\n%s", tc.name, warns, tc.warns, tc.want, text)
+		}
 	}
 }
 
