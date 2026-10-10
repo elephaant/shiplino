@@ -1,6 +1,8 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "@shiplino/ui/styles/theme.css";
+/* Shared components use utility classes too. */
+@source "../../../../packages/ui/src";
 
 @custom-variant dark (&:is(.dark *));
 

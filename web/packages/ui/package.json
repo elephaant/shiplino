@@ -3,7 +3,19 @@
   "version": "0.0.0",
   "private": true,
   "license": "Apache-2.0",
+  "scripts": {
+    "check": "biome check ."
+  },
   "exports": {
-    "./styles/theme.css": "./src/styles/theme.css"
+    "./styles/theme.css": "./src/styles/theme.css",
+    "./evidence": "./src/evidence.tsx"
+  },
+  "peerDependencies": {
+    "lucide-react": "*",
+    "radix-ui": "*",
+    "react": "*"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.15"
   }
 }

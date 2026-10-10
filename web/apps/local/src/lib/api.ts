@@ -42,12 +42,15 @@ export interface Session {
   files?: string[];
   lines_added: number;
   lines_removed: number;
+  /** Least certain source of the line counts: "agent" | "computed" | "estimated". */
+  lines_source?: string;
   input_tokens: number;
   output_tokens: number;
   cache_read_tokens: number;
   cache_write_tokens: number;
   cost_usd: number;
   tree_cost_usd: number;
+  telemetry?: { requests: number; cost_usd: number };
   reported_cost_usd?: number;
   best_cost_usd: number;
   cost_source?: "reported" | "computed";
@@ -61,6 +64,12 @@ export interface Session {
   waiting_ms: number;
   waiting_since?: string;
   waiting_reason?: WaitingReason;
+  /** Set once the agent's hooks reported this session. */
+  hook_seen?: boolean;
+  /** Collector of the first activity: "hook" | "transcript" | "otlp" | "http" | "wrap". */
+  activity_source?: string;
+  /** How the project was found: "remote" | "git" | "dir" | "unsorted" (detail view only). */
+  project_kind?: string;
 }
 
 export interface PlanItem {
@@ -366,6 +375,7 @@ export interface BoardCard {
   files: number;
   lines_added: number;
   lines_removed: number;
+  lines_source?: string;
   links?: Link[];
   subagents?: SubagentRow[];
   plan_total?: number;

@@ -179,6 +179,9 @@ func TestSessionsAndEvents(t *testing.T) {
 	if resp.StatusCode != 200 || json.Unmarshal(body, &one) != nil || one.ParentID != "claude-code:s1" {
 		t.Fatalf("subagent detail: %d %s", resp.StatusCode, body)
 	}
+	if strings.Contains(string(body), "project_kind") {
+		t.Fatalf("no project, but project_kind is set: %s", body)
+	}
 	if resp, _ := f.get(t, "/api/v1/sessions/nope", bearer); resp.StatusCode != 404 {
 		t.Fatalf("missing session: %d", resp.StatusCode)
 	}

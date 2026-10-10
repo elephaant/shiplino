@@ -1,7 +1,8 @@
+import { EvidenceBadge } from "@shiplino/ui/evidence";
 import { Gauge } from "lucide-react";
 import { AgentDot } from "@/components/common/agent-dot";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { limitEvidence } from "@/lib/evidence";
 import { agentName, formatCost, formatTokens } from "@/lib/format";
 import { describeWindow, formatReset, type LimitWindow, windowLabel, windowValue } from "@/lib/limits";
 
@@ -21,11 +22,7 @@ function Row({ w }: { w: LimitWindow }) {
         <AgentDot agent={w.agent} />
         <span className="truncate font-medium">{agentName(w.agent)}</span>
         <span className="text-muted-foreground">{windowLabel(w)}</span>
-        {w.source === "estimate" && (
-          <Badge variant="outline" className="px-1.5 py-0 font-normal text-muted-foreground">
-            estimate
-          </Badge>
-        )}
+        <EvidenceBadge {...limitEvidence(w.source)} />
         <span className={`ml-auto shrink-0 font-mono tabular-nums ${tone}`}>
           {w.source === "estimate" ? `${formatTokens(w.tokens ?? 0)} tokens` : windowValue(w)}
         </span>

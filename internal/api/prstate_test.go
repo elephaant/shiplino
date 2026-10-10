@@ -70,4 +70,11 @@ func TestPRStateOnCardsAndSessions(t *testing.T) {
 	if len(sess.Links) != 1 || sess.Links[0].Checks != "failure" {
 		t.Fatalf("session links: %+v", sess.Links)
 	}
+	// The session also says how its project was found (evidence badges).
+	var kind struct {
+		ProjectKind string `json:"project_kind"`
+	}
+	if get("/api/v1/sessions/claude-code:p", &kind); kind.ProjectKind != "remote" {
+		t.Fatalf("project_kind = %q, want remote", kind.ProjectKind)
+	}
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { EvidenceBadge, type EvidenceInfo } from "@shiplino/ui/evidence";
 import {
   Bot,
   CircleCheck,
@@ -37,6 +38,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { type AgentEvent, api, download, type Session } from "@/lib/api";
+import {
+  commitEvidence,
+  costEvidence,
+  linesEvidence,
+  projectEvidence,
+  statusEvidence,
+  subagentEvidence,
+} from "@/lib/evidence";
 import { agentName, formatCost, formatDuration, formatTokens, noUsageReason } from "@/lib/format";
 import { API_EQUIVALENT, onPlan, useLimits } from "@/lib/limits";
 import { useLive } from "@/lib/live";
@@ -49,7 +58,7 @@ function describe(
   e: AgentEvent,
   ended: Set<string>,
   rel: (p: string) => string,
-): { icon: React.ElementType; text: string; tone?: string } | null {
+): { icon: React.ElementType; text: string; tone?: string; evidence?: EvidenceInfo } | null {
   const d = e.data;
   switch (e.kind) {
     case "session.start":
@@ -114,8 +123,9 @@ function describe(
     case "git.commit":
       return {
         icon: GitCommitHorizontal,
-        text: `Commit ${str(d, "sha").slice(0, 7)} ${str(d, "message")} (${str(d, "attribution")})`,
+        text: `Commit ${str(d, "sha").slice(0, 7)} ${str(d, "message")}`,
         tone: "ok",
+        evidence: commitEvidence(str(d, "attribution")),
       };
     case "git.push":
       return { icon: GitBranch, text: `Pushed ${str(d, "branch")}` };
@@ -135,10 +145,13 @@ const tones: Record<string, string> = {
   wait: "text-status-waiting",
 };
 
-function Stat({ label, value }: { label: string; value: React.ReactNode }) {
+function Stat({ label, value, evidence }: { label: string; value: React.ReactNode; evidence?: EvidenceInfo | null }) {
   return (
     <div className="flex flex-col gap-0.5">
-      <span className="text-xs text-muted-foreground">{label}</span>
+      <span className="flex items-center gap-1 text-xs text-muted-foreground">
+        {label}
+        {evidence && <EvidenceBadge {...evidence} />}
+      </span>
       <span className="font-mono text-sm tabular-nums">{value}</span>
     </div>
   );
@@ -228,6 +241,13 @@ function SessionPage() {
           <p className="mt-1 text-sm text-muted-foreground">
             {agentName(session.agent)}
             {session.agent_version && ` ${session.agent_version}`}
+            {session.parent_id && (
+              <>
+                {" · "}
+                {session.actor_type || "subagent"}{" "}
+                <EvidenceBadge compact className="align-middle" {...subagentEvidence(session.id, session.agent)} />
+              </>
+            )}
             {session.model && ` · ${session.model}`}
             {session.branch && ` · ${session.branch}`}
             {session.project_id && (
@@ -235,13 +255,17 @@ function SessionPage() {
                 {" · "}
                 <Link href={`/board/?project=${encodeURIComponent(session.project_id)}`} className="hover:underline">
                   {session.project_id}
-                </Link>
+                </Link>{" "}
+                <EvidenceBadge compact className="align-middle" {...projectEvidence(session.project_kind)} />
               </>
             )}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="secondary">{session.status === "waiting" ? "waiting on you" : session.status}</Badge>
+          <span className="flex items-center gap-1">
+            <Badge variant="secondary">{session.status === "waiting" ? "waiting on you" : session.status}</Badge>
+            <EvidenceBadge {...statusEvidence(session)} />
+          </span>
           {resume && (
             <Button
               size="sm"
@@ -269,7 +293,8 @@ function SessionPage() {
         <CardContent className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-8">
           <Stat label="Duration" value={formatDuration(Date.parse(end) - Date.parse(session.started_at))} />
           <Stat
-            label={planCost ? "API-equivalent" : session.cost_source === "reported" ? "Cost (reported)" : "Cost"}
+            label={planCost ? "API-equivalent" : "Cost"}
+            evidence={session.usage === "none" || session.best_cost_usd > 0 ? costEvidence(session) : null}
             value={
               session.usage === "none" ? (
                 <span className="font-sans text-muted-foreground" title={noUsageReason(session.agent)}>
@@ -294,7 +319,11 @@ function SessionPage() {
             value={session.tool_errors ? `${session.tool_calls} (${session.tool_errors} failed)` : session.tool_calls}
           />
           <Stat label="Files" value={session.files?.length ?? 0} />
-          <Stat label="Lines" value={`+${session.lines_added} −${session.lines_removed}`} />
+          <Stat
+            label="Lines"
+            value={`+${session.lines_added} −${session.lines_removed}`}
+            evidence={linesEvidence(session.lines_source)}
+          />
           <Stat label="Waited for you" value={formatDuration(session.waiting_ms)} />
         </CardContent>
       </Card>
@@ -345,6 +374,7 @@ function SessionPage() {
                     >
                       {line.text}
                     </span>
+                    {line.evidence && <EvidenceBadge className="mt-0.5" {...line.evidence} />}
                   </div>
                 );
               })}

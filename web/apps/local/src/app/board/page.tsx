@@ -1,5 +1,6 @@
 "use client";
 
+import { EvidenceBadge } from "@shiplino/ui/evidence";
 import { Kanban, Radio } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
@@ -11,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api, type BoardCard, type BoardResponse, type ProjectSummary } from "@/lib/api";
+import { projectEvidence } from "@/lib/evidence";
 import { agentName, formatCost } from "@/lib/format";
 import { useLive } from "@/lib/live";
 
@@ -100,7 +102,10 @@ function BoardPage() {
     <div className="flex min-w-0 flex-col gap-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight">{data.project.name}</h1>
+          <h1 className="flex items-center gap-2 text-xl font-semibold tracking-tight">
+            {data.project.name}
+            <EvidenceBadge {...projectEvidence(data.project.kind)} />
+          </h1>
           <p className="text-sm text-muted-foreground">
             {data.sprint ? data.sprint.name : "All sprints"} · <span className="font-mono">{formatCost(total)}</span>
           </p>

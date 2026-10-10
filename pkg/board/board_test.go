@@ -130,10 +130,10 @@ func TestFilterSprint(t *testing.T) {
 
 func TestRollUpAndIdle(t *testing.T) {
 	now := time.Date(2026, 10, 9, 12, 0, 0, 0, time.UTC)
-	root := &engine.Session{ID: "a:1", RootID: "a:1", Status: engine.StatusDone, StartedAt: now, LastEventAt: now, Files: []string{"x.go"}, LinesAdded: 3, ToolCalls: 2,
+	root := &engine.Session{ID: "a:1", RootID: "a:1", Status: engine.StatusDone, StartedAt: now, LastEventAt: now, Files: []string{"x.go"}, LinesAdded: 3, LinesSource: "agent", ToolCalls: 2,
 		PlanTotal: 7, PlanDone: 3}
 	kid := &engine.Session{ID: "a:1/sub:k", RootID: "a:1", ParentID: "a:1", ActorType: "reviewer", Status: engine.StatusWaiting, NowDoing: "Approve: rm -rf build",
-		Files: []string{"x.go", "y.go"}, LinesAdded: 4, LinesRemoved: 1, ToolCalls: 5, StartedAt: now, LastEventAt: now, PlanTotal: 2,
+		Files: []string{"x.go", "y.go"}, LinesAdded: 4, LinesRemoved: 1, LinesSource: "computed", ToolCalls: 5, StartedAt: now, LastEventAt: now, PlanTotal: 2,
 		WaitingReason: "permission", WaitingSince: now}
 	idle := &engine.Session{ID: "a:2", RootID: "a:2", Status: engine.StatusIdle, StartedAt: now, LastEventAt: now}
 	idleWithWork := &engine.Session{ID: "a:3", RootID: "a:3", Status: engine.StatusIdle, Files: []string{"z"}, StartedAt: now, LastEventAt: now}
@@ -146,8 +146,8 @@ func TestRollUpAndIdle(t *testing.T) {
 	if c.Column != Waiting || c.Status != engine.StatusWaiting || c.NowDoing != "reviewer: Approve: rm -rf build" || c.WaitingReason != "permission" || !c.WaitingSince.Equal(now) {
 		t.Fatalf("waiting subagent should surface on its card: %+v", c)
 	}
-	if c.Files != 2 || c.LinesAdded != 7 || c.LinesRemoved != 1 || c.ToolCalls != 7 {
-		t.Fatalf("roll-up: files=%d +%d -%d tools=%d", c.Files, c.LinesAdded, c.LinesRemoved, c.ToolCalls)
+	if c.Files != 2 || c.LinesAdded != 7 || c.LinesRemoved != 1 || c.ToolCalls != 7 || c.LinesSource != "computed" {
+		t.Fatalf("roll-up: files=%d +%d -%d tools=%d src=%q", c.Files, c.LinesAdded, c.LinesRemoved, c.ToolCalls, c.LinesSource)
 	}
 	if c.PlanTotal != 7 || c.PlanDone != 3 { // the session's own list; a subagent's stays on the subagent
 		t.Fatalf("plan: %d/%d", c.PlanDone, c.PlanTotal)

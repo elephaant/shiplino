@@ -66,6 +66,19 @@ On disk, the limit is how fast the disk syncs. On the same laptop's SSD, while i
 
 Every repo becomes a project with its own board. Many agents and subagents can run at the same time. Each one is tracked separately (by session and subagent id) and rolled up into its parent card.
 
+## Where each value comes from
+
+The board marks values with a small evidence badge (an icon and a border style, with a tooltip that names the source):
+
+| Badge | Meaning | Examples |
+|-------|---------|----------|
+| **Reported** | The agent said so | its own cost total, line counts from its own diff, subagent ids, plan limit percentages |
+| **Observed** | Shiplino saw it happen | status from hooks or transcripts, a commit the agent ran itself, a project found by git |
+| **Inferred** | Shiplino derived it | cost from tokens × list prices, idle after 30 quiet minutes, a commit linked because the session edited its files, a project grouped by folder, line counts from the edit text |
+| **Unknown** | Nothing records it | no token usage, an unpriced model |
+
+Board cards show the cost badge and badges for inferred values only; the card sheet and the session page show them all.
+
 ## Privacy
 
 - Everything stays on your machine. Nothing is uploaded unless you turn on sync (see [sync-protocol.md](sync-protocol.md)) or an integration.
