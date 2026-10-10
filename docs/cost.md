@@ -58,6 +58,7 @@ For billing, the source of truth is your provider's console or usage and cost AP
 
 - **Tokens** come from Codex's own `token_usage_record` lines in its rollout files, one per API response. Shiplino counts each `response_id` once. OpenAI includes cached tokens in `input_tokens`, so Shiplino stores the uncached part as input and the cached part as cache reads.
 - Summed this way, the totals match Codex's own running `thread_token_usage` for the thread. The exception is a thread you rewound: Codex's total then drops the abandoned branch, but those calls were made, so Shiplino keeps them.
+- **Sessions imported from another agent** (Codex Desktop can import Claude Code and Cursor history) are skipped: they copy that agent's messages and carry only a size estimate, not billed usage. The original agent's own record is used instead. `shiplino doctor` shows how many were skipped.
 - **Cost:** tokens × OpenAI's list prices (gpt-5.6-terra, gpt-5.6-luna, gpt-5.5, gpt-5.3-codex; checked 2026-10-10). A response whose prompt is over 272K tokens uses the long-context rates. Fast (priority) and flex tiers use their multipliers when Codex records the service tier. Models OpenAI doesn't list (e.g. `codex-auto-review`) stay unpriced.
 - **On a ChatGPT plan, Codex isn't billed per token.** The figure is then an API-equivalent cost: useful for comparing work, not money you spent.
 

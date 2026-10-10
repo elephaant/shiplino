@@ -53,6 +53,12 @@ type TranscriptMeta struct {
 	Warmup bool
 }
 
+// StateImported is the State key a parser sets ("1") on a transcript that
+// is a copy of another agent's session (e.g. history imported into a
+// desktop app). The parser emits nothing for it, since the original
+// agent's own record is used; the daemon counts these files for doctor.
+const StateImported = "imported"
+
 // TranscriptDiscoverer is implemented by adapters whose transcripts can
 // be found by location (sessions without hooks, e.g. desktop apps).
 type TranscriptDiscoverer interface {

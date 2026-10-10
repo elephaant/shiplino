@@ -70,6 +70,8 @@ func writeClaude(t *testing.T, home string) {
 func writeCodex(t *testing.T, home string) {
 	t.Helper()
 	write(t, filepath.Join(home, ".codex", "sessions", "2026", "10", "09", "rollout-2026-10-09T10-00-00-th-2.jsonl"), fixture(t, fixtures+"codex/testdata/0.153/rollout.jsonl"))
+	// A session imported from another agent: skipped, so Codex still has one.
+	write(t, filepath.Join(home, ".codex", "sessions", "2026", "10", "09", "rollout-2026-10-09T09-00-00-th-imp.jsonl"), fixture(t, fixtures+"codex/testdata/0.153/imported.jsonl"))
 }
 
 // snapshot lists every path under root, with files' size and modification
@@ -130,7 +132,7 @@ func TestCollectMatchesDaemon(t *testing.T) {
 	var calls int
 	r := collect(t, home, Options{Progress: func(done, total int) { calls++ }})
 
-	if r.Transcripts != 4 || calls != 4 || r.Unreadable != 0 {
+	if r.Transcripts != 5 || calls != 5 || r.Unreadable != 0 { // incl. the skipped import
 		t.Fatalf("transcripts=%d progress=%d unreadable=%d", r.Transcripts, calls, r.Unreadable)
 	}
 	cc := agent(r, "claude-code")

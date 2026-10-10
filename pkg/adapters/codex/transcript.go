@@ -34,6 +34,15 @@ import (
 //	                        codex-rs/protocol, checked 2026-10-10)
 //	event_msg/item_completed CommandExecution, FileChange, McpToolCall
 //
+// Codex Desktop can import another agent's sessions (Claude Code, Cursor)
+// as threads (codex-rs external-agent-migration, checked 2026-10-10).
+// Their rollouts copy that agent's messages into turns with ids
+// "external-import-turn-N", plus one token_count holding a size estimate
+// (total_tokens only), not billed usage. The original agent's own record
+// is used, so these files produce no events; the first task_started
+// (right after session_meta) tells them apart, which is why session.start
+// waits for the next line.
+//
 // token_usage_record is used for tokens: one per API response, so each is
 // a billed call. Summed over unique response ids they match Codex's own
 // thread_token_usage, except after a rewind: the thread total then drops
@@ -96,11 +105,11 @@ func (Adapter) ParseTranscriptLine(raw []byte, meta adapters.TranscriptMeta) ([]
 		if strings.Contains(string(m.Source), `"subagent"`) {
 			st["skip"] = "1"
 		}
-		if meta.Warmup || st["skip"] == "1" || st["session"] == "" {
-			return nil, nil
-		}
-		e := event(st, meta, l, model.KindSessionStart, map[string]any{"source": "rollout"}, "session.start")
-		return []model.Event{e}, nil
+		// session.start is emitted with the next line that yields events,
+		// once an import would have been recognized.
+		st["start"] = first(l.Timestamp, meta.ReceivedAt.UTC().Format(time.RFC3339Nano))
+		st["start_ref"] = meta.Ref
+		return nil, nil
 	case l.Type == "turn_context":
 		var c struct {
 			Model string `json:"model"`
@@ -131,12 +140,38 @@ func (Adapter) ParseTranscriptLine(raw []byte, meta adapters.TranscriptMeta) ([]
 	}
 	if sub == "task_started" {
 		st["turn"] = str(p["turn_id"])
+		if strings.HasPrefix(st["turn"], importedTurn) {
+			st["skip"], st[adapters.StateImported] = "1", "1"
+		}
 		return nil, nil
 	}
-	if meta.Warmup || st["skip"] == "1" || st["session"] == "" {
+	if st["skip"] == "1" || st["session"] == "" {
 		return nil, nil
 	}
+	start := st["start"]
+	delete(st, "start")
+	if meta.Warmup {
+		return nil, nil
+	}
+	var out []model.Event
+	if start != "" {
+		e := event(st, meta, line{Timestamp: start}, model.KindSessionStart, map[string]any{"source": "rollout"}, "session.start")
+		e.TurnID = "" // it precedes the first turn
+		if st["start_ref"] != "" {
+			e.Raw = &model.RawRef{Ref: st["start_ref"]}
+		}
+		out = append(out, e)
+	}
+	evs, err := parseActivity(st, meta, l, p, sub)
+	return append(out, evs...), err
+}
 
+// importedTurn prefixes the turn ids of sessions Codex imported from
+// another agent.
+const importedTurn = "external-import-turn-"
+
+// parseActivity turns one line of a user session into events.
+func parseActivity(st map[string]string, meta adapters.TranscriptMeta, l line, p map[string]json.RawMessage, sub string) ([]model.Event, error) {
 	switch {
 	case l.Type == "token_usage_record":
 		var r struct {

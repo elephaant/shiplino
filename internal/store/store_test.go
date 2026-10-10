@@ -393,3 +393,66 @@ func TestClaudeUsageDuplicatesRemoved(t *testing.T) {
 		t.Fatalf("events after v9: %v", ids)
 	}
 }
+
+// Migration v10 drops sessions Codex imported from another agent, with
+// their events, search rows and automatic card state; others stay.
+func TestImportedCodexSessionsRemoved(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "old.db")
+	db, err := sql.Open("sqlite", "file:"+filepath.ToSlash(path))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, m := range migrations[:9] {
+		if _, err := db.Exec(m); err != nil {
+			t.Fatal(err)
+		}
+	}
+	db.Exec(`PRAGMA user_version = 9`)
+	ev := func(id, agent, sess, turn string) {
+		if _, err := db.Exec(`INSERT INTO events (id, ts, kind, agent, session_id, turn_id, collector, dedup_key, body) VALUES (?, 1, 'turn.start', ?, ?, ?, 'transcript', ?, '{}')`,
+			id, agent, sess, turn, id); err != nil {
+			t.Fatal(err)
+		}
+		db.Exec(`INSERT INTO search (text, event_id, session_id, kind, ts) VALUES ('x', ?, ?, 'turn.start', 1)`, id, sess)
+	}
+	ev("e1", "codex", "codex:imp", "")
+	ev("e2", "codex", "codex:imp", "external-import-turn-1")
+	ev("e3", "codex", "codex:native", "tu-1")
+	ev("e4", "claude-code", "claude-code:c", "external-import-turn-1") // not Codex's
+	for _, s := range []string{"codex:imp", "codex:native", "claude-code:c"} {
+		db.Exec(`INSERT INTO sessions (id, root_id, agent, status, started_at, last_event_at, body) VALUES (?, ?, 'codex', 'done', 1, 1, '{}')`, s, s)
+	}
+	db.Exec(`INSERT INTO cards (id, project_id, origin, created_at, updated_at) VALUES ('codex:imp', 'p', 'auto', 1, 1), ('m', 'p', 'manual', 1, 1)`)
+	db.Close()
+
+	s, err := Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	list := func(q string) string {
+		var out []string
+		rows, err := s.db.Query(q)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var v string
+			rows.Scan(&v)
+			out = append(out, v)
+		}
+		return strings.Join(out, ",")
+	}
+	for q, want := range map[string]string{
+		`SELECT id FROM events ORDER BY id`:      "e3,e4",
+		`SELECT event_id FROM search ORDER BY 1`: "e3,e4",
+		`SELECT id FROM sessions ORDER BY id`:    "claude-code:c,codex:native",
+		`SELECT id FROM cards ORDER BY id`:       "m",
+		`SELECT name FROM sqlite_temp_master`:    "",
+	} {
+		if got := list(q); got != want {
+			t.Errorf("%s = %q, want %q", q, got, want)
+		}
+	}
+}

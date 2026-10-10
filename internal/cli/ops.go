@@ -83,14 +83,15 @@ func (c *client) post(ctx context.Context, path string, body, v any) error {
 type statusResp struct {
 	Version string `json:"version"`
 	Daemon  struct {
-		Lines             int64  `json:"lines"`
-		Events            int64  `json:"events"`
-		Unknown           int64  `json:"unknown"`
-		Bad               int64  `json:"bad"`
-		SpoolBacklogBytes int64  `json:"spool_backlog_bytes"`
-		Transcripts       int    `json:"transcripts"`
-		Paused            bool   `json:"paused"`
-		WatchError        string `json:"watch_error"`
+		Lines             int64          `json:"lines"`
+		Events            int64          `json:"events"`
+		Unknown           int64          `json:"unknown"`
+		Bad               int64          `json:"bad"`
+		SpoolBacklogBytes int64          `json:"spool_backlog_bytes"`
+		Transcripts       int            `json:"transcripts"`
+		Paused            bool           `json:"paused"`
+		WatchError        string         `json:"watch_error"`
+		Imported          map[string]int `json:"imported"`
 	} `json:"daemon"`
 	Ingest *api.IngestStats `json:"ingest"`
 }
@@ -331,6 +332,11 @@ func doctor(ctx context.Context, e *env, args []string) int {
 		}
 		if d.Bad > 0 || d.Unknown > 0 {
 			checks = append(checks, check{ok: true, warn: true, name: "Parsing", detail: fmt.Sprintf("%d unreadable and %d unknown lines since start (an agent update may have changed its format)", d.Bad, d.Unknown)})
+		}
+		for _, a := range agents.All {
+			if n := d.Imported[a.ID]; n > 0 {
+				checks = append(checks, check{ok: true, name: "Imports", detail: fmt.Sprintf("%d %s sessions imported from other agents skipped; the original agent's record is used", n, a.Name)})
+			}
 		}
 		checks = append(checks, ingestChecks(strings.Replace(c.base, "127.0.0.1", "localhost", 1), tilde(filepath.Join(e.home, "token"), e.userHome), st.Ingest)...)
 		if list, err := c.sessions(ctx, 1000); err == nil {
