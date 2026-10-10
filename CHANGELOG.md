@@ -12,6 +12,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `doctor` and `uninstall` cover every connected agent.
 - Search: prompts, commands, file paths, session titles and commit messages are indexed (SQLite FTS5, existing data included) and searchable with ⌘K / Ctrl K in the web app, `shiplino search <words>` and `GET /api/v1/search`. Every word must match, as a prefix.
 - Export: `shiplino export [--format csv|json] [--project] [--since 7d] [--out file]`, `GET /api/v1/export`, and "Export" in the ⌘K menu. CSV cells that a spreadsheet would run as formulas are escaped.
+- Desktop notifications on Linux, macOS and Windows: an agent is waiting on you (only if it's still waiting after 3 seconds), finished a turn that ran at least 30 seconds, or failed. Several at once are grouped, and a session isn't notified twice within 30 seconds. Configure under `[notify]` in `config.toml`; check with `shiplino notify test` and `doctor`.
 - `doctor` explains degraded modes and how to fix them: the board running on another port because 4777 was busy, and file notifications being unavailable.
 
 ### Changed

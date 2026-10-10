@@ -1,5 +1,10 @@
 // Copyright 2026 The Shiplino Authors
 // SPDX-License-Identifier: FSL-1.1-Apache-2.0
 
-// Package notify sends desktop notifications (agent waiting on you, finished, failed).
+//go:build !windows
+
 package notify
+
+import "os/exec"
+
+func hideWindow(*exec.Cmd) {}

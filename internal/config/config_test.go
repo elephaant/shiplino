@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/elephaant/shiplino/pkg/redact"
 )
@@ -55,4 +56,32 @@ func readFile(t *testing.T, p string) string {
 		t.Fatal(err)
 	}
 	return string(b)
+}
+
+func TestNotifySettings(t *testing.T) {
+	home := t.TempDir()
+	if err := WriteDefault(home); err != nil {
+		t.Fatal(err)
+	}
+	c, err := Load(home)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s, on := c.NotifySettings(); !on || !s.Waiting || !s.Finished || !s.Failed || s.MinTurn != 30*time.Second {
+		t.Fatalf("defaults: %+v %v", s, on)
+	}
+	os.WriteFile(Path(home), []byte("[notify]\nfinished = false\nmin_turn = \"2m\"\n"), 0o600)
+	c, _ = Load(home)
+	if s, on := c.NotifySettings(); !on || s.Finished || !s.Waiting || s.MinTurn != 2*time.Minute {
+		t.Fatalf("custom: %+v %v", s, on)
+	}
+	os.WriteFile(Path(home), []byte("[notify]\nenabled = false\n"), 0o600)
+	c, _ = Load(home)
+	if _, on := c.NotifySettings(); on {
+		t.Fatal("enabled = false ignored")
+	}
+	os.WriteFile(Path(home), []byte("[notify]\nmin_turn = \"soon\"\n"), 0o600)
+	if _, err := Load(home); err == nil || !strings.Contains(err.Error(), "min_turn") {
+		t.Fatalf("bad min_turn: %v", err)
+	}
 }

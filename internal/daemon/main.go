@@ -13,8 +13,10 @@ import (
 
 	"github.com/elephaant/shiplino/internal/api"
 	"github.com/elephaant/shiplino/internal/config"
+	"github.com/elephaant/shiplino/internal/notify"
 	"github.com/elephaant/shiplino/internal/spool"
 	"github.com/elephaant/shiplino/internal/store"
+	"github.com/elephaant/shiplino/pkg/engine"
 	"github.com/elephaant/shiplino/pkg/redact"
 )
 
@@ -69,6 +71,14 @@ func Main(ctx context.Context, version string) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	go hub.Run(ctx)
+	if set, on := cfg.NotifySettings(); on {
+		n := notify.New(set, nil)
+		d.OnChange = func(list []*engine.Session) {
+			hub.Publish(list)
+			n.Observe(list)
+		}
+		go n.Run(ctx)
+	}
 	apiErr := make(chan error, 1)
 	go func() {
 		srv := api.New(st, hub, token, version, logger)
