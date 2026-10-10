@@ -5,7 +5,7 @@ Every project, every session, every subagent, every command, every file, every d
 
 **One command to install. Zero tokens to run.**
 
-> ⚠️ **Status: alpha.** Claude Code, Codex (CLI and desktop app) and Cursor (IDE agent and CLI) are supported today, and Aider or any other CLI agent through `shiplino wrap`. Expect rough edges and report them in Issues.
+> ⚠️ **Status: alpha.** Claude Code, Codex (CLI and desktop app), Cursor (IDE agent and CLI), Gemini CLI, GitHub Copilot CLI and Windsurf are supported, plus Aider or any CLI agent through `shiplino wrap`, and custom agents through the SDKs. Expect rough edges and report them in Issues.
 
 ---
 
@@ -41,14 +41,14 @@ Read more: [How it works](docs/how-it-works.md).
 - **Commits linked** to the sessions that made them.
 - **History backfill** from agents' own transcripts, so the board isn't empty on day one.
 - **Local-first and private:** secrets are redacted before anything is stored, with three capture levels. Nothing leaves your machine unless you turn on [cloud sync](docs/sync-protocol.md).
-- **Custom agents:** an HTTP ingest API and an OpenTelemetry receiver ([docs/ingest.md](docs/ingest.md)).
+- **Budgets and alerts:** daily, monthly and per-project spend limits with alerts at 80% and 100%, and a daily digest.
+- **GitHub pull requests** (opt-in): PR state, CI checks and reviews on cards; a merged PR moves its card to Done.
+- **Custom agents:** TypeScript and Python SDKs, an HTTP ingest API and an OpenTelemetry receiver ([docs/ingest.md](docs/ingest.md)).
 
 ## Planned
 
 - More agents: Cline, OpenCode
-- TypeScript and Python SDKs
-- Integrations: GitHub pull requests, Slack/Discord/webhooks, Linear and Jira
-- Budgets, alerts and a daily digest
+- Integrations: Slack/Discord/webhooks, Linear and Jira
 - VS Code / Cursor extension, an optional read-only MCP server, auto-update
 - **Virtual office:** pixel characters that show what each agent is doing
 
@@ -99,7 +99,7 @@ pkg/                shared Go packages: event model, agent adapters, engine, pro
 internal/           local-only code: shim, spool, daemon, OS service, SQLite store, git watcher, API, notifications, integrations, sync client
 web/                React app (packages/ui = shared components, apps/local = app embedded in the binary)
 schema/             JSON Schema of the universal event format
-sdk/                TypeScript and Python SDKs for custom agents (planned)
+sdk/                TypeScript and Python SDKs for custom agents
 plugins/            Claude Code plugin, OpenCode plugin, VS Code extension (planned)
 assets/office/      virtual office maps and sprites (planned)
 scripts/            install scripts
