@@ -246,3 +246,18 @@ func TestLateEventDoesNotReopenEndedSession(t *testing.T) {
 		t.Fatalf("resume: %s", s.Status)
 	}
 }
+
+func TestActiveTime(t *testing.T) {
+	e := New(nil, nil)
+	at := time.Date(2026, 10, 9, 10, 0, 0, 0, time.UTC)
+	ev := func(kind model.Kind, ts time.Time, data map[string]any) model.Event {
+		return model.Event{Kind: kind, TS: ts, SessionID: "a:1", ActorID: "a:1", Agent: model.Agent{Name: "a"}, Data: data}
+	}
+	e.Apply(ev(model.KindTurnStart, at, nil))
+	e.Apply(ev(model.KindTurnEnd, at.Add(40*time.Second), map[string]any{"status": "ok"}))
+	e.Apply(ev(model.KindTurnStart, at.Add(time.Hour), nil)) // an idle hour isn't counted
+	e.Apply(ev(model.KindTurnEnd, at.Add(time.Hour+time.Minute), map[string]any{"status": "ok", "duration_ms": 50_000}))
+	if s := e.Get("a:1"); s.ActiveMS != 90_000 {
+		t.Fatalf("active = %d, want 90000 (40s measured + 50s the agent reported)", s.ActiveMS)
+	}
+}

@@ -102,6 +102,95 @@ export interface SearchHit {
   project_id?: string;
 }
 
+export interface InsightTotals {
+  sessions: number;
+  cost_usd: number;
+  active_ms: number;
+  waiting_ms: number;
+  turns: number;
+  tool_calls: number;
+  tool_errors: number;
+  files: number;
+  lines_added: number;
+  lines_removed: number;
+  commits: number;
+  prs: number;
+  input_tokens: number;
+  output_tokens: number;
+  cache_read_tokens: number;
+  cache_write_tokens: number;
+}
+
+export interface InsightRow {
+  key: string;
+  name?: string;
+  sessions: number;
+  cost_usd: number;
+  active_ms: number;
+  input_tokens: number;
+  output_tokens: number;
+  cache_read_tokens: number;
+  lines_added: number;
+  lines_removed: number;
+}
+
+export interface Insights {
+  from: string;
+  to: string;
+  days: number;
+  totals: InsightTotals;
+  previous: InsightTotals;
+  daily: { date: string; sessions: number; cost_usd: Record<string, number>; active_ms: number }[];
+  agents: InsightRow[];
+  projects: InsightRow[];
+  models: InsightRow[];
+  tools: { tool: string; kind: string; calls: number }[];
+  cost_sources: Record<string, number>;
+}
+
+export interface AgentStatus {
+  id: string;
+  name: string;
+  found: boolean;
+  version?: string;
+  hooks_path?: string;
+  connected: boolean;
+  current: boolean;
+  problem?: string;
+}
+
+export interface Settings {
+  version: string;
+  home: string;
+  config_path: string;
+  port: number;
+  data_bytes: number;
+  capture_level: string;
+  extra_redaction_patterns: number;
+  paused: boolean;
+  paused_until?: string;
+  notify: {
+    enabled: boolean;
+    waiting: boolean;
+    finished: boolean;
+    failed: boolean;
+    min_turn_ms: number;
+    available: boolean;
+    via?: string;
+  };
+  agents: AgentStatus[];
+  health: {
+    lines: number;
+    events: number;
+    unknown: number;
+    bad: number;
+    spool_backlog_bytes: number;
+    transcripts: number;
+    paused: boolean;
+    watch_error?: string;
+  };
+}
+
 export interface Overview {
   projects: OverviewRow[];
   needs_you: NeedsYou[];

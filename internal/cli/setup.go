@@ -17,6 +17,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/elephaant/shiplino/internal/agents"
 	"github.com/elephaant/shiplino/internal/api"
 	"github.com/elephaant/shiplino/internal/config"
 	"github.com/elephaant/shiplino/internal/notify"
@@ -83,30 +84,30 @@ func setup(ctx context.Context, e *env, args []string) int {
 	ok := true
 	connected := 0
 	var notes []string
-	for _, a := range agents {
-		found, version, path := a.detect(ctx, e.userHome)
+	for _, a := range agents.All {
+		found, version, path := a.Detect(ctx, e.userHome)
 		if !found {
-			fmt.Fprintf(e.out, "  ➖ %-20s not found\n", a.name)
+			fmt.Fprintf(e.out, "  ➖ %-20s not found\n", a.Name)
 			continue
 		}
-		changed, events, err := a.install(path, bin, version, e.backupDir(a.id))
+		changed, events, err := a.Install(path, bin, version, e.backupDir(a.ID))
 		switch {
-		case isUnparseable(err):
+		case agents.IsUnparseable(err):
 			ok = false
-			fmt.Fprintf(e.out, "  ⚠️  %-20s %s isn't plain JSON (comments?), left untouched. Add the hooks by hand: see README.\n", a.name, tilde(path, e.userHome))
+			fmt.Fprintf(e.out, "  ⚠️  %-20s %s isn't plain JSON (comments?), left untouched. Add the hooks by hand: see README.\n", a.Name, tilde(path, e.userHome))
 		case err != nil:
 			ok = false
-			fmt.Fprintf(e.out, "  ❌ %-20s %v\n", a.name, err)
+			fmt.Fprintf(e.out, "  ❌ %-20s %v\n", a.Name, err)
 		default:
 			connected++
 			what := "hooks already up to date"
 			if changed {
 				what = fmt.Sprintf("hooks added for %d events", events)
-				if a.note != "" {
-					notes = append(notes, a.note)
+				if a.Note != "" {
+					notes = append(notes, a.Note)
 				}
 			}
-			name := a.name
+			name := a.Name
 			if version != "" {
 				name += " " + version
 			}
@@ -169,15 +170,15 @@ func uninstall(ctx context.Context, e *env, args []string) int {
 	} else {
 		fmt.Fprintln(e.out, "  ✅ Daemon       stopped and removed from login items")
 	}
-	for _, a := range agents {
-		_, _, path := a.detect(ctx, e.userHome)
-		if changed, err := a.uninstall(path, e.backupDir(a.id)); err != nil {
+	for _, a := range agents.All {
+		_, _, path := a.Detect(ctx, e.userHome)
+		if changed, err := a.Uninstall(path, e.backupDir(a.ID)); err != nil {
 			ok = false
-			fmt.Fprintf(e.out, "  ❌ %-12s %v\n", a.name, err)
+			fmt.Fprintf(e.out, "  ❌ %-12s %v\n", a.Name, err)
 		} else if changed {
-			fmt.Fprintf(e.out, "  ✅ %-12s hooks removed (%s)\n", a.name, tilde(path, e.userHome))
+			fmt.Fprintf(e.out, "  ✅ %-12s hooks removed (%s)\n", a.Name, tilde(path, e.userHome))
 		} else {
-			fmt.Fprintf(e.out, "  ➖ %-12s no Shiplino hooks found\n", a.name)
+			fmt.Fprintf(e.out, "  ➖ %-12s no Shiplino hooks found\n", a.Name)
 		}
 	}
 	if purge {

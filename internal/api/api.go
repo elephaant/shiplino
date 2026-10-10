@@ -44,6 +44,8 @@ type Server struct {
 
 	// Status, if set, reports daemon health for /api/v1/status.
 	Status func() any
+	// Admin, if set, backs the settings endpoints.
+	Admin Admin
 	// DevOrigin, if set (e.g. "http://localhost:3000"), is the one extra
 	// origin allowed to call the API with credentials, for `next dev`.
 	// Empty in normal use: the API is strictly same-origin.
@@ -81,6 +83,11 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("GET /api/v1/status", s.auth(s.status))
 	mux.Handle("GET /api/v1/search", s.auth(s.search))
 	mux.Handle("GET /api/v1/export", s.auth(s.export))
+	mux.Handle("GET /api/v1/insights", s.auth(s.insights))
+	mux.Handle("GET /api/v1/settings", s.auth(s.settings))
+	mux.Handle("POST /api/v1/pause", s.auth(s.pause))
+	mux.Handle("POST /api/v1/resume", s.auth(s.resume))
+	mux.Handle("POST /api/v1/notify/test", s.auth(s.testNotification))
 	return securityHeaders(localHostOnly(s.devCORS(mux)))
 }
 

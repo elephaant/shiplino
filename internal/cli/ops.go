@@ -18,6 +18,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/elephaant/shiplino/internal/agents"
 	"github.com/elephaant/shiplino/internal/api"
 	"github.com/elephaant/shiplino/internal/config"
 	"github.com/elephaant/shiplino/internal/notify"
@@ -175,11 +176,12 @@ func pause(ctx context.Context, e *env, args []string) int {
 			content = strconv.FormatInt(time.Now().Add(d).Unix(), 10)
 		}
 	}
-	if err := os.MkdirAll(e.home, 0o700); err != nil {
-		fmt.Fprintln(e.errOut, err)
-		return 1
+	var until time.Time
+	if content != "" {
+		n, _ := strconv.ParseInt(content, 10, 64)
+		until = time.Unix(n, 0)
 	}
-	if err := os.WriteFile(filepath.Join(e.home, "paused"), []byte(content), 0o600); err != nil {
+	if err := spool.Pause(e.home, until); err != nil {
 		fmt.Fprintln(e.errOut, err)
 		return 1
 	}
@@ -192,7 +194,7 @@ func pause(ctx context.Context, e *env, args []string) int {
 }
 
 func resume(ctx context.Context, e *env, args []string) int {
-	if err := os.Remove(filepath.Join(e.home, "paused")); err != nil && !os.IsNotExist(err) {
+	if err := spool.Resume(e.home); err != nil {
 		fmt.Fprintln(e.errOut, err)
 		return 1
 	}
@@ -247,28 +249,28 @@ func doctor(ctx context.Context, e *env, args []string) int {
 		checks = append(checks, check{ok: true, name: "Binary", detail: fmt.Sprintf("%s (%.1f MB)", tilde(bin, e.userHome), float64(fi.Size())/1e6)})
 	}
 
-	for _, a := range agents {
-		found, version, path := a.detect(ctx, e.userHome)
+	for _, a := range agents.All {
+		found, version, path := a.Detect(ctx, e.userHome)
 		if !found {
-			checks = append(checks, check{ok: true, warn: true, name: a.name, detail: "not found"})
+			checks = append(checks, check{ok: true, warn: true, name: a.Name, detail: "not found"})
 			continue
 		}
-		ok, cmd, err := a.installed(path)
+		ok, cmd, err := a.Installed(path)
 		reinstall := func(ctx context.Context) error {
-			_, _, err := a.install(path, bin, version, e.backupDir(a.id))
+			_, _, err := a.Install(path, bin, version, e.backupDir(a.ID))
 			return err
 		}
 		switch {
-		case isUnparseable(err):
-			checks = append(checks, check{name: a.name, detail: tilde(path, e.userHome) + " isn't plain JSON; Shiplino won't edit it", fixHint: "remove comments, then run shiplino setup"})
+		case agents.IsUnparseable(err):
+			checks = append(checks, check{name: a.Name, detail: tilde(path, e.userHome) + " isn't plain JSON; Shiplino won't edit it", fixHint: "remove comments, then run shiplino setup"})
 		case err != nil:
-			checks = append(checks, check{name: a.name, detail: err.Error()})
+			checks = append(checks, check{name: a.Name, detail: err.Error()})
 		case !ok:
-			checks = append(checks, check{name: a.name, detail: "hooks missing (an update may have reset the config)", fix: reinstall, fixHint: "shiplino doctor --fix"})
+			checks = append(checks, check{name: a.Name, detail: "hooks missing (an update may have reset the config)", fix: reinstall, fixHint: "shiplino doctor --fix"})
 		case !strings.Contains(cmd, bin):
-			checks = append(checks, check{name: a.name, detail: "hooks point at " + cmd + ", not " + bin, fix: reinstall, fixHint: "shiplino doctor --fix"})
+			checks = append(checks, check{name: a.Name, detail: "hooks point at " + cmd + ", not " + bin, fix: reinstall, fixHint: "shiplino doctor --fix"})
 		default:
-			checks = append(checks, check{ok: true, name: a.name, detail: strings.TrimSpace(version + " hooks installed")})
+			checks = append(checks, check{ok: true, name: a.Name, detail: strings.TrimSpace(version + " hooks installed")})
 		}
 	}
 
@@ -314,12 +316,12 @@ func doctor(ctx context.Context, e *env, args []string) int {
 					last[s.Agent] = s.LastEventAt
 				}
 			}
-			agents := make([]string, 0, len(last))
+			names := make([]string, 0, len(last))
 			for a := range last {
-				agents = append(agents, a)
+				names = append(names, a)
 			}
-			sort.Strings(agents)
-			for _, a := range agents {
+			sort.Strings(names)
+			for _, a := range names {
 				checks = append(checks, check{ok: true, name: "Last event", detail: fmt.Sprintf("%s %s", a, ago(last[a]))})
 			}
 		}
