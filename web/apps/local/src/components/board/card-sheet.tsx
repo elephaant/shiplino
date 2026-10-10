@@ -5,6 +5,7 @@ import { ExternalLink, GitCommitHorizontal, PinOff, Trash2 } from "lucide-react"
 import Link from "next/link";
 import { toast } from "sonner";
 import { AgentDot } from "@/components/common/agent-dot";
+import { CommitLines } from "@/components/common/commit-lines";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -136,11 +137,14 @@ export function CardSheet({
                   {card.links
                     ?.filter((l) => l.kind === "commit")
                     .map((l) => (
-                      <div key={l.ref} className="flex min-w-0 items-center gap-2 text-sm">
-                        <GitCommitHorizontal className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
-                        <span className="font-mono text-xs">{l.ref?.slice(0, 7)}</span>
-                        <span className="min-w-0 truncate">{l.message}</span>
-                        <EvidenceBadge className="ml-auto" {...commitEvidence(l.action)} />
+                      <div key={l.ref} className="flex min-w-0 flex-col gap-0.5">
+                        <div className="flex min-w-0 items-center gap-2 text-sm">
+                          <GitCommitHorizontal className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+                          <span className="font-mono text-xs">{l.ref?.slice(0, 7)}</span>
+                          <span className="min-w-0 truncate">{l.message}</span>
+                          <EvidenceBadge className="ml-auto" {...commitEvidence(l.action)} />
+                        </div>
+                        <CommitLines link={l} className="pl-5.5" />
                       </div>
                     ))}
                 </div>

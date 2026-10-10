@@ -16,6 +16,14 @@ export interface Link {
   checks?: "success" | "failure" | "pending";
   review?: "approved" | "changes_requested";
   title?: string;
+  // Commit line authorship: lines the commit added, split between the
+  // agent's edits, elsewhere and unknown (see CommitLines).
+  lines?: number;
+  agent_lines?: number;
+  human_lines?: number;
+  unknown_lines?: number;
+  agent_files?: number;
+  authorship?: "observed" | "partial" | "unknown";
 }
 
 export interface Session {
@@ -176,6 +184,22 @@ export interface Insights {
   tools: { tool: string; kind: string; calls: number }[];
   cost_sources: Record<string, number>;
   failures: Failures;
+  authorship: {
+    totals: LineSplit;
+    daily: LineSplit[]; // key: YYYY-MM-DD
+    agents: LineSplit[];
+    projects: LineSplit[];
+  };
+}
+
+/** Committed lines by author: the agents' edits, elsewhere, or unknown. */
+export interface LineSplit {
+  key: string;
+  name?: string;
+  commits: number;
+  agent_lines: number;
+  human_lines: number;
+  unknown_lines: number;
 }
 
 /** The sessions behind a failure row, most recent first (at most 20 ids). */

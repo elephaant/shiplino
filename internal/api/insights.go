@@ -1,6 +1,7 @@
 package api
 
 import (
+	"cmp"
 	"net/http"
 	"path"
 	"path/filepath"
@@ -77,6 +78,28 @@ type Insights struct {
 	// Failures are the period's failed tool calls and commands, refused
 	// permissions, retry loops and sessions that ended badly.
 	Failures insights.Failures `json:"failures"`
+	// Authorship splits the period's committed lines by who wrote them.
+	Authorship Authorship `json:"authorship"`
+}
+
+// LineSplit is committed lines by author: the agents' edits, elsewhere,
+// or unknown (no diffs, capture level below full).
+type LineSplit struct {
+	Key     string `json:"key"`
+	Name    string `json:"name,omitempty"`
+	Commits int    `json:"commits"`
+	Agent   int    `json:"agent_lines"`
+	Human   int    `json:"human_lines"`
+	Unknown int    `json:"unknown_lines"`
+}
+
+// Authorship is committed-line authorship for a period: commits are
+// counted on the day they were made, each once.
+type Authorship struct {
+	Totals   LineSplit   `json:"totals"`
+	Daily    []LineSplit `json:"daily"` // key: YYYY-MM-DD
+	Agents   []LineSplit `json:"agents"`
+	Projects []LineSplit `json:"projects"`
 }
 
 // insights: GET /api/v1/insights?days=30&project=
@@ -121,6 +144,12 @@ func (s *Server) insights(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	out := buildInsights(all, from, to, prevFrom, days, tools, names, merged)
+	commits, err := s.st.CommitLines(r.Context(), from, to, project)
+	if err != nil {
+		s.internal(w, err)
+		return
+	}
+	out.Authorship = buildAuthorship(commits, from, days, names)
 	// Loop targets are shown (and synced) relative to the project.
 	for i, l := range out.Failures.Loops {
 		out.Failures.Loops[i].Target = relPath(roots[l.Project], l.Target)
@@ -259,6 +288,53 @@ func buildInsights(all []*engine.Session, from, to, prevFrom time.Time, days int
 			out.Failures.Projects[i].Name = "Unsorted"
 		}
 	}
+	return out
+}
+
+func buildAuthorship(commits []store.CommitLines, from time.Time, days int, names map[string]string) Authorship {
+	out := Authorship{Daily: make([]LineSplit, days)}
+	index := map[string]int{}
+	for i := range out.Daily {
+		out.Daily[i].Key = from.AddDate(0, 0, i).Format("2006-01-02")
+		index[out.Daily[i].Key] = i
+	}
+	agents, projects := map[string]*LineSplit{}, map[string]*LineSplit{}
+	get := func(m map[string]*LineSplit, k string) *LineSplit {
+		if m[k] == nil {
+			m[k] = &LineSplit{Key: k}
+		}
+		return m[k]
+	}
+	for _, c := range commits {
+		rows := []*LineSplit{&out.Totals, get(agents, c.Agent), get(projects, c.ProjectID)}
+		if i, ok := index[c.TS.In(from.Location()).Format("2006-01-02")]; ok {
+			rows = append(rows, &out.Daily[i])
+		}
+		for _, r := range rows {
+			r.Commits++
+			r.Agent += c.AgentLines
+			r.Human += c.HumanLines
+			r.Unknown += c.UnknownLines
+		}
+	}
+	list := func(m map[string]*LineSplit, names map[string]string) []LineSplit {
+		out := make([]LineSplit, 0, len(m))
+		for _, r := range m {
+			if names != nil {
+				r.Name = cmp.Or(names[r.Key], r.Key, "Unsorted")
+			}
+			out = append(out, *r)
+		}
+		sort.Slice(out, func(i, j int) bool {
+			a, b := out[i].Agent+out[i].Human+out[i].Unknown, out[j].Agent+out[j].Human+out[j].Unknown
+			if a != b {
+				return a > b
+			}
+			return out[i].Key < out[j].Key
+		})
+		return out
+	}
+	out.Agents, out.Projects = list(agents, nil), list(projects, names)
 	return out
 }
 

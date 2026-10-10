@@ -66,6 +66,28 @@ On disk, the limit is how fast the disk syncs. On the same laptop's SSD, while i
 
 Every repo becomes a project with its own board. Many agents and subagents can run at the same time. Each one is tracked separately (by session and subagent id) and rolled up into its parent card.
 
+## Which committed lines an agent wrote
+
+When a commit is linked to sessions, Shiplino also splits the lines it added:
+
+1. It reads the commit's own diff locally (`git show`, no context lines, no external diff or text-conversion tools) for the committed files the linked sessions edited.
+2. It compares each added line with the lines that the sessions' file edits added (the stored diff of each edit, made before the commit). Lines are compared without surrounding whitespace, and each edited line matches at most one committed line. Diffs are stored redacted, so a committed line that holds a secret is compared in its redacted form.
+3. The commit gets three counts: **agent** lines (matched), **other** lines (in files the agent didn't edit, or not matched) and **unknown** lines (see below). They always add up to the commit's added lines.
+
+**Line attribution needs capture level `full`.** Below `full`, edits keep their line counts but not their diffs, so Shiplino only knows which committed files the agent edited: their lines count as unknown and the badge says **Unknown**. With diffs the badge says **Observed**. A commit where only some edits have a diff (an edit recorded before you switched to `full`, a diff cut at 64 KB, a secret file) is partly unknown.
+
+Limits, so a big commit never slows the daemon: files adding more than 5,000 lines, binary files and diffs over 4 MB aren't compared (their lines count as unknown when the agent edited them), at most 200 edits per file are read, and lines are cut at 4 KB. Lines that a tool run by the agent wrote (a generator, a formatter, `sed`) aren't file edits, so they count as other lines. A line an agent added and later removed again can still match an identical line you typed.
+
+The session page and the card sheet show "N of M lines by agent" for each commit, and Insights shows the agents' share of committed lines per day, agent and project. Commits recorded before this existed have no split.
+
+### Git notes (opt-in)
+
+`shiplino git notes` writes each recorded commit's counts (lines added, agent, other and unknown lines, agent-edited file count, agent names; no code, prompts or paths) as a git note under `refs/notes/shiplino` in the current repository. It writes only after you set `notes = true` under `[git]` in `~/.shiplino/config.toml`; `--dry-run` prints the notes instead. Running it again replaces Shiplino's notes. Shiplino never pushes notes: to share them, push the ref yourself (`git push origin refs/notes/shiplino`). Read them with `git log --notes=shiplino`.
+
+### Agent Trace
+
+[Agent Trace](https://agent-trace.dev/) (version 0.1.0, an RFC published in January 2026; checked 2026-10-11) is a proposed open format for recording which line ranges of a file came from AI or humans, per revision. Shiplino doesn't export it yet. Its data maps onto it like this: the commit is the record's `vcs.revision`, each file in the per-file split is a `files[]` entry with its project-relative `path`, the agent is the `contributor` (`type: "ai"`, the session's model as `model_id`), and lines that didn't match are `human` or `unknown`. Agent Trace wants line ranges, not counts, so an exporter would keep the matched lines' positions from the commit's diff.
+
 ## Where each value comes from
 
 The board marks values with a small evidence badge (an icon and a border style, with a tooltip that names the source):

@@ -40,6 +40,9 @@ var syncKeys = map[string]bool{
 	"lines_removed": true, "lines_source": true, "files_changed": true, "patch_omitted": true,
 	// git
 	"sha": true, "branch": true, "to": true, "number": true, "url": true, "state": true, "action": true, "head": true,
+	// commit line authorship: counts, an enum and the agent-edited files
+	// (the per-file breakdown, authorship_files, stays local)
+	"agent_lines_added": true, "human_lines_added": true, "unknown_lines_added": true, "authorship": true, "agent_files": true,
 	// plan progress (counts only)
 	"plan_total": true, "plan_done": true,
 	// plan usage windows (limit events): numbers, window names, times
@@ -51,7 +54,7 @@ var syncKeys = map[string]bool{
 // the generic waiting text and a pull request URL. Every other synced
 // string must be a token (an id, name, enum or ref), so free text can't
 // ride along in a field like "status" from a custom agent.
-var freeKeys = map[string]bool{"path": true, "file_path": true, "files": true, "file_paths": true, "paths": true,
+var freeKeys = map[string]bool{"path": true, "file_path": true, "files": true, "file_paths": true, "paths": true, "agent_files": true,
 	"input_summary": true, "message": true, "url": true}
 
 // token is what a non-free synced string must look like.
@@ -210,7 +213,7 @@ func numbersOnly(v any) any {
 var pathKeys = []string{"path", "file_path", "cwd", "transcript_path"}
 
 // pathListKeys are data fields holding a list of paths.
-var pathListKeys = []string{"files", "file_paths", "paths"}
+var pathListKeys = []string{"files", "file_paths", "paths", "agent_files"}
 
 // localPaths keeps local paths from leaving the machine: paths
 // become relative to the project root, paths outside it become "…/" plus

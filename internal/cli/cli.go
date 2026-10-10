@@ -36,6 +36,8 @@ Commands:
                     nothing (--since 7d, --agent, --project, --json)
   backfill          import agent history from before setup (--since 30d)
   sync              opt-in cloud sync: login, status [--dry-run], allow, deny, logout
+  git notes         opt-in: attach line authorship to recorded commits as git
+                    notes (refs/notes/shiplino, never pushed; --dry-run)
   doctor            check everything and explain problems (--fix to repair)
   update            install the newest release, verified (--check, --rollback)
   pause             stop recording (--for 30m); hooks stay installed
@@ -101,6 +103,8 @@ func Run(args []string, stdout, stderr io.Writer, version string) int {
 		return syncCmd(ctx, e, args[1:])
 	case "doctor":
 		return doctor(ctx, e, args[1:])
+	case "git":
+		return gitCmd(ctx, e, args[1:])
 	case "update":
 		return updateCmd(ctx, e, args[1:])
 	case "pause":

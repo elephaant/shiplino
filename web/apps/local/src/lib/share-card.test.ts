@@ -88,6 +88,12 @@ const week: Insights = {
     agents: [],
     projects: [],
   },
+  authorship: {
+    totals: { key: "", commits: 0, agent_lines: 0, human_lines: 0, unknown_lines: 0 },
+    daily: [],
+    agents: [],
+    projects: [],
+  },
 };
 
 const secrets = ["secret-client", "acme-billing", "p-internal-id", "/home/dev", "model-x", "Bash"];

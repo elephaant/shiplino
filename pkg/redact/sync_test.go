@@ -51,6 +51,15 @@ func TestForSyncSendsMetadataOnly(t *testing.T) {
 		{model.KindGitCommit,
 			map[string]any{"sha": "abc", "message": "fix: customer X", "author": "Dev Name", "files_changed": 2},
 			map[string]any{"sha": "abc", "files_changed": 2}},
+		{model.KindGitCommit, // line authorship: counts, the enum and agent-edited paths; never the per-file lines
+			map[string]any{"sha": "abc", "lines_added": 10, "agent_lines_added": 7, "human_lines_added": 2, "unknown_lines_added": 1,
+				"authorship": "partial", "agent_files": []any{"src/a.go"},
+				"authorship_files": []any{map[string]any{"path": "src/a.go", "lines_added": 10, "agent_lines": 7}}},
+			map[string]any{"agent_files": []any{"src/a.go"}, "agent_lines_added": 7, "authorship": "partial", "human_lines_added": 2,
+				"lines_added": 10, "sha": "abc", "unknown_lines_added": 1}},
+		{model.KindGitCommit, // a forged enum doesn't carry text out
+			map[string]any{"sha": "abc", "authorship": "the customer asked for this"},
+			map[string]any{"sha": "abc"}},
 		{model.KindToolStart,
 			map[string]any{"tool": "web", "url": "https://example.com/reset?token=abc"},
 			map[string]any{"tool": "web"}},
