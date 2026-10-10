@@ -110,6 +110,8 @@ func TestPauseResume(t *testing.T) {
 func TestDoctor(t *testing.T) {
 	e, out := testEnv(t)
 	os.MkdirAll(filepath.Join(e.userHome, ".claude"), 0o700)
+	t.Setenv("COPILOT_HOME", "")
+	os.MkdirAll(filepath.Join(e.userHome, ".copilot", "session-state"), 0o700)
 	// Nothing installed yet: binary missing, hooks missing, daemon down.
 	if code := doctor(context.Background(), e, nil); code != 1 {
 		t.Fatalf("doctor on a fresh machine passed:\n%s", out)
@@ -126,7 +128,7 @@ func TestDoctor(t *testing.T) {
 	if code := doctor(context.Background(), e, nil); code != 0 {
 		t.Fatalf("doctor after setup:\n%s", out)
 	}
-	for _, want := range []string{"✅ Binary", "✅ Claude Code", "✅ Daemon", "1 unknown lines", "Last event", "✅ Ingest", "/api/v1/ingest", "Authorization: Bearer"} {
+	for _, want := range []string{"✅ Binary", "✅ Claude Code", "✅ Daemon", "1 unknown lines", "writes usage only on exit", "Last event", "✅ Ingest", "/api/v1/ingest", "Authorization: Bearer"} {
 		if !strings.Contains(out.String(), want) {
 			t.Errorf("missing %q in:\n%s", want, out)
 		}

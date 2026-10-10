@@ -45,7 +45,7 @@ The model never knows Shiplino exists:
 
 The daemon is one pipeline with a single database writer:
 
-1. Each pass (on a file change, or every 2 s) reads the new lines of every spool file and transcript. Files are read, parsed and redacted in parallel. One file holds one session and is read by one goroutine at a time, so a session's events stay in order.
+1. Each pass (on a file change, or every 2 s) reads the new lines of every spool file and transcript. Files are read, parsed and redacted in parallel. One file holds one session and is read by one goroutine at a time, so a session's events stay in order. Some agents (Cline) rewrite a whole JSON file instead of appending to it; such a file is read again in full when it changes (at most every 5 s), and its events have stable keys, so a reread adds nothing twice.
 2. One goroutine applies the events to the task engine and writes them to SQLite in transactions of up to 500 events, together with the read offsets they cover. A crash or restart neither loses nor repeats an event. Folding events into sessions takes about 1% of the time, so the engine isn't split up.
 3. The live view gets each changed session at most every 100 ms.
 

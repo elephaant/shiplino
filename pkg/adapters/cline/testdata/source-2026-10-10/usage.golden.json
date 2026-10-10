@@ -1,0 +1,161 @@
+[
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T13:46:41Z",
+    "kind": "usage",
+    "agent": {
+      "name": "cline"
+    },
+    "collector": "transcript",
+    "session_id": "cline:1791640000000",
+    "actor_id": "cline:1791640000000",
+    "data": {
+      "cache_read_tokens": 0,
+      "cache_write_tokens": 8200,
+      "cost_source": "reported",
+      "cost_usd": 0.0361,
+      "input_tokens": 12,
+      "model": "claude-sonnet-4-6",
+      "output_tokens": 340
+    },
+    "dedup_key": "cline:usage:1791640000000:1791640001000"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T13:46:45Z",
+    "kind": "usage",
+    "agent": {
+      "name": "cline"
+    },
+    "collector": "transcript",
+    "session_id": "cline:1791640000000",
+    "actor_id": "cline:1791640000000",
+    "data": {
+      "cache_read_tokens": 8200,
+      "cache_write_tokens": 0,
+      "cost_source": "computed",
+      "cost_usd": 0.004272,
+      "input_tokens": 4,
+      "model": "claude-sonnet-4-6",
+      "output_tokens": 120
+    },
+    "dedup_key": "cline:usage:1791640000000:1791640005000"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T13:46:52Z",
+    "kind": "usage",
+    "agent": {
+      "name": "cline"
+    },
+    "collector": "transcript",
+    "session_id": "cline:1791640000000",
+    "actor_id": "cline:1791640000000",
+    "data": {
+      "cache_read_tokens": 8200,
+      "cache_write_tokens": 400,
+      "cost_source": "reported",
+      "cost_usd": 0.01284,
+      "input_tokens": 30,
+      "model": "claude-sonnet-4-6",
+      "output_tokens": 610
+    },
+    "dedup_key": "cline:usage:1791640000000:1791640012000"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T16:01:00Z",
+    "kind": "usage",
+    "agent": {
+      "name": "cline"
+    },
+    "collector": "transcript",
+    "session_id": "cline:sess-a1",
+    "actor_id": "cline:sess-a1",
+    "data": {
+      "cache_read_tokens": 0,
+      "cache_write_tokens": 8800,
+      "cost_source": "reported",
+      "cost_usd": 0.0373,
+      "input_tokens": 200,
+      "message_id": "msg_a1",
+      "model": "claude-sonnet-4-6",
+      "output_tokens": 210
+    },
+    "dedup_key": "cline:usage:msg_a1"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T16:01:30Z",
+    "kind": "usage",
+    "agent": {
+      "name": "cline"
+    },
+    "collector": "transcript",
+    "session_id": "cline:sess-a1",
+    "actor_id": "cline:sess-a1",
+    "data": {
+      "cache_read_tokens": 8800,
+      "cache_write_tokens": 500,
+      "cost_source": "computed",
+      "cost_usd": 0.00624,
+      "input_tokens": 100,
+      "message_id": "msg_a3",
+      "model": "claude-sonnet-4-6",
+      "output_tokens": 95
+    },
+    "dedup_key": "cline:usage:msg_a3"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T16:01:10Z",
+    "kind": "usage",
+    "agent": {
+      "name": "cline"
+    },
+    "collector": "transcript",
+    "session_id": "cline:sess-a1",
+    "actor_id": "cline:sess-a1/sub:explorer",
+    "parent_actor": "cline:sess-a1",
+    "actor_type": "subagent",
+    "data": {
+      "cache_read_tokens": 0,
+      "cache_write_tokens": 0,
+      "cost_source": "unpriced",
+      "input_tokens": 1500,
+      "message_id": "msg_s2",
+      "model": "local-model",
+      "output_tokens": 40
+    },
+    "dedup_key": "cline:usage:msg_s2"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-10T17:00:05Z",
+    "kind": "usage",
+    "agent": {
+      "name": "cline"
+    },
+    "collector": "transcript",
+    "session_id": "cline:sess-b2",
+    "actor_id": "cline:sess-b2",
+    "data": {
+      "cache_read_tokens": 0,
+      "cache_write_tokens": 0,
+      "cost_source": "reported",
+      "cost_usd": 0.0045,
+      "input_tokens": 1200,
+      "message_id": "msg_l5",
+      "model": "claude-sonnet-4-6",
+      "output_tokens": 60
+    },
+    "dedup_key": "cline:usage:msg_l5"
+  }
+]

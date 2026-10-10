@@ -40,9 +40,10 @@
 //     envelope id. Tool duration is unknown.
 //   - Tool payloads carry no subagent id: a subagent's tool calls are
 //     recorded on the parent session.
-//   - Hooks carry no model, version or token counts. Copilot keeps its
-//     own session log in ~/.copilot/session-state/<id>/events.jsonl, whose
-//     format is undocumented; reading it for usage is not done yet.
+//   - Hooks carry no model, version or token counts. They come from
+//     Copilot's own session log, ~/.copilot/session-state/<id>/events.jsonl
+//     (transcript.go), which records usage only when a session ends: a
+//     running session has no tokens yet.
 //   - toolArgs fields are not documented per tool. The parser reads the
 //     common names (command, path, old_str/new_str, file_text, patch) and
 //     falls back to a plain tool event.

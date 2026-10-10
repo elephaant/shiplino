@@ -9,7 +9,7 @@ An adapter connects one agent to Shiplino. It lives in `pkg/adapters/<agent>/`.
 | `detect.go` | Is the agent installed? Which version? Where is its config? |
 | `install.go` | Add (and remove) our hook entries in the agent's **user-level** config. Must be idempotent |
 | `parse.go` | Convert native hook payloads into [events](event-format.md) |
-| `transcript.go` | (optional) Tail the agent's own session files for tokens and anything hooks miss |
+| `transcript.go` | (optional) Read the agent's own session files for tokens and anything hooks miss: line by line from the last offset for files it appends to (`TranscriptParser`), or whole again on every change for JSON files it rewrites (`DocumentParser`; give each event a dedup key that survives rewrites, and emit a value only once it is final) |
 | `conversation.go` | (optional) `ConversationReader`: read prompts, replies and tool calls back from those files on demand, for the session's Conversation tab. Nothing it reads is stored |
 | `testdata/<agent-version>/` | Real, **redacted** payloads + expected events (golden files) |
 

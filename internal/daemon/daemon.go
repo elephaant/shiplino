@@ -98,7 +98,9 @@ type Daemon struct {
 	transcripts map[string]string // transcript path → agent name
 	// tstate is each transcript file's parser state (model, turn, …),
 	// rebuilt by a warmup pass after a restart.
-	tstate       map[string]map[string]string
+	tstate map[string]map[string]string
+	// docs are the whole-file transcripts being read (see documents.go).
+	docs         map[string]*docState
 	lastDiscover time.Time
 	lastIdle     time.Time
 	watchErr     string
@@ -202,6 +204,7 @@ func (d *Daemon) reload(ctx context.Context) error {
 	d.offsets = offsets
 	d.transcripts = map[string]string{}
 	d.tstate = map[string]map[string]string{}
+	d.docs = map[string]*docState{}
 	d.lastDiscover = time.Time{}
 	recent := time.Now().Add(-transcriptRecent)
 	for _, s := range sessions {
@@ -406,7 +409,12 @@ func (d *Daemon) Poll(ctx context.Context) error {
 	// Transcripts are read-only: tailed from the saved offset, never deleted.
 	var tsrcs []source
 	mainFile := map[string]string{} // source → its transcript, for main files
+	docs := map[string]string{}
 	for path, agent := range d.transcripts {
+		if isDocument(path, agent) {
+			docs[path] = agent
+			continue
+		}
 		files := []string{path}
 		subs, _ := filepath.Glob(filepath.Join(strings.TrimSuffix(path, ".jsonl"), "subagents", "*.jsonl"))
 		files = append(files, subs...)
@@ -444,21 +452,25 @@ func (d *Daemon) Poll(ctx context.Context) error {
 			errs = append(errs, fmt.Errorf("transcript %s: %w", s.path, err))
 		}
 	}
+	if err := d.readDocuments(ctx, docs); err != nil {
+		errs = append(errs, err)
+	}
 	return errors.Join(errs...)
 }
 
-// addTranscript starts tailing an agent's transcript. The path comes from
-// a hook payload, so only .jsonl files under the user's home directory are
-// accepted.
+// addTranscript starts tailing an agent's transcript. The path may come
+// from a hook payload, so only files under the user's home directory are
+// accepted: .jsonl files for line parsers, .json for document parsers.
 func (d *Daemon) addTranscript(path, agent string) {
-	if _, ok := d.transcripts[path]; ok || !filepath.IsAbs(path) || filepath.Ext(path) != ".jsonl" {
+	if _, ok := d.transcripts[path]; ok || !filepath.IsAbs(path) {
 		return
 	}
 	a, ok := adapters.Get(agent)
 	if !ok {
 		return
 	}
-	if _, ok := a.(adapters.TranscriptParser); !ok {
+	_, lines := a.(adapters.TranscriptParser)
+	if !(lines && filepath.Ext(path) == ".jsonl") && !isDocument(path, agent) {
 		return
 	}
 	home, err := os.UserHomeDir()

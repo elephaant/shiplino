@@ -37,7 +37,7 @@ Details that matter:
 - **Model ids** are matched through provider prefixes, date suffixes and variant tags (`us.anthropic.…`, `…-20251001`, `…[1m]`).
 - **Unknown models** are shown as *unpriced* rather than guessed.
 - **Announced price changes are dated.** A model can list rates that apply from a given day (00:00 UTC). Each response is priced at the rates in effect when it was made, so history keeps its old price after a change.
-- **No usage at all:** when a session (with its subagents) finished work without recording any token usage, because the agent's hooks or transcripts don't include it (e.g. Windsurf, Copilot CLI, Cursor transcripts), its card says *no cost data* instead of showing $0, and Insights counts it separately. The session's `usage` field is `"none"` in that case and `"tokens"` once any usage arrives.
+- **No usage at all:** when a session (with its subagents) finished work without recording any token usage, because the agent's hooks or transcripts don't include it (e.g. Windsurf, Cursor transcripts, or a Copilot CLI session that is still running), its card says *no cost data* instead of showing $0, and Insights counts it separately. The session's `usage` field is `"none"` in that case and `"tokens"` once any usage arrives.
 
 ## How accurate is it?
 
@@ -70,6 +70,25 @@ For billing, the source of truth is your provider's console or usage and cost AP
 ## Cursor
 
 Cursor's hooks carry no documented token counts. When its `afterAgentResponse` hook includes them (interactive sessions), Shiplino records them and prices them from the bundled table. Otherwise a Cursor session shows activity but no tokens or cost. Cursor's own usage dashboard is the source for what you were charged.
+
+## Cline
+
+Cline prices every model call itself, and Shiplino reads its numbers from Cline's own task files (`cost_source: reported`). Cline rewrites these files whole on every save, so Shiplino reads a changed file again (at most every 5 seconds) and counts each call once, keyed by the call.
+
+- **SDK hosts** (the CLI, Kanban, the desktop app, the SDK build of the VS Code extension): `~/.cline/data/sessions/<id>/*.messages.json`. Each finished model call carries its tokens, model and cost. Cline counts cache reads and writes inside its input figure, so Shiplino stores the uncached part as input, as Cline's own telemetry does. Subagents have their own files and show as the session's subagents.
+- **The classic extension** (VS Code and its forks, JetBrains): `tasks/<id>/ui_messages.json` in the editor's global storage (`saoudrizwan.claude-dev`) or in `~/.cline/data`. Each call's `api_req_started` message has its tokens and cost. Cline updates it while the response streams, so a call is counted once it's final: when the next call starts, when it was cancelled or failed, or when the file has been quiet for 2 minutes (so the last call of a task can show up to 2 minutes late).
+- A classic task resumed in an SDK host copies its old totals into the new session file; those are skipped, since they were counted from the classic file.
+- **When Cline's cost is $0** (a model it has no price for, or a subscription provider), the call is priced from Shiplino's table when the model is known (`computed`), and stays unpriced otherwise.
+
+## GitHub Copilot CLI
+
+Copilot CLI writes per-call usage only to subscribers of its live event stream. What it keeps on disk is its session log, `~/.copilot/session-state/<id>/events.jsonl`, and the log gets token totals only **when a session ends** (`session.shutdown`). So a running Copilot session shows no tokens; they appear when you exit it.
+
+- Each shutdown has the session's running totals per model. A resumed session ends again later, so Shiplino counts each shutdown as the difference from the one before (if Copilot restarted its totals, as older versions do on resume, the new totals count whole).
+- Copilot's input count includes cache reads and writes; Shiplino stores the uncached part as input. Reasoning tokens are part of the output.
+- **Cost:** Copilot prices its calls in GitHub AI credits (`totalNanoAiu` per model; one credit is billed at $0.01), and that is the reported cost. When a model has no credits figure, its tokens are priced from Shiplino's table (Copilot's `claude-sonnet-4.5` is priced as `claude-sonnet-4-5`), or stay unpriced.
+- Credits included in your plan aren't money you spent: like other plans, the figure is the list-price value of the usage.
+- `shiplino doctor` notes that Copilot CLI's tokens arrive at session end.
 
 ## Aider (via `shiplino wrap`)
 

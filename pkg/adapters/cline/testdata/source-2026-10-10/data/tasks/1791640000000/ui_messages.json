@@ -1,0 +1,50 @@
+[
+  {
+    "ts": 1791640000000,
+    "type": "say",
+    "say": "task",
+    "text": "Add a unit test for the price formatter",
+    "modelInfo": { "providerId": "anthropic", "modelId": "claude-sonnet-4-6", "mode": "act" }
+  },
+  {
+    "ts": 1791640001000,
+    "type": "say",
+    "say": "api_req_started",
+    "text": "{\"request\":\"<task>\\nAdd a unit test for the price formatter\\n</task>\",\"tokensIn\":12,\"tokensOut\":340,\"cacheWrites\":8200,\"cacheReads\":0,\"cost\":0.0361}",
+    "modelInfo": { "providerId": "anthropic", "modelId": "claude-sonnet-4-6", "mode": "act" },
+    "conversationHistoryIndex": -1
+  },
+  {
+    "ts": 1791640004000,
+    "type": "say",
+    "say": "text",
+    "text": "I'll read the formatter first.",
+    "partial": false
+  },
+  {
+    "ts": 1791640005000,
+    "type": "say",
+    "say": "api_req_started",
+    "text": "{\"request\":\"[read_file for 'src/format.ts'] Result:\",\"tokensIn\":4,\"tokensOut\":120,\"cacheWrites\":0,\"cacheReads\":8200,\"cost\":0,\"cancelReason\":\"user_cancelled\"}",
+    "modelInfo": { "providerId": "anthropic", "modelId": "claude-sonnet-4-6", "mode": "act" }
+  },
+  {
+    "ts": 1791640009000,
+    "type": "say",
+    "say": "api_req_started",
+    "text": "{\"request\":\"[ERROR] You did not use a tool\",\"retryStatus\":{\"attempt\":1}}"
+  },
+  {
+    "ts": 1791640012000,
+    "type": "say",
+    "say": "api_req_started",
+    "text": "{\"request\":\"Continue\",\"tokensIn\":30,\"tokensOut\":610,\"cacheWrites\":400,\"cacheReads\":8200,\"cost\":0.01284}",
+    "modelInfo": { "providerId": "anthropic", "modelId": "claude-sonnet-4-6", "mode": "act" }
+  },
+  {
+    "ts": 1791640020000,
+    "type": "ask",
+    "ask": "completion_result",
+    "text": ""
+  }
+]
