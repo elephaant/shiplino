@@ -64,11 +64,12 @@ func ColumnFor(s engine.Status) string {
 }
 
 // rollUp is a card's live state: a session is waiting if it or any of its
-// subagents waits on you, and running if any of them still works.
-func rollUp(root *engine.Session, kids []*engine.Session) (engine.Status, string) {
+// subagents waits on you, and running if any of them still works. The
+// waiting one is returned too, for why and since when.
+func rollUp(root *engine.Session, kids []*engine.Session) (engine.Status, string, *engine.Session) {
 	status, doing := root.Status, root.NowDoing
 	if status == engine.StatusWaiting {
-		return status, doing
+		return status, doing, root
 	}
 	var running *engine.Session
 	for _, k := range kids {
@@ -78,7 +79,7 @@ func rollUp(root *engine.Session, kids []*engine.Session) (engine.Status, string
 			if label == "" {
 				label = "subagent"
 			}
-			return engine.StatusWaiting, label + ": " + k.NowDoing
+			return engine.StatusWaiting, label + ": " + k.NowDoing, k
 		case engine.StatusRunning:
 			if running == nil {
 				running = k
@@ -90,9 +91,9 @@ func rollUp(root *engine.Session, kids []*engine.Session) (engine.Status, string
 		if label == "" {
 			label = "subagent"
 		}
-		return engine.StatusRunning, label + ": " + running.NowDoing
+		return engine.StatusRunning, label + ": " + running.NowDoing, nil
 	}
-	return status, doing
+	return status, doing, nil
 }
 
 // ErrAgentColumn: auto cards can't be put in Running or Waiting by hand;
@@ -152,6 +153,8 @@ type Card struct {
 	Status         engine.Status `json:"status,omitempty"`
 	Branch         string        `json:"branch,omitempty"`
 	NowDoing       string        `json:"now_doing,omitempty"`
+	WaitingReason  string        `json:"waiting_reason,omitempty"` // engine.Session.WaitingReason, while waiting
+	WaitingSince   time.Time     `json:"waiting_since,omitzero"`
 	StartedAt      time.Time     `json:"started_at"`
 	LastEventAt    time.Time     `json:"last_event_at"`
 	DurationMS     int64         `json:"duration_ms"`
@@ -191,13 +194,16 @@ func Build(sessions []*engine.Session, overrides map[string]Override, cal Calend
 		if !s.EndedAt.IsZero() {
 			end = s.EndedAt
 		}
-		status, doing := rollUp(s, children[s.ID])
+		status, doing, waiter := rollUp(s, children[s.ID])
 		c := Card{
 			ID: s.ID, Origin: OriginAuto, Title: s.Title, TitleSource: s.TitleSource, Column: ColumnFor(status),
 			ProjectID: s.ProjectID, Agent: s.Agent, Model: s.Model, Status: status, Branch: s.Branch, NowDoing: doing,
 			StartedAt: s.StartedAt, LastEventAt: s.LastEventAt, DurationMS: end.Sub(s.StartedAt).Milliseconds(), WaitingMS: s.WaitingMS,
 			CostUSD: s.BestCostUSD, CostSource: s.CostSource, Usage: s.Usage, Files: len(s.Files), LinesAdded: s.LinesAdded, LinesRemoved: s.LinesRemoved,
 			Links: s.Links, ToolCalls: s.ToolCalls, ActiveMS: s.ActiveMS, PlanTotal: s.PlanTotal, PlanDone: s.PlanDone,
+		}
+		if waiter != nil {
+			c.WaitingReason, c.WaitingSince = waiter.WaitingReason, waiter.WaitingSince
 		}
 		if status == engine.StatusIdle && len(s.Files) == 0 {
 			c.Column = Done // went quiet without changing anything

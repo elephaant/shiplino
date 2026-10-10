@@ -316,7 +316,11 @@ func Note(win Window) notify.Note {
 	if !win.ResetsAt.IsZero() {
 		body = "Resets at " + win.ResetsAt.Local().Format("Mon 15:04") + "."
 	}
-	return notify.Note{Title: title, Body: body}
+	alert := notify.Alert{Event: notify.EventLimit, Agent: win.Agent, Window: win.Window, Percent: *win.UsedPercent, ResetsAt: win.ResetsAt}
+	if win.Reached && alert.Percent < 100 {
+		alert.Percent = 100
+	}
+	return notify.Note{Title: title, Body: body, Alerts: []notify.Alert{alert}}
 }
 
 // Label names a window for people: "5-hour", "weekly".

@@ -32,6 +32,7 @@ type env struct {
 	svcRun      service.Runner                           // nil = real OS commands
 	notifySend  func(context.Context, notify.Note) error // nil = the OS notifier
 	openURL     func(string) error                       // nil = the default browser
+	in          io.Reader                                // nil = os.Stdin
 }
 
 // browse opens a URL in the user's browser.

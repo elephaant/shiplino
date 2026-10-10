@@ -30,7 +30,7 @@ func TestSessionLifecycle(t *testing.T) {
 		{ev(2, model.KindToolStart, map[string]any{"tool": "edit", "tool_raw": "Edit", "input_summary": "/work/demo/src/auth.ts"}), StatusRunning, "Editing auth.ts"},
 		{ev(3, model.KindToolEnd, map[string]any{"ok": true}), StatusRunning, "Editing auth.ts"},
 		{ev(3, model.KindFileEdit, map[string]any{"path": "/work/demo/src/auth.ts", "lines_added": 12.0, "lines_removed": 3.0}), StatusRunning, "Editing auth.ts"},
-		{ev(4, model.KindWaitingStart, map[string]any{"message": "Approve: npm test"}), StatusWaiting, "Approve: npm test"},
+		{ev(4, model.KindWaitingStart, map[string]any{"message": "Approve: npm test", "reason": "permission"}), StatusWaiting, "Approve: npm test"},
 		{ev(10, model.KindToolStart, map[string]any{"tool": "shell", "input_summary": "npm test"}), StatusRunning, "Running npm test"},
 		{ev(12, model.KindToolEnd, map[string]any{"ok": false}), StatusRunning, "Running npm test"},
 		{ev(13, model.KindTurnEnd, map[string]any{"status": "ok"}), StatusReview, ""},
@@ -39,8 +39,8 @@ func TestSessionLifecycle(t *testing.T) {
 	for i, st := range steps {
 		e.Apply(st.ev)
 		s := e.Get(sid)
-		if s.Status != st.wantStatus || s.NowDoing != st.wantDoing {
-			t.Fatalf("step %d (%s): status=%s doing=%q, want %s %q", i, st.ev.Kind, s.Status, s.NowDoing, st.wantStatus, st.wantDoing)
+		if s.Status != st.wantStatus || s.NowDoing != st.wantDoing || (s.Status == StatusWaiting) != (s.WaitingReason == "permission") {
+			t.Fatalf("step %d (%s): status=%s doing=%q reason=%q, want %s %q", i, st.ev.Kind, s.Status, s.NowDoing, s.WaitingReason, st.wantStatus, st.wantDoing)
 		}
 	}
 	s := e.Get(sid)

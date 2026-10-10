@@ -133,7 +133,8 @@ func TestRollUpAndIdle(t *testing.T) {
 	root := &engine.Session{ID: "a:1", RootID: "a:1", Status: engine.StatusDone, StartedAt: now, LastEventAt: now, Files: []string{"x.go"}, LinesAdded: 3, ToolCalls: 2,
 		PlanTotal: 7, PlanDone: 3}
 	kid := &engine.Session{ID: "a:1/sub:k", RootID: "a:1", ParentID: "a:1", ActorType: "reviewer", Status: engine.StatusWaiting, NowDoing: "Approve: rm -rf build",
-		Files: []string{"x.go", "y.go"}, LinesAdded: 4, LinesRemoved: 1, ToolCalls: 5, StartedAt: now, LastEventAt: now, PlanTotal: 2}
+		Files: []string{"x.go", "y.go"}, LinesAdded: 4, LinesRemoved: 1, ToolCalls: 5, StartedAt: now, LastEventAt: now, PlanTotal: 2,
+		WaitingReason: "permission", WaitingSince: now}
 	idle := &engine.Session{ID: "a:2", RootID: "a:2", Status: engine.StatusIdle, StartedAt: now, LastEventAt: now}
 	idleWithWork := &engine.Session{ID: "a:3", RootID: "a:3", Status: engine.StatusIdle, Files: []string{"z"}, StartedAt: now, LastEventAt: now}
 	cards := Build([]*engine.Session{root, kid, idle, idleWithWork}, nil, Calendar{Loc: time.UTC}, now)
@@ -142,7 +143,7 @@ func TestRollUpAndIdle(t *testing.T) {
 		by[c.ID] = c
 	}
 	c := by["a:1"]
-	if c.Column != Waiting || c.Status != engine.StatusWaiting || c.NowDoing != "reviewer: Approve: rm -rf build" {
+	if c.Column != Waiting || c.Status != engine.StatusWaiting || c.NowDoing != "reviewer: Approve: rm -rf build" || c.WaitingReason != "permission" || !c.WaitingSince.Equal(now) {
 		t.Fatalf("waiting subagent should surface on its card: %+v", c)
 	}
 	if c.Files != 2 || c.LinesAdded != 7 || c.LinesRemoved != 1 || c.ToolCalls != 7 {

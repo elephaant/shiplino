@@ -475,7 +475,7 @@
     "data": {
       "message": "Claude is waiting for your input",
       "notification_type": "idle_prompt",
-      "reason": "question"
+      "reason": "idle"
     },
     "dedup_key": "claude-code:sess-0001:waiting.start:env-014"
   },

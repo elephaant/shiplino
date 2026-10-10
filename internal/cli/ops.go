@@ -352,6 +352,7 @@ func doctor(ctx context.Context, e *env, args []string) int {
 		} else {
 			checks = append(checks, check{ok: true, warn: true, name: "Notify", detail: "no notification service found", fixHint: notifyMissingHint()})
 		}
+		checks = append(checks, pushChecks(e.home, c.Notify.Push.Targets)...)
 	}
 	if spool.Paused(e.home, time.Now()) {
 		checks = append(checks, check{ok: true, warn: true, name: "Recording", detail: "paused", fixHint: "shiplino resume"})

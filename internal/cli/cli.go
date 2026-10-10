@@ -26,7 +26,8 @@ Commands:
   search <words>    find prompts, commands, files and commits (--project)
   export            sessions as CSV or JSON (--format, --project, --since 7d, --out)
                     or a conversation as Markdown (--session <id>)
-  notify test       show a sample desktop notification
+  notify            desktop notifications and opt-in push targets: test,
+                    add webhook|ntfy|slack|discord, list, remove
   backfill          import agent history from before setup (--since 30d)
   sync              opt-in cloud sync: login, status [--dry-run], allow, deny, logout
   doctor            check everything and explain problems (--fix to repair)

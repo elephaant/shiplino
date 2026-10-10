@@ -193,6 +193,8 @@ func waitingText(reason string) string {
 		return "Waiting for your approval"
 	case "question":
 		return "Waiting for your answer"
+	case "idle":
+		return "Waiting for your next prompt"
 	}
 	return "Waiting for you"
 }

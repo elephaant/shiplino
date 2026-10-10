@@ -45,6 +45,17 @@ export function agentName(id: string): string {
   return agentNames[id] ?? id;
 }
 
+const waitingLabels: Record<string, string> = {
+  permission: "Needs approval",
+  question: "Has a question",
+  idle: "Your turn",
+};
+
+/** Why a card waits, in a few words ("Needs approval"). */
+export function waitingLabel(reason?: string): string {
+  return (reason && waitingLabels[reason]) || "Waiting on you";
+}
+
 /** Tooltip for sessions whose agent recorded no token usage. */
 export function noUsageReason(agent?: string): string {
   return `${agent ? agentName(agent) : "The agent"} recorded no token usage for this session (its hooks or transcripts don't include it), so its cost is unknown rather than zero.`;

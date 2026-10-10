@@ -564,12 +564,17 @@ func summarize(tool string, raw json.RawMessage) string {
 	return s
 }
 
-// waitingReason maps notification types that mean "the agent needs you".
+// waitingReason maps notification types that mean "the agent needs you"
+// to why: "permission" (approve a tool), "idle" (it finished and waits
+// for your next prompt) or "question" (a form or a question for you).
+// Types checked against the hooks reference on 2026-10-10.
 func waitingReason(t string) (string, bool) {
 	switch t {
 	case "permission_prompt":
 		return "permission", true
-	case "idle_prompt", "agent_needs_input":
+	case "idle_prompt":
+		return "idle", true
+	case "agent_needs_input":
 		return "question", true
 	case "elicitation_dialog", "elicitation_url_dialog":
 		return "question", true

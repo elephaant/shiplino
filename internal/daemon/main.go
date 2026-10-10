@@ -3,6 +3,7 @@ package daemon
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/elephaant/shiplino/internal/budget"
 	"github.com/elephaant/shiplino/internal/integrations/github"
 	"github.com/elephaant/shiplino/internal/limits"
@@ -15,6 +16,7 @@ import (
 	"github.com/elephaant/shiplino/internal/api"
 	"github.com/elephaant/shiplino/internal/config"
 	"github.com/elephaant/shiplino/internal/notify"
+	"github.com/elephaant/shiplino/internal/notify/push"
 	"github.com/elephaant/shiplino/internal/spool"
 	"github.com/elephaant/shiplino/internal/store"
 	cloudsync "github.com/elephaant/shiplino/internal/sync"
@@ -74,14 +76,29 @@ func Main(ctx context.Context, version string) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	go hub.Run(ctx)
-	if set, on := cfg.NotifySettings(); on {
-		n := notify.New(set, nil)
-		d.OnChange = func(list []*engine.Session) {
-			hub.Publish(list)
-			n.Observe(list)
+	// Notifications: on the desktop unless turned off, and to the push
+	// targets the user added (none by default; they apply without a
+	// restart). Alerts carry metadata only; see internal/notify/push.
+	port := ln.Addr().(*net.TCPAddr).Port
+	pusher := push.New(home, fmt.Sprintf("http://localhost:%d", port), config.Path(home), func() (push.Settings, error) {
+		c, err := config.Load(home)
+		return c.PushSettings(), err
+	}, logger)
+	go pusher.Run(ctx)
+	set, desktop := cfg.NotifySettings()
+	send := func(ctx context.Context, n notify.Note) error {
+		pusher.Push(n.Alerts...)
+		if !desktop {
+			return nil
 		}
-		go n.Run(ctx)
+		return notify.Send(ctx, n)
 	}
+	n := notify.New(set, send)
+	d.OnChange = func(list []*engine.Session) {
+		hub.Publish(list)
+		n.Observe(list)
+	}
+	go n.Run(ctx)
 	// Opt-in cloud sync: idle unless enabled and signed in, on its own
 	// goroutine reading committed rows, so it never slows recording.
 	uploader := cloudsync.NewUploader(home, st, logger, version)
@@ -100,11 +117,11 @@ func Main(ctx context.Context, version string) error {
 	}
 	var budgets *budget.Watcher
 	if bc := (budget.Config{DailyUSD: cfg.Budget.DailyUSD, MonthlyUSD: cfg.Budget.MonthlyUSD, Projects: cfg.Budget.Projects, Digest: cfg.Budget.Digest}); bc.Enabled() {
-		budgets = budget.New(bc, st, nil)
+		budgets = budget.New(bc, st, send)
 		go budgets.Run(ctx)
 	}
 	// Plan usage windows: always served, notified only when on.
-	lw := limits.New(limits.Config{NotifyPercent: cfg.LimitPercent(), Plans: cfg.Limits.Plans}, st, nil)
+	lw := limits.New(limits.Config{NotifyPercent: cfg.LimitPercent(), Plans: cfg.Limits.Plans}, st, send)
 	if cfg.LimitPercent() > 0 {
 		go lw.Run(ctx)
 	}
@@ -113,7 +130,7 @@ func Main(ctx context.Context, version string) error {
 		srv := api.New(st, hub, token, version, logger)
 		srv.Status = func() any { return d.Health() }
 		srv.Limits = func(ctx context.Context) (any, error) { return lw.Status(ctx) }
-		srv.Admin = &admin{d: d, home: home, cfg: cfg, version: version, sync: uploader, budget: budgets, github: prs, port: ln.Addr().(*net.TCPAddr).Port, send: notify.Send}
+		srv.Admin = &admin{d: d, home: home, cfg: cfg, version: version, sync: uploader, budget: budgets, github: prs, port: port, send: notify.Send}
 		srv.Ingest = d
 		srv.DevOrigin = os.Getenv("SHIPLINO_DEV_ORIGIN")
 		srv.Level, srv.Redactor = level, redactor
@@ -122,7 +139,7 @@ func Main(ctx context.Context, version string) error {
 		cancel() // if the API dies, stop the daemon too
 	}()
 
-	logger.Printf("daemon started: http://localhost:%d (home %s, capture level %s)", ln.Addr().(*net.TCPAddr).Port, home, cfg.Level())
+	logger.Printf("daemon started: http://localhost:%d (home %s, capture level %s)", port, home, cfg.Level())
 	err = errors.Join(d.Run(ctx), <-apiErr)
 	s := d.Stats()
 	logger.Printf("daemon stopped: %d lines, %d events, %d unknown, %d bad", s.Lines, s.Events, s.Unknown, s.Bad)
