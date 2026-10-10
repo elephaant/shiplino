@@ -48,7 +48,6 @@ Read more: [How it works](docs/how-it-works.md).
 
 ## Planned
 
-- Integrations: Linear and Jira issue links on cards
 - **Virtual office:** pixel characters that show what each agent is doing
 
 ## Supported agents
