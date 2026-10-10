@@ -229,6 +229,24 @@ func TestChatGolden(t *testing.T) {
 	}
 }
 
+// Usage is priced at the response's own time, so a dated price change
+// applies to responses after it even when they're read before or after.
+func TestUsagePricedAtResponseTime(t *testing.T) {
+	ref := "transcript:" + filepath.Join(chatDir(t), "chats", "session-x.jsonl") + "#1"
+	cost := func(ts string) float64 {
+		st := map[string]string{}
+		meta := adapters.TranscriptMeta{ReceivedAt: t0, State: st, Ref: ref}
+		Adapter{}.ParseTranscriptLine([]byte(`{"sessionId":"g1","projectHash":"demo","startTime":"2026-10-09T10:00:00Z"}`), meta)
+		evs, _ := Adapter{}.ParseTranscriptLine([]byte(`{"id":"m1","timestamp":"`+ts+`","type":"gemini","content":"","model":"gemini-3.8-flash",
+			"tokens":{"input":1000000,"output":1000000,"cached":0,"thoughts":0,"tool":0,"total":2000000}}`), meta)
+		c, _ := evs[0].Data["cost_usd"].(float64)
+		return c
+	}
+	if before, after := cost("2026-12-31T23:00:00Z"), cost("2027-01-01T01:00:00Z"); before != 4.5 || after != 9 {
+		t.Fatalf("before %v, after %v", before, after)
+	}
+}
+
 func TestSubagentChat(t *testing.T) {
 	dir := chatDir(t)
 	parent := "gs1a2b3c-0000-4000-8000-000000000001"
