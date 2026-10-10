@@ -30,6 +30,8 @@ Commands:
                     or a conversation as Markdown (--session <id>)
   notify            desktop notifications and opt-in push targets: test,
                     add webhook|ntfy|slack|discord, list, remove
+  report            usage from agent transcripts, no setup needed, writes
+                    nothing (--since 7d, --agent, --project, --json)
   backfill          import agent history from before setup (--since 30d)
   sync              opt-in cloud sync: login, status [--dry-run], allow, deny, logout
   doctor            check everything and explain problems (--fix to repair)
@@ -86,6 +88,8 @@ func Run(args []string, stdout, stderr io.Writer, version string) int {
 		return search(ctx, e, args[1:])
 	case "export":
 		return export(ctx, e, args[1:])
+	case "report":
+		return reportCmd(ctx, e, args[1:])
 	case "backfill":
 		return backfill(ctx, e, args[1:])
 	case "notify":
