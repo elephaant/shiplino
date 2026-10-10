@@ -48,8 +48,7 @@ Read more: [How it works](docs/how-it-works.md).
 
 ## Planned
 
-- Integrations: Linear and Jira
-- VS Code / Cursor extension, an optional read-only MCP server
+- Integrations: Linear and Jira issue links on cards
 - **Virtual office:** pixel characters that show what each agent is doing
 
 ## Supported agents
@@ -108,7 +107,7 @@ internal/           local-only code: shim, spool, daemon, OS service, SQLite sto
 web/                React app (packages/ui = shared components, apps/local = app embedded in the binary)
 schema/             JSON Schema of the universal event format
 sdk/                TypeScript and Python SDKs for custom agents
-plugins/            Claude Code plugin, OpenCode plugin, VS Code extension (planned)
+plugins/            Claude Code plugin, OpenCode plugin
 assets/office/      virtual office maps and sprites (planned)
 scripts/            install scripts
 testdata/, bench/   end-to-end fixtures and benchmarks
