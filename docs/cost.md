@@ -37,6 +37,7 @@ Details that matter:
 - **Model ids** are matched through provider prefixes, date suffixes and variant tags (`us.anthropic.…`, `…-20251001`, `…[1m]`).
 - **Unknown models** are shown as *unpriced* rather than guessed.
 - **Announced price changes are dated.** A model can list rates that apply from a given day (00:00 UTC). Each response is priced at the rates in effect when it was made, so history keeps its old price after a change.
+- **No usage at all:** when a session (with its subagents) finished work without recording any token usage, because the agent's hooks or transcripts don't include it (e.g. Windsurf, Copilot CLI, Cursor transcripts), its card says *no cost data* instead of showing $0, and Insights counts it separately. The session's `usage` field is `"none"` in that case and `"tokens"` once any usage arrives.
 
 ## How accurate is it?
 

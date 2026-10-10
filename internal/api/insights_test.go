@@ -22,7 +22,7 @@ func TestBuildInsights(t *testing.T) {
 			ActiveMS: 60_000, WaitingMS: 5000, Turns: 3, InputTokens: 100, OutputTokens: 10, Files: []string{"a"}, LinesAdded: 5,
 			Links: []engine.Link{{Kind: "commit"}, {Kind: "pr"}}},
 		{ID: "cc:1/sub:x", RootID: "cc:1", ParentID: "cc:1", Agent: "claude-code", Model: "haiku", StartedAt: day(1), CostUSD: 0.5, InputTokens: 50},
-		{ID: "cx:2", RootID: "cx:2", Agent: "codex", ProjectID: "p2", Model: "gpt", StartedAt: day(6), InputTokens: 1000},
+		{ID: "cx:2", RootID: "cx:2", Agent: "codex", ProjectID: "p2", Model: "gpt", StartedAt: day(6), InputTokens: 1000, Usage: engine.UsageTokens},
 		{ID: "cc:old", RootID: "cc:old", Agent: "claude-code", ProjectID: "p1", StartedAt: prev.Add(time.Hour), BestCostUSD: 7},
 		{ID: "cc:older", RootID: "cc:older", Agent: "claude-code", StartedAt: prev.AddDate(0, 0, -1), BestCostUSD: 100},
 	}
@@ -47,7 +47,7 @@ func TestBuildInsights(t *testing.T) {
 	if len(in.Models) != 3 || in.Models[0].Key != "opus" || in.Models[0].CostUSD != 1.5 {
 		t.Fatalf("models: %+v", in.Models)
 	}
-	if in.CostSources["reported"] != 1 || in.CostSources["none"] != 1 {
+	if in.CostSources["reported"] != 1 || in.CostSources["unpriced"] != 1 || in.CostSources["none"] != 0 {
 		t.Fatalf("sources: %v", in.CostSources)
 	}
 }

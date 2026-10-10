@@ -48,6 +48,11 @@ export function agentName(id: string): string {
   return agentNames[id] ?? id;
 }
 
+/** Tooltip for sessions whose agent recorded no token usage. */
+export function noUsageReason(agent?: string): string {
+  return `${agent ? agentName(agent) : "The agent"} recorded no token usage for this session (its hooks or transcripts don't include it), so its cost is unknown rather than zero.`;
+}
+
 const agentTokens: Record<string, string> = {
   "claude-code": "claude",
   codex: "codex",

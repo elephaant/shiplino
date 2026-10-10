@@ -69,7 +69,8 @@ type Insights struct {
 	Models   []Breakdown       `json:"models"` // tokens per model; cost computed per response
 	Tools    []store.ToolCount `json:"tools"`
 	// CostSources counts top-level sessions by where their cost comes from.
-	CostSources map[string]int `json:"cost_sources"` // reported | computed | none
+	// "unpriced": tokens without a price; "none": no usage recorded at all.
+	CostSources map[string]int `json:"cost_sources"` // reported | computed | unpriced | none
 }
 
 // insights: GET /api/v1/insights?days=30&project=
@@ -196,7 +197,10 @@ func buildInsights(all []*engine.Session, from, to, prevFrom time.Time, days int
 		}
 		src := x.CostSource
 		if src == "" {
-			src = "none"
+			src = engine.UsageNone
+			if x.Usage == engine.UsageTokens {
+				src = "unpriced"
+			}
 		}
 		out.CostSources[src]++
 		for _, b := range []*Breakdown{get(agents, x.Agent), get(projects, x.ProjectID)} {

@@ -77,6 +77,11 @@ type Session struct {
 	// BestCostUSD and CostSource are what to display: "reported" or "computed".
 	BestCostUSD float64 `json:"best_cost_usd"`
 	CostSource  string  `json:"cost_source,omitempty"`
+	// Usage says whether token usage was recorded for this session or its
+	// subagents: UsageTokens once any arrives, UsageNone when the session
+	// has settled after doing work without any (the agent records none,
+	// e.g. Cursor transcripts or Windsurf hooks), and "" until then.
+	Usage string `json:"usage,omitempty"`
 
 	Links []Link `json:"links,omitempty"` // PRs and pushes the agent reported
 
@@ -128,6 +133,26 @@ func (s *Session) setTitle(title, source string) {
 	}
 	if source == "agent" || s.Title == "" {
 		s.Title, s.TitleSource = title, source
+	}
+}
+
+// Values of Session.Usage.
+const (
+	UsageTokens = "tokens"
+	UsageNone   = "none"
+)
+
+// refreshUsage marks a settled session that did work without any usage.
+func (s *Session) refreshUsage() {
+	if s.Usage == UsageTokens {
+		return
+	}
+	s.Usage = ""
+	switch s.Status {
+	case StatusIdle, StatusReview, StatusDone, StatusFailed:
+		if s.Turns > 0 || s.ToolCalls > 0 {
+			s.Usage = UsageNone
+		}
 	}
 }
 
@@ -295,6 +320,16 @@ func (e *Engine) Apply(ev model.Event) []*Session {
 		changed = append(changed, child)
 
 	case model.KindUsage:
+		// The session and its ancestors have usage data, even when unpriced.
+		for a := s; a != nil && a.Usage != UsageTokens; a = e.sessions[a.ParentID] {
+			a.Usage = UsageTokens
+			if a != s {
+				changed = append(changed, a)
+			}
+			if a.ParentID == "" {
+				break
+			}
+		}
 		if report, _ := ev.Data["report"].(bool); report {
 			proc := str(ev.Data, "process")
 			total, _ := ev.Data["total_cost_usd"].(float64)
@@ -371,6 +406,9 @@ func (e *Engine) Apply(ev model.Event) []*Session {
 	if late && ev.Kind != model.KindSessionEnd {
 		s.Status, s.NowDoing = prevStatus, prevNow
 	}
+	for _, c := range changed {
+		c.refreshUsage()
+	}
 	return changed
 }
 
@@ -397,6 +435,7 @@ func (e *Engine) MarkIdle(now time.Time) []*Session {
 		}
 		if now.Sub(s.LastEventAt) >= after {
 			s.Status, s.NowDoing = StatusIdle, ""
+			s.refreshUsage()
 			out = append(out, s)
 		}
 	}

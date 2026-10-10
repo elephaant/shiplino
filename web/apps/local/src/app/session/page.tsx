@@ -34,7 +34,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { type AgentEvent, api, type Session } from "@/lib/api";
-import { agentName, formatCost, formatDuration, formatTokens } from "@/lib/format";
+import { agentName, formatCost, formatDuration, formatTokens, noUsageReason } from "@/lib/format";
 import { useLive } from "@/lib/live";
 
 const str = (d: Record<string, unknown> | undefined, k: string) => (typeof d?.[k] === "string" ? (d[k] as string) : "");
@@ -226,11 +226,23 @@ function SessionPage() {
           <Stat label="Duration" value={formatDuration(Date.parse(end) - Date.parse(session.started_at))} />
           <Stat
             label={session.cost_source === "reported" ? "Cost (reported)" : "Cost"}
-            value={formatCost(session.best_cost_usd)}
+            value={
+              session.usage === "none" ? (
+                <span className="font-sans text-muted-foreground" title={noUsageReason(session.agent)}>
+                  no cost data
+                </span>
+              ) : (
+                formatCost(session.best_cost_usd)
+              )
+            }
           />
           <Stat
             label="Tokens in / out"
-            value={`${formatTokens(session.input_tokens + session.cache_read_tokens + session.cache_write_tokens)} / ${formatTokens(session.output_tokens)}`}
+            value={
+              session.usage === "none"
+                ? "—"
+                : `${formatTokens(session.input_tokens + session.cache_read_tokens + session.cache_write_tokens)} / ${formatTokens(session.output_tokens)}`
+            }
           />
           <Stat label="Turns" value={session.turns} />
           <Stat
@@ -344,6 +356,11 @@ function SessionPage() {
         <TabsContent value="usage">
           <Card className="py-2">
             <CardContent className="overflow-x-auto px-2">
+              {session.usage === "none" && (
+                <p className="flex items-center gap-2 px-2 py-2 text-xs text-muted-foreground">
+                  <Coins className="size-3.5" aria-hidden /> {noUsageReason(session.agent)}
+                </p>
+              )}
               {session.cost_source === "reported" && (
                 <p className="flex items-center gap-2 px-2 py-2 text-xs text-muted-foreground">
                   <Coins className="size-3.5" aria-hidden /> The total uses the agent&apos;s own cost report, which
