@@ -40,6 +40,7 @@ func TestRejectsMistakes(t *testing.T) {
 		"invalid toml": "capture_level = \n",
 		"push target":  "[notify.push]\ntargets = [\"pager\"]\n",
 		"push event":   "[notify.push]\nevents = [\"prompt\"]\n",
+		"channel":      "[update]\nchannel = \"nightly\"\n",
 	} {
 		home := t.TempDir()
 		os.WriteFile(Path(home), []byte(content), 0o600)

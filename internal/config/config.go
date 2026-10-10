@@ -25,6 +25,7 @@ type Config struct {
 	Limits       Limits       `toml:"limits"`
 	Integrations Integrations `toml:"integrations"`
 	Service      Service      `toml:"service"`
+	Update       Update       `toml:"update"`
 }
 
 // Service says how the daemon runs.
@@ -54,6 +55,27 @@ func SetAutostart(home string, on bool) error {
 	}
 	return rewriteSection(home, "service", fmt.Sprintf("%sautostart = %t\n", serviceHeader, on))
 }
+
+// Update controls update checks (docs/updating.md). Checking asks
+// api.github.com for the release list, so it's off by default;
+// `shiplino update` always works on demand.
+type Update struct {
+	// Check looks for a new release once a day and shows it in doctor,
+	// `shiplino status` and Settings. Nothing is installed.
+	Check bool `toml:"check"`
+	// AutoInstall also installs it (verified, like `shiplino update`) and
+	// restarts the daemon. It implies Check.
+	AutoInstall bool `toml:"auto_install"`
+	// Channel is "stable", "prerelease", or "" to follow the installed
+	// version (a prerelease build gets prereleases).
+	Channel string `toml:"channel"`
+	// RequireSignature refuses updates when cosign isn't installed to
+	// verify the Sigstore signature (the checksum is always verified).
+	RequireSignature bool `toml:"require_signature"`
+}
+
+// UpdateChecks reports whether the daemon checks for updates.
+func (c Config) UpdateChecks() bool { return c.Update.Check || c.Update.AutoInstall }
 
 // Integrations are opt-in connections to outside services.
 type Integrations struct {
@@ -180,6 +202,11 @@ func validate(c Config) error {
 			return fmt.Errorf("limits.plans.%s: want \"plan\" or \"api\"", k)
 		}
 	}
+	switch c.Update.Channel {
+	case "", "stable", "prerelease":
+	default:
+		return fmt.Errorf("update.channel: want \"stable\" or \"prerelease\" (or leave it empty)")
+	}
 	if _, err := redact.New(c.Redaction.ExtraPatterns); err != nil {
 		return fmt.Errorf("redaction.extra_patterns: %w", err)
 	}
@@ -275,6 +302,18 @@ enabled = false
 poll = "5m"
 
 ` + serviceHeader + `autostart = true
+
+[update]
+# Look for a new Shiplino release once a day and show it in doctor,
+# ` + "`shiplino status`" + ` and Settings. Asks api.github.com, so it's off by
+# default; ` + "`shiplino update`" + ` checks and installs on demand either way.
+check = false
+# Also install it (checksum and signature verified) and restart the daemon.
+auto_install = false
+# "stable", "prerelease", or "" to follow the installed version.
+channel = ""
+# Refuse updates unless cosign is installed to verify the signature.
+require_signature = false
 
 ` + syncHeader + `enabled = false
 projects = []

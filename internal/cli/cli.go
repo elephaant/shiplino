@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/elephaant/shiplino/internal/daemon"
 	"github.com/elephaant/shiplino/internal/spool"
+	"github.com/elephaant/shiplino/internal/update"
 	"github.com/elephaant/shiplino/internal/wrap"
 )
 
@@ -35,6 +37,7 @@ Commands:
   backfill          import agent history from before setup (--since 30d)
   sync              opt-in cloud sync: login, status [--dry-run], allow, deny, logout
   doctor            check everything and explain problems (--fix to repair)
+  update            install the newest release, verified (--check, --rollback)
   pause             stop recording (--for 30m); hooks stay installed
   resume            start recording again
   wrap -- <cmd>     run any CLI agent (Aider, ...) and record it (--agent, --title)
@@ -98,12 +101,23 @@ func Run(args []string, stdout, stderr io.Writer, version string) int {
 		return syncCmd(ctx, e, args[1:])
 	case "doctor":
 		return doctor(ctx, e, args[1:])
+	case "update":
+		return updateCmd(ctx, e, args[1:])
 	case "pause":
 		return pause(ctx, e, args[1:])
 	case "resume":
 		return resume(ctx, e, args[1:])
 	case "daemon":
-		if err := daemon.Main(ctx, version); err != nil {
+		err := daemon.Main(ctx, version)
+		if errors.Is(err, update.ErrRestart) {
+			// auto_install replaced the binary: run the new one in our place.
+			if err := update.Reexec(e.binPath(), []string{"daemon"}); err != nil {
+				fmt.Fprintln(stderr, "shiplino daemon: restarting after the update:", err)
+				return 1
+			}
+			return 0
+		}
+		if err != nil {
 			fmt.Fprintln(stderr, "shiplino daemon:", err)
 			return 1
 		}

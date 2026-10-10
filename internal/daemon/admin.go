@@ -15,6 +15,7 @@ import (
 	"github.com/elephaant/shiplino/internal/notify"
 	"github.com/elephaant/shiplino/internal/spool"
 	cloudsync "github.com/elephaant/shiplino/internal/sync"
+	"github.com/elephaant/shiplino/internal/update"
 )
 
 // admin backs the settings page (api.Admin).
@@ -48,6 +49,32 @@ type SettingsView struct {
 	Sync         *cloudsync.View `json:"sync,omitempty"`
 	Budget       BudgetView      `json:"budget"`
 	GitHub       *github.Status  `json:"github,omitempty"`
+	Update       UpdateView      `json:"update"`
+}
+
+// UpdateView is the update part of SettingsView, from the last check
+// (update.json); it never calls the network itself.
+type UpdateView struct {
+	Check       bool      `json:"check"`
+	AutoInstall bool      `json:"auto_install"`
+	Channel     string    `json:"channel,omitempty"`
+	Dev         bool      `json:"dev"` // a development build, never updated
+	Available   string    `json:"available,omitempty"`
+	URL         string    `json:"url,omitempty"`
+	CheckedAt   time.Time `json:"checked_at,omitzero"`
+	Error       string    `json:"error,omitempty"`
+	// InstallError says why installing it automatically failed.
+	InstallError string `json:"install_error,omitempty"`
+}
+
+func (a *admin) updateView() UpdateView {
+	st := update.LoadState(a.home)
+	v := UpdateView{Check: a.cfg.UpdateChecks(), AutoInstall: a.cfg.Update.AutoInstall, Channel: a.cfg.Update.Channel,
+		Dev: update.IsDev(a.version), Available: st.Newer(a.version), CheckedAt: st.CheckedAt, Error: st.Error}
+	if v.Available != "" {
+		v.URL, v.InstallError = st.URL, st.InstallError
+	}
+	return v
 }
 
 // BudgetView is the budget part of SettingsView.
@@ -81,6 +108,7 @@ func (a *admin) Settings(ctx context.Context) any {
 			MinTurnMS: set.MinTurn.Milliseconds(), LimitPercent: a.cfg.LimitPercent(), Available: ok, Via: via},
 		Agents: agents.Statuses(ctx, userHome, bin),
 		Health: a.d.Health(),
+		Update: a.updateView(),
 	}
 	// Paths are shown relative to the home directory, like a shell would.
 	v.Home, v.ConfigPath = tilde(v.Home, userHome), tilde(v.ConfigPath, userHome)

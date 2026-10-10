@@ -8,6 +8,8 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"runtime"
+	"sync/atomic"
 
 	"github.com/elephaant/shiplino/internal/api"
 	"github.com/elephaant/shiplino/internal/budget"
@@ -19,6 +21,7 @@ import (
 	"github.com/elephaant/shiplino/internal/spool"
 	"github.com/elephaant/shiplino/internal/store"
 	cloudsync "github.com/elephaant/shiplino/internal/sync"
+	"github.com/elephaant/shiplino/internal/update"
 	"github.com/elephaant/shiplino/pkg/engine"
 	"github.com/elephaant/shiplino/pkg/model"
 	"github.com/elephaant/shiplino/pkg/redact"
@@ -145,6 +148,12 @@ func Run(ctx context.Context, version string, opts Options) error {
 		uploader = cloudsync.NewUploader(home, st, logger, version)
 		go uploader.Run(ctx)
 	}
+	// Opt-in update checks: they call api.github.com, so only with
+	// [update] check or auto_install.
+	var restarting atomic.Bool
+	if cfg.UpdateChecks() && !update.IsDev(version) && !opts.Demo {
+		go updateChecker(home, version, cfg, logger, func() { restarting.Store(true); cancel() }).Run(ctx)
+	}
 	var prs *github.Poller
 	if cfg.Integrations.GitHub.Enabled && !opts.Demo {
 		record := func(ctx context.Context, evs []model.Event) error {
@@ -190,5 +199,38 @@ func Run(ctx context.Context, version string, opts Options) error {
 	err = errors.Join(d.Run(ctx), <-apiErr)
 	s := d.Stats()
 	logger.Printf("daemon stopped: %d lines, %d events, %d unknown, %d bad", s.Lines, s.Events, s.Unknown, s.Bad)
+	if restarting.Load() {
+		return errors.Join(err, update.ErrRestart)
+	}
 	return err
+}
+
+// updateChecker builds the daily check. With auto_install it also
+// installs, but only when this daemon runs the binary the hooks use and
+// no package manager owns it; restart is called after an install.
+func updateChecker(home, version string, cfg config.Config, logger *log.Logger, restart func()) *update.Checker {
+	src := update.Source{UserAgent: "shiplino/" + version}
+	chk := &update.Checker{Home: home, Current: version, Channel: cfg.Update.Channel, Source: &src, Logf: logger.Printf}
+	if !cfg.Update.AutoInstall {
+		return chk
+	}
+	bin := filepath.Join(home, "bin", "shiplino")
+	if runtime.GOOS == "windows" {
+		bin += ".exe"
+	}
+	self, _ := os.Executable()
+	rs, _ := filepath.EvalSymlinks(self)
+	rb, _ := filepath.EvalSymlinks(bin)
+	if mgr, cmd := update.Managed(self); mgr != "" {
+		logger.Printf("auto_install is off for this install: it's managed by %s (%s)", mgr, cmd)
+		return chk
+	}
+	if rs == "" || rs != rb {
+		logger.Printf("auto_install is off for this daemon: it runs %s, not %s", self, bin)
+		return chk
+	}
+	chk.Updater = &update.Updater{Source: src, Target: bin, Current: version, RequireSignature: cfg.Update.RequireSignature}
+	chk.HookTest = func(ctx context.Context, bin string) error { return update.HookTest(ctx, home, bin) }
+	chk.Installed = func(update.Result) { restart() }
+	return chk
 }
