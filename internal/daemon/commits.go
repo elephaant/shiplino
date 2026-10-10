@@ -13,6 +13,9 @@ const maxCommitFiles = 50
 // checkCommits turns new commits in watched worktrees into git.commit
 // events on the sessions that produced them. Called with d.mu held.
 func (d *Daemon) checkCommits(ctx context.Context) error {
+	if d.git == nil {
+		return nil
+	}
 	commits := d.git.Check()
 	if len(commits) == 0 {
 		return nil

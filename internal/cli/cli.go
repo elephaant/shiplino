@@ -23,7 +23,8 @@ Commands:
                     (--dry-run: show the diffs, write nothing; --no-service: run the daemon yourself)
   status            daemon state and what's running right now
   ls                recent sessions (--running, --today)
-  open              open the board in your browser
+  open              open the board in your browser (--demo: try it with synthetic data)
+  demo              a throwaway board with synthetic data, until Ctrl-C (--no-open)
   search <words>    find prompts, commands, files and commits (--project)
   export            sessions as CSV or JSON (--format, --project, --since 7d, --out)
                     or a conversation as Markdown (--session <id>)
@@ -75,7 +76,12 @@ func Run(args []string, stdout, stderr io.Writer, version string) int {
 	case "ls":
 		return ls(ctx, e, args[1:])
 	case "open":
+		if hasFlag(args[1:], "--demo") {
+			return demoCmd(ctx, e, args[1:])
+		}
 		return open(ctx, e, args[1:])
+	case "demo":
+		return demoCmd(ctx, e, args[1:])
 	case "search":
 		return search(ctx, e, args[1:])
 	case "export":

@@ -60,6 +60,9 @@ type Server struct {
 	Level    redact.Level
 	Redactor *redact.Redactor
 	UserHome string
+	// Demo marks a `shiplino demo` instance: synthetic data in a throwaway
+	// home. Reported by /api/v1/status so the web app shows a banner.
+	Demo bool
 
 	ingestMu    sync.Mutex
 	ingestStats IngestStats
@@ -246,6 +249,9 @@ func (s *Server) limits(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) status(w http.ResponseWriter, r *http.Request) {
 	out := map[string]any{"version": s.version}
+	if s.Demo {
+		out["demo"] = true
+	}
 	if s.Status != nil {
 		out["daemon"] = s.Status()
 	}
@@ -390,8 +396,8 @@ func LoadToken(home string) (string, error) {
 	return t, nil
 }
 
-// Listen binds 127.0.0.1 on the first free port in [base, base+10] and
-// records it in home/port.
+// Listen binds 127.0.0.1 on the first free port in [base, base+10] (any
+// free port when base is 0) and records it in home/port.
 func Listen(home string, base int) (net.Listener, error) {
 	var lastErr error
 	for p := base; p <= base+10; p++ {
@@ -400,7 +406,8 @@ func Listen(home string, base int) (net.Listener, error) {
 			lastErr = err
 			continue
 		}
-		if err := os.WriteFile(filepath.Join(home, "port"), []byte(strconv.Itoa(p)+"\n"), 0o600); err != nil {
+		port := ln.Addr().(*net.TCPAddr).Port
+		if err := os.WriteFile(filepath.Join(home, "port"), []byte(strconv.Itoa(port)+"\n"), 0o600); err != nil {
 			ln.Close()
 			return nil, err
 		}

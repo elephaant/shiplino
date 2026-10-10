@@ -4,6 +4,7 @@ import { seed } from "../shiplino";
 test("overview lists the projects and what needs you", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "All projects" })).toBeVisible();
+  await expect(page.getByText("Demo data.")).toHaveCount(0); // a real daemon, not the demo
   const table = page.getByRole("table");
   for (const name of ["demo-app", "api-server"]) {
     await expect(table.getByRole("link", { name, exact: true })).toBeVisible();

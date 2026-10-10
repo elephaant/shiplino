@@ -858,7 +858,7 @@ func (d *Daemon) commitCount(ctx context.Context, events []model.Event, cursors 
 		d.projects.annotate(&e)
 		// Watch on a session or turn start, or on the first event with a
 		// folder for agents whose starts carry none (Windsurf).
-		if e.Project != nil && e.Project.CWD != "" && e.Project.RepoRoot != "" && (e.Kind == model.KindSessionStart || e.Kind == model.KindTurnStart || d.noCWD(e.SessionID)) {
+		if e.Project != nil && e.Project.CWD != "" && e.Project.RepoRoot != "" && d.git != nil && (e.Kind == model.KindSessionStart || e.Kind == model.KindTurnStart || d.noCWD(e.SessionID)) {
 			d.git.Watch(e.Project.CWD)
 		}
 		d.eng.AnnotatePlan(&e) // plan merges are stored with their counts
