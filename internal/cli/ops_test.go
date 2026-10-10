@@ -193,6 +193,29 @@ func TestSearchAndExport(t *testing.T) {
 	if b, _ := os.ReadFile(file); !strings.HasPrefix(string(b), "[") || strings.Contains(string(b), "Old task") {
 		t.Fatalf("json file (since 1d): %s", b)
 	}
+
+	// One session's conversation as Markdown (no transcript here, so the
+	// stored data and a note saying so).
+	out.Reset()
+	if code := export(context.Background(), e, []string{"--session", "claude-code:a", "--format", "md"}); code != 0 ||
+		!strings.HasPrefix(out.String(), "# Fix login\n") || !strings.Contains(out.String(), "No transcript file is known") {
+		t.Fatalf("export md %d:\n%s", code, out)
+	}
+	md := filepath.Join(t.TempDir(), "a.md")
+	if code := export(context.Background(), e, []string{"--session", "claude-code:a", "--out", md}); code != 0 {
+		t.Fatalf("export md --out: %s", out)
+	}
+	if b, _ := os.ReadFile(md); !strings.HasPrefix(string(b), "# Fix login") {
+		t.Fatalf("md file: %s", b)
+	}
+	for _, args := range [][]string{{"--session", "claude-code:a", "--format", "csv"}, {"--session", "claude-code:a", "--since", "1d"}} {
+		if code := export(context.Background(), e, args); code != 2 {
+			t.Fatalf("%v: %d, want usage", args, code)
+		}
+	}
+	if code := export(context.Background(), e, []string{"--session", "claude-code:nope"}); code != 1 {
+		t.Fatalf("unknown session: %d", code)
+	}
 }
 
 func TestNotifyTest(t *testing.T) {

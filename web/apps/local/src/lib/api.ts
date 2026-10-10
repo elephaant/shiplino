@@ -424,3 +424,41 @@ export interface AgentEvent {
   actor_type?: string;
   data?: Record<string, unknown>;
 }
+
+/** One conversation entry, read on demand from the agent's own transcript (never stored). */
+export interface ConversationMessage {
+  role: "user" | "assistant" | "tool";
+  text?: string;
+  /** The agent's own tool name (tool messages). */
+  tool?: string;
+  ts?: string;
+  subagent?: string;
+  todos?: { text: string; status?: string }[];
+}
+
+export interface Conversation {
+  session_id: string;
+  /** "transcript": the agent's file on this machine; "stored": Shiplino's own record; "none": not shown. */
+  source: "transcript" | "stored" | "none";
+  reason?: "capture_minimal" | "unsupported_agent" | "no_transcript" | "outside_roots" | "transcript_missing";
+  note?: string;
+  capture_level: "minimal" | "standard" | "full";
+  total: number;
+  offset: number;
+  next_offset?: number;
+  truncated?: boolean;
+  messages: ConversationMessage[];
+}
+
+/** download fetches a file from the API and saves it in the browser. */
+export async function download(path: string, fallbackName: string): Promise<void> {
+  const res = await fetch(API_BASE + path, { credentials: "include" });
+  if (!res.ok) throw new ApiError(res.status, res.statusText);
+  const name = /filename="([^"]+)"/.exec(res.headers.get("Content-Disposition") ?? "")?.[1] ?? fallbackName;
+  const url = URL.createObjectURL(await res.blob());
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 10_000); // some browsers read it after click returns
+}

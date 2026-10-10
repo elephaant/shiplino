@@ -22,6 +22,7 @@ import (
 	"github.com/elephaant/shiplino/internal/store"
 	"github.com/elephaant/shiplino/pkg/engine"
 	"github.com/elephaant/shiplino/pkg/model"
+	"github.com/elephaant/shiplino/pkg/redact"
 )
 
 // DefaultPort is the first port tried; up to 10 more follow if it's busy.
@@ -51,6 +52,12 @@ type Server struct {
 	// origin allowed to call the API with credentials, for `next dev`.
 	// Empty in normal use: the API is strictly same-origin.
 	DevOrigin string
+	// Level and Redactor are the capture level and redaction rules applied
+	// to conversations read from transcripts; UserHome is where the
+	// agents' transcript folders are. Level "" means standard.
+	Level    redact.Level
+	Redactor *redact.Redactor
+	UserHome string
 
 	ingestMu    sync.Mutex
 	ingestStats IngestStats
@@ -84,6 +91,8 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("GET /api/v1/sessions/{id}", s.auth(s.getSession))
 	mux.Handle("GET /api/v1/sessions/{id}/events", s.auth(s.listEvents))
 	mux.Handle("GET /api/v1/sessions/{id}/files", s.auth(s.sessionFiles))
+	mux.Handle("GET /api/v1/sessions/{id}/conversation", s.auth(s.conversation))
+	mux.Handle("GET /api/v1/sessions/{id}/handoff", s.auth(s.handoff))
 	mux.Handle("GET /api/v1/timeline", s.auth(s.timeline))
 	mux.Handle("GET /api/v1/live", s.auth(s.live))
 	mux.Handle("GET /api/v1/status", s.auth(s.status))

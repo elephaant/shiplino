@@ -4,8 +4,10 @@ import {
   Bot,
   CircleCheck,
   CircleX,
+  ClipboardCopy,
   Coins,
   Copy,
+  Download,
   FileText,
   GitBranch,
   GitCommitHorizontal,
@@ -25,13 +27,14 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AgentDot } from "@/components/common/agent-dot";
 import { Empty } from "@/components/common/empty";
+import { ConversationView } from "@/components/session/conversation-view";
 import { DiffView } from "@/components/session/diff-view";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { type AgentEvent, api, type Session } from "@/lib/api";
+import { type AgentEvent, api, download, type Session } from "@/lib/api";
 import { agentName, formatCost, formatDuration, formatTokens, noUsageReason } from "@/lib/format";
 import { useLive } from "@/lib/live";
 
@@ -187,6 +190,24 @@ function SessionPage() {
   const usage = events.filter((e) => e.kind === "usage" && !e.data?.report);
   const end = session.ended_at && !session.ended_at.startsWith("0001") ? session.ended_at : session.last_event_at;
   const resume = session.agent === "claude-code" ? `claude --resume ${session.id.split(":")[1]}` : "";
+  const enc = encodeURIComponent(session.id);
+  const exportMarkdown = () =>
+    download(`/api/v1/sessions/${enc}/conversation?format=md`, "conversation.md").catch((err: Error) =>
+      toast.error(`Export failed: ${err.message}`),
+    );
+  // Safari only allows clipboard writes started by the click itself, so
+  // the text is handed over as a promise.
+  const copyHandoff = () =>
+    navigator.clipboard
+      .write([
+        new ClipboardItem({
+          "text/plain": api<{ text: string }>(`/api/v1/sessions/${enc}/handoff`).then(
+            (h) => new Blob([h.text], { type: "text/plain" }),
+          ),
+        }),
+      ])
+      .then(() => toast.success("Handoff prompt copied"))
+      .catch((err: Error) => toast.error(`Couldn't copy the handoff prompt: ${err.message}`));
 
   return (
     <div className="flex min-w-0 flex-col gap-4">
@@ -211,7 +232,7 @@ function SessionPage() {
             )}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Badge variant="secondary">{session.status === "waiting" ? "waiting on you" : session.status}</Badge>
           {resume && (
             <Button
@@ -222,6 +243,17 @@ function SessionPage() {
               <Copy className="size-3.5" /> Copy resume command
             </Button>
           )}
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={copyHandoff}
+            title="A short summary to continue this work in another agent or a new session"
+          >
+            <ClipboardCopy className="size-3.5" /> Copy handoff prompt
+          </Button>
+          <Button size="sm" variant="outline" onClick={exportMarkdown}>
+            <Download className="size-3.5" /> Export Markdown
+          </Button>
         </div>
       </div>
 
@@ -262,6 +294,7 @@ function SessionPage() {
       <Tabs defaultValue="timeline">
         <TabsList>
           <TabsTrigger value="timeline">Timeline</TabsTrigger>
+          <TabsTrigger value="conversation">Conversation</TabsTrigger>
           <TabsTrigger value="files">Changes ({session.files?.length ?? 0})</TabsTrigger>
           <TabsTrigger value="commands">Commands ({commands.length})</TabsTrigger>
           <TabsTrigger value="usage">Usage</TabsTrigger>
@@ -305,6 +338,10 @@ function SessionPage() {
               })}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="conversation">
+          <ConversationView sessionId={session.id} />
         </TabsContent>
 
         <TabsContent value="files">

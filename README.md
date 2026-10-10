@@ -33,6 +33,7 @@ Read more: [How it works](docs/how-it-works.md).
 - **Live board per project:** every repo becomes a project automatically (git remote, worktrees, folders). Each has its own kanban, Running → Waiting on you → Review → Done, with automatic weekly sprints, and there's an "All projects" overview with a "Needs you" queue.
 - **Agents and subagents:** many sessions at once, subagents nested under their parent, live "now doing", and idle detection.
 - **Session detail:** a timeline of every prompt, tool call, command, file edit and subagent, plus per-file changes (diffs at the `full` capture level) and per-response token usage.
+- **Conversation, export and handoff:** a session's prompts, replies and tool calls, read on demand from the agent's own transcript on your machine (never copied into Shiplino's database or synced), with secrets redacted. Export it as Markdown, or copy a short handoff prompt (goal, files changed, open todos, failing commands, last reply) to continue in another agent.
 - **Timeline:** a live Gantt of sessions and subagents (running, waiting on you, idle).
 - **Cost and tokens** per agent, model, project and day. The agent's own figures are used when it reports them, otherwise list prices, and the source of every number is shown.
 - **Insights:** spend, agent working time, time spent waiting on you, and code changed, compared with the previous period.
@@ -123,6 +124,7 @@ make bench     # full load test
 shiplino setup | uninstall [--purge]   connect agents, install the background service
 shiplino status | ls | open | doctor   what's running, recent sessions, the board, health checks
 shiplino search <words> | export       find anything; sessions as CSV or JSON
+shiplino export --session <id>         one conversation as Markdown
 shiplino backfill [--since 30d]        import history from before setup
 shiplino pause [--for 1h] | resume     stop and restart recording
 shiplino wrap -- <command>             record a CLI agent that has no hooks
