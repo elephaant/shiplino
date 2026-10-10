@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  ArrowUpCircle,
   Bell,
   CircleAlert,
   CircleCheck,
@@ -170,6 +171,34 @@ function SyncCard({ sync }: { sync: SyncState }) {
   );
 }
 
+function UpdateRow({ s }: { s: Settings }) {
+  const u = s.update;
+  if (!u) return null;
+  if (u.dev) return <span className="text-muted-foreground">Development build, not updated from releases</span>;
+  const last = u.checked_at ? ` · last checked ${formatAgo(u.checked_at)}` : "";
+  if (!u.check) {
+    return (
+      <>
+        Checked only when you run <Mono>shiplino update</Mono>
+        <span className="text-muted-foreground text-xs">{last}</span>
+        <p className="text-muted-foreground text-xs">
+          Daily checks ask api.github.com, so they're off until you set <Mono>[update] check = true</Mono>.
+        </p>
+      </>
+    );
+  }
+  return (
+    <>
+      {u.auto_install ? "Checked daily and installed automatically" : "Checked daily"}
+      <span className="text-muted-foreground text-xs">
+        {u.channel ? ` · ${u.channel} channel` : ""}
+        {last}
+      </span>
+      {u.error && <p className="text-status-waiting text-xs">Last check failed: {u.error}</p>}
+    </>
+  );
+}
+
 export default function SettingsPage() {
   const [s, setS] = useState<Settings | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -222,6 +251,35 @@ export default function SettingsPage() {
         <h1 className="font-semibold text-xl tracking-tight">Settings</h1>
         <p className="text-muted-foreground text-sm">Recording, agents, privacy and notifications on this machine.</p>
       </div>
+
+      {s.update?.available && (
+        <Card className="gap-3 border-primary/40">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ArrowUpCircle className="size-4 text-primary" aria-hidden /> Shiplino {s.update.available} is available
+            </CardTitle>
+            <CardDescription>
+              You have {s.version}. Run <Mono>shiplino update</Mono> in a terminal: it verifies the download, keeps this
+              version for <Mono>shiplino update --rollback</Mono> and restarts the daemon.
+              {s.update.url && (
+                <>
+                  {" "}
+                  <a className="underline underline-offset-2" href={s.update.url} target="_blank" rel="noreferrer">
+                    What's new
+                  </a>
+                </>
+              )}
+            </CardDescription>
+          </CardHeader>
+          {s.update.install_error && (
+            <CardContent>
+              <p className="text-status-waiting text-xs">
+                Installing it automatically failed: {s.update.install_error}
+              </p>
+            </CardContent>
+          )}
+        </Card>
+      )}
 
       <Card className="gap-3">
         <CardHeader>
@@ -437,6 +495,9 @@ export default function SettingsPage() {
         <CardContent>
           <Row label="Version">
             <Mono>{s.version}</Mono>
+          </Row>
+          <Row label="Updates">
+            <UpdateRow s={s} />
           </Row>
           <Row label="Address">
             <Mono>http://localhost:{s.port}</Mono>

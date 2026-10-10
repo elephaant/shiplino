@@ -116,6 +116,9 @@ func status(ctx context.Context, e *env, args []string) int {
 	if spool.Paused(e.home, time.Now()) {
 		fmt.Fprintln(e.out, "⏸  recording is paused (`shiplino resume`)")
 	}
+	if h := updateHint(e); h != "" {
+		fmt.Fprintln(e.out, h)
+	}
 	list, err := c.sessions(ctx, 200)
 	if err != nil {
 		fmt.Fprintln(e.errOut, err)
@@ -362,6 +365,7 @@ func doctor(ctx context.Context, e *env, args []string) int {
 			checks = append(checks, check{ok: true, warn: true, name: "Notify", detail: "no notification service found", fixHint: notifyMissingHint()})
 		}
 		checks = append(checks, pushChecks(e.home, c.Notify.Push.Targets)...)
+		checks = append(checks, updateChecks(e, c)...)
 	}
 	if spool.Paused(e.home, time.Now()) {
 		checks = append(checks, check{ok: true, warn: true, name: "Recording", detail: "paused", fixHint: "shiplino resume"})

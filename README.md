@@ -49,7 +49,7 @@ Read more: [How it works](docs/how-it-works.md).
 ## Planned
 
 - Integrations: Linear and Jira
-- VS Code / Cursor extension, an optional read-only MCP server, auto-update
+- VS Code / Cursor extension, an optional read-only MCP server
 - **Virtual office:** pixel characters that show what each agent is doing
 
 ## Supported agents
@@ -85,6 +85,8 @@ The installer downloads the release for your OS and CPU, **verifies its SHA-256 
 To see exactly what setup would change in each agent's config first, run `shiplino setup --dry-run`: it prints a unified diff per file and writes nothing. The Settings → Agents page shows the same diff before you connect or remove an agent. Every file Shiplino edits is backed up to `~/.shiplino/backups/` first.
 
 Prefer to run the daemon yourself (a terminal, tmux, your own process manager)? `shiplino setup --no-service` connects the agents without registering a login item; then start `shiplino daemon` when you want recording. Until it runs, hook events wait in `~/.shiplino/spool/`.
+
+Update with `shiplino update` (same checksum and signature checks, atomic replace, `--rollback` to go back); daily update checks are opt-in. See [Updating](docs/updating.md).
 
 Remove everything with `shiplino uninstall` (add `--purge` to delete recorded data, or `--dry-run` to see what would change).
 

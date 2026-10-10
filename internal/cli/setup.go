@@ -20,6 +20,7 @@ import (
 	"github.com/elephaant/shiplino/internal/notify"
 	"github.com/elephaant/shiplino/internal/service"
 	"github.com/elephaant/shiplino/internal/spool"
+	"github.com/elephaant/shiplino/internal/update"
 )
 
 // env is what commands need from the outside world; tests replace it.
@@ -33,6 +34,7 @@ type env struct {
 	notifySend  func(context.Context, notify.Note) error // nil = the OS notifier
 	openURL     func(string) error                       // nil = the default browser
 	in          io.Reader                                // nil = os.Stdin
+	upd         *update.Updater                          // nil = GitHub, cosign and real binaries
 }
 
 // browse opens a URL in the user's browser.
