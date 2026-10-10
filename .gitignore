@@ -67,3 +67,6 @@ Thumbs.db
 
 # Personal / private Claude Code notes (never publish)
 CLAUDE.local.md
+
+# Local agent worktrees
+.claude/worktrees/
