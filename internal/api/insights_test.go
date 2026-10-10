@@ -23,15 +23,16 @@ func TestBuildInsights(t *testing.T) {
 	all := []*engine.Session{
 		{ID: "cc:1", RootID: "cc:1", Agent: "claude-code", ProjectID: "p1", Model: "opus", StartedAt: day(0), BestCostUSD: 2, CostUSD: 1.5, CostSource: "reported",
 			ActiveMS: 60_000, WaitingMS: 5000, Turns: 3, InputTokens: 100, OutputTokens: 10, Files: []string{"a"}, LinesAdded: 5,
-			Links: []engine.Link{{Kind: "commit"}, {Kind: "pr"}}},
+			Links: []engine.Link{{Kind: "commit"}, {Kind: "pr", URL: "https://example.test/o/r/pull/1"}, {Kind: "pr", URL: "https://example.test/o/r/pull/2"}}},
 		{ID: "cc:1/sub:x", RootID: "cc:1", ParentID: "cc:1", Agent: "claude-code", Model: "haiku", StartedAt: day(1), CostUSD: 0.5, InputTokens: 50},
 		{ID: "cx:2", RootID: "cx:2", Agent: "codex", ProjectID: "p2", Model: "gpt", StartedAt: day(6), InputTokens: 1000, Usage: engine.UsageTokens},
 		{ID: "cc:old", RootID: "cc:old", Agent: "claude-code", ProjectID: "p1", StartedAt: prev.Add(time.Hour), BestCostUSD: 7},
 		{ID: "cc:older", RootID: "cc:older", Agent: "claude-code", StartedAt: prev.AddDate(0, 0, -1), BestCostUSD: 100},
 	}
-	in := buildInsights(all, from, to, prev, 7, nil, map[string]string{"p1": "api", "p2": "site"})
+	in := buildInsights(all, from, to, prev, 7, nil, map[string]string{"p1": "api", "p2": "site"},
+		map[string]bool{"https://example.test/o/r/pull/1": true})
 
-	if in.Totals.Sessions != 2 || in.Totals.CostUSD != 2 || in.Totals.InputTokens != 1150 || in.Totals.Commits != 1 || in.Totals.PRs != 1 || in.Totals.ActiveMS != 60_000 {
+	if in.Totals.Sessions != 2 || in.Totals.CostUSD != 2 || in.Totals.InputTokens != 1150 || in.Totals.Commits != 1 || in.Totals.PRs != 2 || in.Totals.PRsMerged != 1 || in.Totals.ActiveMS != 60_000 {
 		t.Fatalf("totals: %+v", in.Totals)
 	}
 	if in.Previous.Sessions != 1 || in.Previous.CostUSD != 7 {

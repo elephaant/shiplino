@@ -30,6 +30,7 @@ type Totals struct {
 	LinesRemoved int     `json:"lines_removed"`
 	Commits      int     `json:"commits"`
 	PRs          int     `json:"prs"`
+	PRsMerged    int     `json:"prs_merged"` // PRs whose state is merged (needs the GitHub integration)
 	InputTokens  int64   `json:"input_tokens"`
 	OutputTokens int64   `json:"output_tokens"`
 	CacheRead    int64   `json:"cache_read_tokens"`
@@ -113,7 +114,13 @@ func (s *Server) insights(w http.ResponseWriter, r *http.Request) {
 			names[p.ID], roots[p.ID] = p.Name, projectRoot(p.Project)
 		}
 	}
-	out := buildInsights(all, from, to, prevFrom, days, tools, names)
+	merged := map[string]bool{}
+	if prs, err := s.st.PRs(r.Context()); err == nil {
+		for u, pr := range prs {
+			merged[u] = pr.State == "merged"
+		}
+	}
+	out := buildInsights(all, from, to, prevFrom, days, tools, names, merged)
 	// Loop targets are shown (and synced) relative to the project.
 	for i, l := range out.Failures.Loops {
 		out.Failures.Loops[i].Target = relPath(roots[l.Project], l.Target)
@@ -121,7 +128,7 @@ func (s *Server) insights(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, out)
 }
 
-func buildInsights(all []*engine.Session, from, to, prevFrom time.Time, days int, tools []store.ToolCount, names map[string]string) Insights {
+func buildInsights(all []*engine.Session, from, to, prevFrom time.Time, days int, tools []store.ToolCount, names map[string]string, merged map[string]bool) Insights {
 	out := Insights{From: from, To: to, Days: days, Tools: tools, CostSources: map[string]int{}}
 	if out.Tools == nil {
 		out.Tools = []store.ToolCount{}
@@ -187,6 +194,9 @@ func buildInsights(all []*engine.Session, from, to, prevFrom time.Time, days int
 					t.Commits++
 				case "pr":
 					t.PRs++
+					if merged[l.URL] {
+						t.PRsMerged++
+					}
 				}
 			}
 		}

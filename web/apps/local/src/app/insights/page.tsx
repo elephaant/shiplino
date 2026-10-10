@@ -8,6 +8,7 @@ import { DailyChart } from "@/components/insights/daily-chart";
 import { Failures } from "@/components/insights/failures";
 import { Kpis } from "@/components/insights/kpis";
 import { PlanLimits } from "@/components/insights/plan-limits";
+import { ShareWeek } from "@/components/insights/share-week";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -107,6 +108,7 @@ export default function InsightsPage() {
               <Download className="size-3.5" /> CSV
             </a>
           </Button>
+          <ShareWeek project={project} apiEquivalent={onPlan} />
         </div>
       </div>
 

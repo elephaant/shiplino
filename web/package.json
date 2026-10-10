@@ -8,6 +8,7 @@
     "dev": "npm run dev -w @shiplino/local",
     "check": "npm run check -w @shiplino/ui -w @shiplino/local -w @shiplino/e2e",
     "typecheck": "npm run typecheck -w @shiplino/local -w @shiplino/e2e",
+    "test": "npm test -w @shiplino/local",
     "e2e": "npm test -w @shiplino/e2e"
   }
 }
