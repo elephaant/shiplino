@@ -142,6 +142,18 @@ type Link struct {
 	Action  string `json:"action,omitempty"`
 	Message string `json:"message,omitempty"` // commit subject
 
+	// Commit authorship (see docs/how-it-works.md): of the lines the
+	// commit added, how many came from the agent's file edits, from
+	// elsewhere, or can't be told apart. Authorship is "observed" (matched
+	// against the edits' diffs), "partial" or "unknown" (no diffs: capture
+	// level below full); empty for commits recorded before it existed.
+	Lines        int    `json:"lines,omitempty"`
+	AgentLines   int    `json:"agent_lines,omitempty"`
+	HumanLines   int    `json:"human_lines,omitempty"`
+	UnknownLines int    `json:"unknown_lines,omitempty"`
+	AgentFiles   int    `json:"agent_files,omitempty"` // committed files the agent edited
+	Authorship   string `json:"authorship,omitempty"`
+
 	// Pull request state, filled in by the API from the GitHub
 	// integration when it's on (never by the engine).
 	State  string `json:"state,omitempty"`  // open | draft | merged | closed
@@ -187,7 +199,7 @@ func (s *Session) FilesChanged() int { return len(s.Files) }
 // Rev identifies the engine's folding rules. Bump it whenever Apply would
 // produce different sessions from the same events (a new field, a fix);
 // the daemon then rebuilds stored sessions from their events once.
-const Rev = 12
+const Rev = 13
 
 // Engine folds events into sessions. It is not safe for concurrent use;
 // the daemon feeds it from a single goroutine.
@@ -420,7 +432,16 @@ func (e *Engine) Apply(ev model.Event) []*Session {
 		}
 
 	case model.KindGitCommit:
-		s.addLink(Link{Kind: "commit", Ref: str(ev.Data, "sha"), Message: str(ev.Data, "message"), Action: str(ev.Data, "attribution")})
+		var files int
+		switch f := ev.Data["agent_files"].(type) {
+		case []any:
+			files = len(f)
+		case []string:
+			files = len(f)
+		}
+		s.addLink(Link{Kind: "commit", Ref: str(ev.Data, "sha"), Message: str(ev.Data, "message"), Action: str(ev.Data, "attribution"),
+			Lines: num(ev.Data, "lines_added"), AgentLines: num(ev.Data, "agent_lines_added"), HumanLines: num(ev.Data, "human_lines_added"),
+			UnknownLines: num(ev.Data, "unknown_lines_added"), AgentFiles: files, Authorship: str(ev.Data, "authorship")})
 		// Committed work is done (the plan's default rule: Review → Done on commit).
 		if s.Status == StatusReview {
 			s.Status = StatusDone

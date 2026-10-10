@@ -8,11 +8,35 @@ import (
 	"testing"
 	"time"
 
+	"github.com/elephaant/shiplino/internal/store"
 	"github.com/elephaant/shiplino/pkg/engine"
 	"github.com/elephaant/shiplino/pkg/insights"
 	"github.com/elephaant/shiplino/pkg/model"
 	"github.com/elephaant/shiplino/pkg/projects"
 )
+
+func TestBuildAuthorship(t *testing.T) {
+	loc := time.FixedZone("test", 5*3600+1800)
+	from := time.Date(2026, 10, 3, 0, 0, 0, 0, loc)
+	at := func(d int) time.Time { return from.AddDate(0, 0, d).Add(time.Hour).UTC() }
+	a := buildAuthorship([]store.CommitLines{
+		{TS: at(0), SHA: "a", Agent: "claude-code", ProjectID: "p1", AgentLines: 8, HumanLines: 2, Authorship: "observed"},
+		{TS: at(0), SHA: "b", Agent: "codex", ProjectID: "p1", UnknownLines: 5, Authorship: "unknown"},
+		{TS: at(6), SHA: "c", Agent: "claude-code", AgentLines: 1, HumanLines: 1, Authorship: "observed"},
+	}, from, 7, map[string]string{"p1": "api"})
+	if a.Totals != (LineSplit{Commits: 3, Agent: 9, Human: 3, Unknown: 5}) {
+		t.Errorf("totals: %+v", a.Totals)
+	}
+	if len(a.Daily) != 7 || a.Daily[0].Key != "2026-10-03" || a.Daily[0].Agent != 8 || a.Daily[0].Unknown != 5 || a.Daily[6].Commits != 1 {
+		t.Errorf("daily: %+v", a.Daily)
+	}
+	if len(a.Agents) != 2 || a.Agents[0].Key != "claude-code" || a.Agents[0].Agent != 9 {
+		t.Errorf("agents: %+v", a.Agents)
+	}
+	if len(a.Projects) != 2 || a.Projects[0].Name != "api" || a.Projects[1].Name != "Unsorted" {
+		t.Errorf("projects: %+v", a.Projects)
+	}
+}
 
 func TestBuildInsights(t *testing.T) {
 	loc := time.FixedZone("test", 5*3600+1800)

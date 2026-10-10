@@ -140,6 +140,29 @@ func (s *Store) FileEditEvents(ctx context.Context, rootID, actorID, path string
 	return out, rows.Err()
 }
 
+// CommitEvents returns every stored git.commit event that carries line
+// authorship, oldest first.
+func (s *Store) CommitEvents(ctx context.Context) ([]model.Event, error) {
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT body FROM events WHERE kind = 'git.commit' AND json_extract(body, '$.data.authorship') IS NOT NULL ORDER BY ts, id`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []model.Event
+	for rows.Next() {
+		var body []byte
+		if err := rows.Scan(&body); err != nil {
+			return nil, err
+		}
+		var e model.Event
+		if json.Unmarshal(body, &e) == nil {
+			out = append(out, e)
+		}
+	}
+	return out, rows.Err()
+}
+
 func (s *Store) sessionBodies(ctx context.Context, q string, args ...any) ([]*engine.Session, error) {
 	rows, err := s.db.QueryContext(ctx, q, args...)
 	if err != nil {

@@ -67,6 +67,29 @@ export function commitEvidence(attribution?: string): EvidenceInfo {
   }
 }
 
+/** Commit line authorship: matched against the edits' diffs, or unknown below capture level full. */
+export function authorshipEvidence(authorship?: string): EvidenceInfo {
+  switch (authorship) {
+    case "observed":
+      return {
+        evidence: "observed",
+        detail: "Each committed line was matched against the diffs of the agent's file edits.",
+      };
+    case "partial":
+      return {
+        evidence: "observed",
+        detail:
+          "Matched against the agent's diffs where they were kept. Some edits had none (or a cut one), so part of the lines is unknown.",
+      };
+    default:
+      return {
+        evidence: "unknown",
+        detail:
+          'Shiplino knows which committed files the agent edited, but splitting lines needs each edit\'s diff: set capture_level = "full".',
+      };
+  }
+}
+
 /** Project assignment: git confirms a repository; otherwise it's grouped by folder. */
 export function projectEvidence(kind?: string): EvidenceInfo {
   switch (kind) {

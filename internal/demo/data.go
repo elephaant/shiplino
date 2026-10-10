@@ -136,6 +136,15 @@ func (g git) event() model.Event {
 	e.Project = &model.Project{CWD: root, RepoRoot: root}
 	e.Data = map[string]any{"sha": g.sha, "message": g.message, "author": "dev", "files": g.files, "files_changed": len(g.files),
 		"lines_added": g.added, "lines_removed": g.removed, "attribution": cmp.Or(g.attribution, "exact")}
+	// Line authorship: most lines are the agent's, a few the user's
+	// (picked from the sha, so the random sequence stays as it was).
+	human := g.added * int(g.sha[len(g.sha)-1]%4) / 20
+	files := make([]any, len(g.files))
+	for i, f := range g.files {
+		files[i] = f
+	}
+	e.Data["agent_lines_added"], e.Data["human_lines_added"], e.Data["unknown_lines_added"] = g.added-human, human, 0
+	e.Data["authorship"], e.Data["agent_files"] = "observed", files
 	e.DedupKey = sid + ":git:" + g.sha
 	return e
 }

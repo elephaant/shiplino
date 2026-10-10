@@ -18,6 +18,9 @@ type Commit struct {
 	Files        []string // absolute paths
 	LinesAdded   int
 	LinesRemoved int
+	// Added is each file's added line count (by absolute path); -1 for a
+	// binary file.
+	Added map[string]int
 }
 
 // Watcher notices new commits in worktrees it has been told about. It
@@ -108,7 +111,7 @@ func (w *Watcher) commits(root, from, to string, since time.Time) []Commit {
 			continue
 		}
 		sec, _ := strconv.ParseInt(f[1], 10, 64)
-		c := Commit{SHA: f[0], When: time.Unix(sec, 0), Author: f[2], Subject: f[3], Worktree: root}
+		c := Commit{SHA: f[0], When: time.Unix(sec, 0), Author: f[2], Subject: f[3], Worktree: root, Added: map[string]int{}}
 		if c.When.Before(since) {
 			continue
 		}
@@ -117,11 +120,16 @@ func (w *Watcher) commits(root, from, to string, since time.Time) []Commit {
 			if len(p) != 3 {
 				continue
 			}
-			a, _ := strconv.Atoi(p[0]) // "-" for binary files counts as 0
+			a, err := strconv.Atoi(p[0]) // "-" for binary files counts as 0
 			r, _ := strconv.Atoi(p[1])
 			c.LinesAdded += a
 			c.LinesRemoved += r
-			c.Files = append(c.Files, filepath.Join(root, filepath.FromSlash(p[2])))
+			f := filepath.Join(root, filepath.FromSlash(p[2]))
+			c.Files = append(c.Files, f)
+			if err != nil {
+				a = -1
+			}
+			c.Added[f] = a
 		}
 		out = append(out, c)
 	}

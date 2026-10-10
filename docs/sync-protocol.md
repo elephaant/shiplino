@@ -63,6 +63,7 @@ The sync service applies the same filter again when it receives events, so an ol
 | Outcomes and timing | `ok`, `exit_code`, `duration_ms`, `status`, `reason`, `signal`, `interrupted`, `stop_reason`, `recoverable`, `permission_mode`, `source`, `trigger`, `denied`, and a shell command's `program` (its program name, e.g. `go`: a checked token of at most 32 characters of `[a-z0-9._-]`, never the command) |
 | Files | `path`, `file_path`, `files`, `file_paths`, `paths` (project-relative), `lines_added`, `lines_removed`, `lines_source`, `files_changed`, `patch_omitted`, and a file tool's `input_summary` (its path) |
 | Git | `sha`, `branch`, `to`, `number`, `state`, `action`, `head`, and a pull request's `url` |
+| Commit line authorship | `agent_lines_added`, `human_lines_added`, `unknown_lines_added` (counts), `authorship` (`observed`, `partial`, `unknown`), `agent_files` (project-relative paths); never the per-file split |
 | Plan progress | `plan_total`, `plan_done` (counts, not the items) |
 | Plan usage windows | `limit_window`, `window_minutes`, `used_percent`, `limit_reached`, `resets_at`, `limit_id`, `plan_type`, `limit_source` |
 | Waiting | `message`, replaced by a generic text such as "Waiting for your approval" |

@@ -3,6 +3,7 @@
 import { ChartColumn, Download, Radio } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Empty } from "@/components/common/empty";
+import { Authorship } from "@/components/insights/authorship";
 import { ByAgent, ByProject, CostSources, Models, Tools } from "@/components/insights/breakdowns";
 import { DailyChart } from "@/components/insights/daily-chart";
 import { Failures } from "@/components/insights/failures";
@@ -142,6 +143,7 @@ export default function InsightsPage() {
               <Tools data={data} />
             </div>
           </div>
+          <Authorship data={data} />
           <Models rows={data.models} />
           <Failures f={data.failures} projectNames={Object.fromEntries(projects.map((p) => [p.id, p.name]))} />
         </>

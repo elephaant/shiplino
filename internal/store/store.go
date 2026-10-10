@@ -494,6 +494,51 @@ func (s *Store) EachEvent(ctx context.Context, fn func(model.Event) error) error
 	return rows.Err()
 }
 
+// CommitLines is one commit's line authorship (see the daemon's
+// commitAuthorship), once per commit even when several sessions share it.
+type CommitLines struct {
+	TS                    time.Time
+	SHA, Agent, ProjectID string
+	AgentLines            int // from the agents' edits
+	HumanLines            int // from elsewhere
+	UnknownLines          int // can't be told apart (no diffs)
+	Authorship            string
+}
+
+// CommitLines lists the commits in [from, to) that carry line authorship,
+// optionally for one project, oldest first.
+func (s *Store) CommitLines(ctx context.Context, from, to time.Time, projectID string) ([]CommitLines, error) {
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT e.ts, coalesce(json_extract(e.body, '$.data.sha'), ''), e.agent, coalesce(ss.project_id, ''),
+		        coalesce(json_extract(e.body, '$.data.agent_lines_added'), 0), coalesce(json_extract(e.body, '$.data.human_lines_added'), 0),
+		        coalesce(json_extract(e.body, '$.data.unknown_lines_added'), 0), json_extract(e.body, '$.data.authorship')
+		 FROM events e LEFT JOIN sessions ss ON ss.id = e.session_id
+		 WHERE e.kind = 'git.commit' AND e.ts >= ? AND e.ts < ? AND (? = '' OR ss.project_id = ?)
+		   AND json_extract(e.body, '$.data.authorship') IS NOT NULL
+		 ORDER BY e.ts, e.id`,
+		from.UnixMilli(), to.UnixMilli(), projectID, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []CommitLines
+	seen := map[string]bool{}
+	for rows.Next() {
+		var c CommitLines
+		var ts int64
+		if err := rows.Scan(&ts, &c.SHA, &c.Agent, &c.ProjectID, &c.AgentLines, &c.HumanLines, &c.UnknownLines, &c.Authorship); err != nil {
+			return nil, err
+		}
+		if seen[c.SHA] {
+			continue
+		}
+		seen[c.SHA] = true
+		c.TS = time.UnixMilli(ts).UTC()
+		out = append(out, c)
+	}
+	return out, rows.Err()
+}
+
 // ToolCount is how often a tool was called in a time range.
 type ToolCount struct {
 	Tool  string `json:"tool"` // the agent's own tool name

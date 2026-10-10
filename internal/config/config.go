@@ -26,6 +26,16 @@ type Config struct {
 	Integrations Integrations `toml:"integrations"`
 	Service      Service      `toml:"service"`
 	Update       Update       `toml:"update"`
+	Git          Git          `toml:"git"`
+}
+
+// Git holds opt-in writes to the user's repositories. The daemon itself
+// only ever reads them.
+type Git struct {
+	// Notes lets `shiplino git notes` write each recorded commit's line
+	// authorship as a git note under refs/notes/shiplino. Notes are never
+	// pushed.
+	Notes bool `toml:"notes"`
 }
 
 // Service says how the daemon runs.
@@ -314,6 +324,12 @@ auto_install = false
 channel = ""
 # Refuse updates unless cosign is installed to verify the signature.
 require_signature = false
+
+[git]
+# Let ` + "`shiplino git notes`" + ` attach each recorded commit's line authorship
+# (lines by agents / by others / unknown) as a git note in refs/notes/shiplino.
+# Notes stay local: Shiplino never pushes them.
+notes = false
 
 ` + syncHeader + `enabled = false
 projects = []

@@ -28,6 +28,7 @@ import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AgentDot } from "@/components/common/agent-dot";
+import { CommitLines } from "@/components/common/commit-lines";
 import { Empty } from "@/components/common/empty";
 import { ConversationView } from "@/components/session/conversation-view";
 import { DiffView } from "@/components/session/diff-view";
@@ -205,6 +206,7 @@ function SessionPage() {
   if (!session) return <Skeleton className="h-96 w-full" />;
 
   const commands = events.filter((e) => e.kind === "shell.exec");
+  const commits = (session.links ?? []).filter((l) => l.kind === "commit");
   const root = session.cwd ? `${session.cwd.replace(/\/$/, "")}/` : "";
   const rel = (p: string) => (root && p.startsWith(root) ? p.slice(root.length) : p);
   const usage = events.filter((e) => e.kind === "usage" && !e.data?.report);
@@ -330,6 +332,25 @@ function SessionPage() {
 
       {(session.plan_total ?? 0) > 0 && (
         <PlanChecklist items={session.plan_items ?? []} done={session.plan_done ?? 0} total={session.plan_total ?? 0} />
+      )}
+
+      {commits.length > 0 && (
+        <Card className="gap-2 py-3">
+          <CardContent className="flex flex-col gap-2 px-4">
+            <h2 className="text-xs font-medium text-muted-foreground">Commits</h2>
+            {commits.map((l) => (
+              <div key={l.ref} className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-0.5 text-sm">
+                <span className="flex min-w-0 items-center gap-2">
+                  <GitCommitHorizontal className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+                  <span className="font-mono text-xs">{l.ref?.slice(0, 7)}</span>
+                  <span className="min-w-0 truncate">{l.message}</span>
+                  <EvidenceBadge {...commitEvidence(l.action)} />
+                </span>
+                <CommitLines link={l} className="ml-auto" />
+              </div>
+            ))}
+          </CardContent>
+        </Card>
       )}
 
       <Tabs defaultValue="timeline">
