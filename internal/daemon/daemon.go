@@ -15,9 +15,11 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
@@ -70,6 +72,13 @@ type Stats struct {
 	Bad     int64 `json:"bad"`     // lines or payloads that failed to decode
 }
 
+// counters back Stats. They are atomic: lines are parsed concurrently.
+type counters struct{ lines, events, unknown, bad atomic.Int64 }
+
+func (c *counters) snapshot() Stats {
+	return Stats{Lines: c.lines.Load(), Events: c.events.Load(), Unknown: c.unknown.Load(), Bad: c.bad.Load()}
+}
+
 // lineParser turns one line into events. blob, if set, is a spool blob to
 // delete once the events are committed.
 type lineParser func(line []byte, ref string) (events []model.Event, blob string)
@@ -83,10 +92,10 @@ type Daemon struct {
 	user      string
 	reapAfter time.Duration
 
-	mu          sync.Mutex // guards eng, offsets, stats, onChange during a pass
+	mu          sync.Mutex // guards eng, offsets, onChange during a pass
 	eng         *engine.Engine
 	offsets     map[string]int64
-	stats       Stats
+	stats       counters
 	transcripts map[string]string // transcript path → agent name
 	// tstate is each transcript file's parser state (model, turn, …),
 	// rebuilt by a warmup pass after a restart.
@@ -101,6 +110,9 @@ type Daemon struct {
 
 	// OnChange, if set, is called after each commit with the sessions that changed.
 	OnChange func([]*engine.Session)
+	// OnCommit, if set, is called after each commit with the number of
+	// events it carried and how long the transaction took (benchmarks).
+	OnCommit func(events int, took time.Duration)
 }
 
 // New loads stored state and returns a daemon for the Shiplino home.
@@ -226,7 +238,7 @@ func (d *Daemon) noCWD(sessionID string) bool {
 func (d *Daemon) Health() Health {
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	h := Health{Stats: d.stats, Transcripts: len(d.transcripts), Paused: spool.Paused(d.home, time.Now()), WatchError: d.watchErr}
+	h := Health{Stats: d.stats.snapshot(), Transcripts: len(d.transcripts), Paused: spool.Paused(d.home, time.Now()), WatchError: d.watchErr}
 	files, _ := filepath.Glob(filepath.Join(d.spoolRoot, "*", "*.jsonl"))
 	for _, f := range files {
 		fi, err := os.Stat(f)
@@ -242,11 +254,7 @@ func (d *Daemon) Health() Health {
 }
 
 // Stats returns a snapshot of the counters.
-func (d *Daemon) Stats() Stats {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	return d.stats
-}
+func (d *Daemon) Stats() Stats { return d.stats.snapshot() }
 
 // Run processes the spool until ctx is cancelled, reacting to file
 // changes and rescanning every few seconds as a safety net.
@@ -324,7 +332,8 @@ func (d *Daemon) watchDirs(w *fsnotify.Watcher) {
 	}
 }
 
-// Poll processes every new complete line in the spool once.
+// Poll processes every new complete line in the spool and the tailed
+// transcripts once.
 func (d *Daemon) Poll(ctx context.Context) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
@@ -342,18 +351,22 @@ func (d *Daemon) Poll(ctx context.Context) error {
 			errs = append(errs, err)
 		}
 	}
-	for _, path := range files {
-		if ctx.Err() != nil {
-			return ctx.Err()
-		}
+	spoolSrcs := make([]source, len(files))
+	for i, path := range files {
 		rel, _ := filepath.Rel(d.spoolRoot, path)
-		src := "spool/" + filepath.ToSlash(rel)
-		if err := d.processFile(ctx, path, src, d.parseLine); err != nil {
-			errs = append(errs, fmt.Errorf("%s: %w", src, err))
+		spoolSrcs[i] = source{path: path, src: "spool/" + filepath.ToSlash(rel), parse: d.parseLine}
+	}
+	failed, err := d.ingest(ctx, spoolSrcs)
+	if err != nil {
+		return errors.Join(append(errs, err)...)
+	}
+	for _, s := range spoolSrcs {
+		if err := failed[s.src]; err != nil {
+			errs = append(errs, fmt.Errorf("%s: %w", s.src, err))
 			continue
 		}
-		if err := d.maybeReap(ctx, path, src); err != nil {
-			errs = append(errs, fmt.Errorf("reap %s: %w", src, err))
+		if err := d.maybeReap(ctx, s.path, s.src); err != nil {
+			errs = append(errs, fmt.Errorf("reap %s: %w", s.src, err))
 		}
 	}
 	if err := d.checkCommits(ctx); err != nil {
@@ -368,14 +381,13 @@ func (d *Daemon) Poll(ctx context.Context) error {
 		d.discover()
 	}
 	// Transcripts are read-only: tailed from the saved offset, never deleted.
+	var tsrcs []source
+	mainFile := map[string]string{} // source → its transcript, for main files
 	for path, agent := range d.transcripts {
 		files := []string{path}
 		subs, _ := filepath.Glob(filepath.Join(strings.TrimSuffix(path, ".jsonl"), "subagents", "*.jsonl"))
 		files = append(files, subs...)
 		for _, f := range files {
-			if ctx.Err() != nil {
-				return ctx.Err()
-			}
 			src := "transcript:" + f
 			var mod time.Time
 			if fi, err := os.Stat(f); err == nil {
@@ -387,14 +399,26 @@ func (d *Daemon) Poll(ctx context.Context) error {
 				d.tstate[src] = state
 				d.warmup(f, d.offsets[src], agent, state, mod)
 			}
-			err := d.processFile(ctx, f, src, d.transcriptParser(agent, f, mod, state))
-			if errors.Is(err, os.ErrNotExist) && f == path {
+			if f == path {
+				mainFile[src] = path
+			}
+			tsrcs = append(tsrcs, source{path: f, src: src, parse: d.transcriptParser(agent, f, mod, state)})
+		}
+	}
+	failed, err = d.ingest(ctx, tsrcs)
+	if err != nil {
+		return errors.Join(append(errs, err)...)
+	}
+	for _, s := range tsrcs {
+		err := failed[s.src]
+		switch {
+		case err == nil:
+		case errors.Is(err, os.ErrNotExist):
+			if path, ok := mainFile[s.src]; ok {
 				delete(d.transcripts, path)
-				break
 			}
-			if err != nil && !errors.Is(err, os.ErrNotExist) {
-				errs = append(errs, fmt.Errorf("transcript %s: %w", f, err))
-			}
+		default:
+			errs = append(errs, fmt.Errorf("transcript %s: %w", s.path, err))
 		}
 	}
 	return errors.Join(errs...)
@@ -521,7 +545,7 @@ func (d *Daemon) warmup(path string, off int64, agent string, state map[string]s
 
 func (d *Daemon) transcriptParser(agent, path string, mod time.Time, state map[string]string) lineParser {
 	return func(line []byte, ref string) ([]model.Event, string) {
-		d.stats.Lines++
+		d.stats.lines.Add(1)
 		a, _ := adapters.Get(agent)
 		tp, ok := a.(adapters.TranscriptParser)
 		if !ok {
@@ -529,58 +553,184 @@ func (d *Daemon) transcriptParser(agent, path string, mod time.Time, state map[s
 		}
 		evs, err := tp.ParseTranscriptLine(line, adapters.TranscriptMeta{ReceivedAt: time.Now(), User: d.user, Ref: ref, Path: path, ModTime: mod, State: state})
 		if err != nil {
-			d.stats.Bad++
+			d.stats.bad.Add(1)
 		}
 		return evs, ""
 	}
 }
 
-// processFile consumes complete lines from the stored offset to EOF.
-func (d *Daemon) processFile(ctx context.Context, path, src string, parse lineParser) error {
-	for {
-		fi, err := os.Stat(path)
-		if err != nil {
-			return err
-		}
-		off := d.offsets[src]
-		if fi.Size() < off {
-			off = 0 // truncated or replaced: start over; dedup keeps it idempotent
-		}
-		if fi.Size() == off {
-			return nil
-		}
-		chunk, err := readAt(path, off, min(fi.Size()-off, maxRead))
-		if err != nil {
-			return err
-		}
-		end := bytes.LastIndexByte(chunk, '\n')
-		if end < 0 {
-			if int64(len(chunk)) == maxRead {
-				// One line longer than maxRead: skip it rather than stall.
-				if err := d.skipLine(ctx, path, src, off); errors.Is(err, io.EOF) {
-					return nil // the giant line isn't complete yet
-				} else if err != nil {
-					return err
-				}
-				continue
-			}
-			return nil // partial line: wait for the rest
-		}
-		if err := d.processLines(ctx, chunk[:end+1], off, src, parse); err != nil {
-			return err
-		}
-		if int64(len(chunk)) < maxRead {
-			return nil
-		}
-	}
+// source is one file read line by line from a saved offset.
+type source struct {
+	path, src string
+	parse     lineParser
 }
 
-// skipLine advances the cursor past the line starting at off, if it is
-// complete; an incomplete giant line is left until more data arrives.
-func (d *Daemon) skipLine(ctx context.Context, path, src string, off int64) error {
+// parsedLine is one complete line turned into (redacted) events, with the
+// file offset just past it.
+type parsedLine struct {
+	events []model.Event
+	blob   string
+	end    int64
+}
+
+// chunk is what one read of a source produced.
+type chunk struct {
+	lines []parsedLine
+	more  bool // the read was capped: more complete lines may follow
+	err   error
+}
+
+// ingest reads every source to its end. Sources are read, parsed and
+// redacted in parallel (each source by one goroutine at a time, so per
+// session order holds), then committed in source order by the calling
+// goroutine, the single writer: up to maxBatch events per transaction,
+// together with the cursors they cover. It returns the sources that
+// failed to read, and an error if a commit failed (the pass stops; the
+// cursors weren't advanced, so the next pass retries).
+func (d *Daemon) ingest(ctx context.Context, sources []source) (map[string]error, error) {
+	failed := map[string]error{}
+	for len(sources) > 0 {
+		offs := make([]int64, len(sources))
+		for i, s := range sources {
+			offs[i] = d.offsets[s.src]
+		}
+		// At most GOMAXPROCS chunks are in flight, bounding memory.
+		out := make([]chan chunk, len(sources))
+		for i := range out {
+			out[i] = make(chan chunk, 1)
+		}
+		sem := make(chan struct{}, runtime.GOMAXPROCS(0))
+		go func() {
+			for i, s := range sources {
+				sem <- struct{}{}
+				go func() { out[i] <- d.readChunk(s, offs[i]) }()
+			}
+		}()
+
+		var (
+			pending []model.Event
+			blobs   []string
+			cursors = map[string]int64{}
+			next    []source
+			err     error
+		)
+		flush := func() error {
+			if len(cursors) == 0 {
+				return nil
+			}
+			list := make([]store.Cursor, 0, len(cursors))
+			for src, off := range cursors {
+				list = append(list, store.Cursor{Source: src, Offset: off})
+			}
+			if err := d.commit(ctx, pending, list); err != nil {
+				return err
+			}
+			for _, b := range blobs {
+				_ = os.Remove(filepath.Join(d.spoolRoot, filepath.FromSlash(b)))
+			}
+			pending, blobs = pending[:0], blobs[:0]
+			clear(cursors)
+			return nil
+		}
+		for i, s := range sources {
+			c := <-out[i]
+			<-sem
+			if err == nil {
+				err = ctx.Err()
+			}
+			if err != nil {
+				continue // keep draining the readers
+			}
+			if c.err != nil {
+				failed[s.src] = c.err
+				continue
+			}
+			for _, l := range c.lines {
+				pending = append(pending, l.events...)
+				if l.blob != "" {
+					blobs = append(blobs, l.blob)
+				}
+				cursors[s.src] = l.end
+				if len(pending) >= maxBatch {
+					if err = flush(); err != nil {
+						break
+					}
+				}
+			}
+			if c.more {
+				next = append(next, s)
+			}
+		}
+		if err == nil {
+			err = flush()
+		}
+		if err != nil {
+			return failed, err
+		}
+		sources = next
+	}
+	return failed, nil
+}
+
+// readChunk reads the complete lines after off (at most maxRead bytes),
+// then parses and redacts them. It only touches atomic counters and the
+// source's own parser state, so different sources can be read
+// concurrently.
+func (d *Daemon) readChunk(s source, off int64) chunk {
+	fi, err := os.Stat(s.path)
+	if err != nil {
+		return chunk{err: err}
+	}
+	if fi.Size() < off {
+		off = 0 // truncated or replaced: start over; dedup keeps it idempotent
+	}
+	if fi.Size() == off {
+		return chunk{}
+	}
+	data, err := readAt(s.path, off, min(fi.Size()-off, maxRead))
+	if err != nil {
+		return chunk{err: err}
+	}
+	end := bytes.LastIndexByte(data, '\n')
+	if end < 0 {
+		if int64(len(data)) < maxRead {
+			return chunk{} // partial line: wait for the rest
+		}
+		// One line longer than maxRead: skip it rather than stall.
+		next, err := lineEnd(s.path, off)
+		if errors.Is(err, io.EOF) {
+			return chunk{} // the giant line isn't complete yet
+		}
+		if err != nil {
+			return chunk{err: err}
+		}
+		d.stats.lines.Add(1)
+		d.stats.bad.Add(1)
+		d.log.Printf("%s#%d: skipped line longer than %d bytes", s.src, off, maxRead)
+		return chunk{lines: []parsedLine{{end: next}}, more: true}
+	}
+	c := chunk{more: int64(len(data)) == maxRead}
+	data = data[:end+1]
+	pos := off
+	for len(data) > 0 {
+		i := bytes.IndexByte(data, '\n')
+		evs, blob := s.parse(data[:i], s.src+"#"+strconv.FormatInt(pos, 10))
+		for j := range evs {
+			d.redactor.Event(&evs[j], d.level) // before anything touches disk
+		}
+		pos += int64(i + 1)
+		data = data[i+1:]
+		c.lines = append(c.lines, parsedLine{events: evs, blob: blob, end: pos})
+	}
+	return c
+}
+
+// lineEnd returns the offset just past the line starting at off, or
+// io.EOF if that line isn't complete yet.
+func lineEnd(path string, off int64) (int64, error) {
 	f, err := os.Open(path)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	defer f.Close()
 	buf := make([]byte, 64<<10)
@@ -588,17 +738,11 @@ func (d *Daemon) skipLine(ctx context.Context, path, src string, off int64) erro
 	for {
 		n, err := f.ReadAt(buf, pos)
 		if i := bytes.IndexByte(buf[:n], '\n'); i >= 0 {
-			d.stats.Lines++
-			d.stats.Bad++
-			d.log.Printf("%s#%d: skipped line longer than %d bytes", src, off, maxRead)
-			return d.commit(ctx, nil, store.Cursor{Source: src, Offset: pos + int64(i) + 1})
+			return pos + int64(i) + 1, nil
 		}
 		pos += int64(n)
 		if err != nil {
-			if errors.Is(err, io.EOF) {
-				return io.EOF // wait for the rest of the line
-			}
-			return err
+			return 0, err
 		}
 	}
 }
@@ -617,51 +761,13 @@ func readAt(path string, off, n int64) ([]byte, error) {
 	return buf[:got], nil
 }
 
-// processLines handles complete lines starting at file offset base,
-// committing in batches together with the advanced cursor.
-func (d *Daemon) processLines(ctx context.Context, data []byte, base int64, src string, parse lineParser) error {
-	var (
-		pending []model.Event
-		blobs   []string
-		pos     int64
-	)
-	flush := func(upTo int64) error {
-		if err := d.commit(ctx, pending, store.Cursor{Source: src, Offset: base + upTo}); err != nil {
-			return err
-		}
-		for _, b := range blobs {
-			_ = os.Remove(filepath.Join(d.spoolRoot, filepath.FromSlash(b)))
-		}
-		pending, blobs = pending[:0], blobs[:0]
-		return nil
-	}
-	for len(data) > 0 {
-		i := bytes.IndexByte(data, '\n')
-		line := data[:i]
-		ref := src + "#" + strconv.FormatInt(base+pos, 10)
-		evs, blob := parse(line, ref)
-		pending = append(pending, evs...)
-		if blob != "" {
-			blobs = append(blobs, blob)
-		}
-		pos += int64(i + 1)
-		data = data[i+1:]
-		if len(pending) >= maxBatch {
-			if err := flush(pos); err != nil {
-				return err
-			}
-		}
-	}
-	return flush(pos)
-}
-
 // parseLine turns one spool line into events. Failures are counted, never
 // fatal: one bad line must not stop the pipeline.
 func (d *Daemon) parseLine(line []byte, ref string) (events []model.Event, blob string) {
-	d.stats.Lines++
+	d.stats.lines.Add(1)
 	var env spool.Envelope
 	if err := json.Unmarshal(line, &env); err != nil {
-		d.stats.Bad++
+		d.stats.bad.Add(1)
 		return nil, ""
 	}
 	payload := []byte(env.P)
@@ -669,18 +775,18 @@ func (d *Daemon) parseLine(line []byte, ref string) (events []model.Event, blob 
 		blob = env.B
 		b, err := os.ReadFile(filepath.Join(d.spoolRoot, filepath.FromSlash(env.B)))
 		if err != nil {
-			d.stats.Bad++
+			d.stats.bad.Add(1)
 			return nil, ""
 		}
 		payload = b
 	}
 	if len(payload) == 0 {
-		d.stats.Bad++ // non-JSON hook input (env.S) or empty stdin
+		d.stats.bad.Add(1) // non-JSON hook input (env.S) or empty stdin
 		return nil, blob
 	}
 	a, ok := adapters.Get(env.Agent)
 	if !ok {
-		d.stats.Unknown++
+		d.stats.unknown.Add(1)
 		return nil, blob
 	}
 	evs, err := a.ParseHook(payload, adapters.HookMeta{
@@ -688,17 +794,19 @@ func (d *Daemon) parseLine(line []byte, ref string) (events []model.Event, blob 
 	})
 	switch {
 	case errors.Is(err, adapters.ErrUnknownEvent):
-		d.stats.Unknown++
+		d.stats.unknown.Add(1)
 	case err != nil:
-		d.stats.Bad++
+		d.stats.bad.Add(1)
 		d.log.Printf("%s: %v", ref, err)
 	}
 	return evs, blob
 }
 
-// commit stores events, applies the new ones and saves the cursor, all in
-// one transaction. On failure the in-memory state is rebuilt from disk.
-func (d *Daemon) commit(ctx context.Context, events []model.Event, cur store.Cursor) (err error) {
+// commit stores events (already redacted), applies the new ones and
+// saves the cursors, all in one transaction. On failure the in-memory
+// state is rebuilt from disk.
+func (d *Daemon) commit(ctx context.Context, events []model.Event, cursors []store.Cursor) (err error) {
+	start := time.Now()
 	tx, err := d.st.Begin(ctx)
 	if err != nil {
 		return err
@@ -715,7 +823,6 @@ func (d *Daemon) commit(ctx context.Context, events []model.Event, cur store.Cur
 	changed := map[string]*engine.Session{}
 	var stored int64
 	for _, e := range events {
-		d.redactor.Event(&e, d.level) // before anything touches disk
 		if d.eng.Redundant(e) {
 			continue
 		}
@@ -752,18 +859,21 @@ func (d *Daemon) commit(ctx context.Context, events []model.Event, cur store.Cur
 		}
 		list = append(list, s)
 	}
-	if cur.Source != "" {
-		if err := tx.PutCursor(ctx, cur); err != nil {
+	for _, c := range cursors {
+		if err := tx.PutCursor(ctx, c); err != nil {
 			return err
 		}
 	}
 	if err := tx.Commit(); err != nil {
 		return err
 	}
-	if cur.Source != "" {
-		d.offsets[cur.Source] = cur.Offset
+	for _, c := range cursors {
+		d.offsets[c.Source] = c.Offset
 	}
-	d.stats.Events += stored
+	d.stats.events.Add(stored)
+	if d.OnCommit != nil {
+		d.OnCommit(len(events), time.Since(start))
+	}
 	if d.OnChange != nil && len(list) > 0 {
 		d.OnChange(list)
 	}
@@ -790,7 +900,11 @@ func (d *Daemon) maybeReap(ctx context.Context, path, src string) error {
 }
 
 func (d *Daemon) finishReap(ctx context.Context, done, src string) error {
-	if err := d.processFile(ctx, done, src, d.parseLine); err != nil {
+	failed, err := d.ingest(ctx, []source{{path: done, src: src, parse: d.parseLine}})
+	if err == nil {
+		err = failed[src]
+	}
+	if err != nil {
 		return err
 	}
 	tx, err := d.st.Begin(ctx)

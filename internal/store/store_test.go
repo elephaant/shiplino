@@ -150,7 +150,7 @@ func TestUpgradeFromV1KeepsSessions(t *testing.T) {
 	}
 	db.Exec(`PRAGMA user_version = 1`)
 	db.Exec(`INSERT INTO sessions (id, root_id, agent, status, started_at, last_event_at, body)
-		VALUES ('claude-code:old', 'claude-code:old', 'claude-code', 'done', 1, 1, '{"id":"claude-code:old","status":"done"}')`)
+		VALUES ('claude-code:old', 'claude-code:old', 'claude-code', 'done', 1, 1, '{"id":"claude-code:old","status":"done","best_cost_usd":0.25}')`)
 	db.Close()
 
 	s, err := Open(path)
@@ -164,6 +164,10 @@ func TestUpgradeFromV1KeepsSessions(t *testing.T) {
 	}
 	if list, err := s.Projects(ctx); err != nil || len(list) != 0 {
 		t.Fatalf("projects after upgrade: %v %v", list, err)
+	}
+	var cost float64 // v6 copies the cost out of the body
+	if err := s.db.QueryRow(`SELECT cost_usd FROM sessions WHERE id = 'claude-code:old'`).Scan(&cost); err != nil || cost != 0.25 {
+		t.Fatalf("cost_usd after upgrade = %v, %v", cost, err)
 	}
 }
 
@@ -275,5 +279,53 @@ func TestSearchBackfillOnUpgrade(t *testing.T) {
 	defer s.Close()
 	if hits, err := s.Search(ctx, "go test", "", 0); err != nil || len(hits) != 1 || hits[0].EventID != "e1" {
 		t.Fatalf("backfill: %+v %v", hits, err)
+	}
+}
+
+// Checkpoints run beside the writer; once the WAL is long, a commit
+// finishes one so the WAL starts over instead of growing.
+func TestLongWALStartsOver(t *testing.T) {
+	old := walLongFrames
+	walLongFrames = 10
+	t.Cleanup(func() { walLongFrames = old })
+	s, _ := openTemp(t)
+	now := time.Now()
+	n := 0
+	write := func(events int) {
+		t.Helper()
+		tx, _ := s.Begin(ctx)
+		for range events {
+			n++
+			if _, err := tx.InsertEvent(ctx, event(fmt.Sprintf("k%d", n), now)); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if err := tx.Commit(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	walFrames := func() int {
+		var busy, frames, done int
+		if err := s.ckpt.QueryRow(`PRAGMA wal_checkpoint(PASSIVE)`).Scan(&busy, &frames, &done); err != nil {
+			t.Fatal(err)
+		}
+		return frames
+	}
+	write(300)
+	s.checkpoint()
+	if !s.walLong.Load() {
+		t.Fatalf("WAL of %d frames not seen as long", walFrames())
+	}
+	// Under steady load the writer appends while the checkpointer copies,
+	// so pages are left over: the writer must finish the job.
+	write(300)
+	s.walLong.Store(true)
+	write(1) // finishes the checkpoint
+	write(1) // starts the WAL over
+	if f := walFrames(); f > walLongFrames {
+		t.Fatalf("WAL still has %d frames", f)
+	}
+	if s.walLong.Load() {
+		t.Fatal("walLong not cleared")
 	}
 }

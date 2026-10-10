@@ -12,6 +12,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/elephaant/shiplino/pkg/board"
@@ -28,39 +30,134 @@ type Store struct {
 	// ro is a separate read-only pool for background readers (sync), so
 	// they never queue behind, or hold up, the single writer connection.
 	ro *sql.DB
+	// stmts are the prepared write statements by SQL; read-only after Open.
+	stmts map[string]*sql.Stmt
+	// ckpt is a second connection that checkpoints the WAL in the
+	// background, so commits never wait for it (see checkpoints).
+	ckpt *sql.DB
+	stop chan struct{}
+	done chan struct{}
+	// walLong is set by the checkpointer when the WAL has grown long; the
+	// next commit then finishes the checkpoint (see Tx.Commit).
+	walLong atomic.Bool
+
+	closeOnce sync.Once
+	closeErr  error
 }
+
+// checkpointEvery is how often the WAL is copied back into the database.
+const checkpointEvery = time.Second
+
+// walLongFrames is the WAL length (pages, 64 MB) past which the writer
+// finishes a checkpoint itself, so the WAL can start over. A variable for
+// tests.
+var walLongFrames = 16384
 
 // Open opens (and creates or migrates) the database at path.
 func Open(path string) (*Store, error) {
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return nil, err
 	}
-	dsn := "file:" + filepath.ToSlash(path) +
-		"?_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)&_pragma=synchronous(NORMAL)&_pragma=foreign_keys(1)"
-	db, err := sql.Open("sqlite", dsn)
+	// Automatic checkpoints are off: SQLite would run them inside the
+	// commit that crosses the threshold, stalling the writer (for up to
+	// seconds on a busy disk). The checkpointer goroutine does them. A
+	// 64 MB page cache (default 2 MB) keeps the event indexes in memory.
+	base := "file:" + filepath.ToSlash(path) + "?_pragma=busy_timeout(5000)&_pragma=journal_size_limit(67108864)"
+	db, err := sql.Open("sqlite", base+
+		"&_pragma=journal_mode(WAL)&_pragma=synchronous(NORMAL)&_pragma=foreign_keys(1)&_pragma=wal_autocheckpoint(0)&_pragma=cache_size(-65536)")
 	if err != nil {
 		return nil, err
 	}
 	// SQLite allows one writer. A single connection keeps writes serialized
 	// without lock errors; reads are fast enough for the local daemon.
 	db.SetMaxOpenConns(1)
-	s := &Store{db: db}
+	s := &Store{db: db, stmts: map[string]*sql.Stmt{}}
 	if err := s.migrate(context.Background()); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("store: migrate: %w", err)
 	}
-	ro, err := sql.Open("sqlite", dsn+"&_pragma=query_only(1)")
+	if err := s.prepare(context.Background()); err != nil {
+		s.closeStmts()
+		db.Close()
+		return nil, fmt.Errorf("store: prepare: %w", err)
+	}
+	ckpt, err := sql.Open("sqlite", base)
 	if err != nil {
+		s.closeStmts()
+		db.Close()
+		return nil, err
+	}
+	ckpt.SetMaxOpenConns(1)
+	s.ckpt, s.stop, s.done = ckpt, make(chan struct{}), make(chan struct{})
+	ro, err := sql.Open("sqlite", base+"&_pragma=query_only(1)")
+	if err != nil {
+		s.closeStmts()
+		ckpt.Close()
 		db.Close()
 		return nil, err
 	}
 	ro.SetMaxOpenConns(2)
 	s.ro = ro
+	go s.checkpoints()
 	return s, nil
 }
 
-// Close closes the database.
-func (s *Store) Close() error { return errors.Join(s.ro.Close(), s.db.Close()) }
+// checkpoints copies committed WAL pages into the database file every
+// checkpointEvery, from its own connection, until Close.
+func (s *Store) checkpoints() {
+	defer close(s.done)
+	t := time.NewTicker(checkpointEvery)
+	defer t.Stop()
+	for {
+		select {
+		case <-s.stop:
+			s.checkpoint()
+			return
+		case <-t.C:
+			s.checkpoint()
+		}
+	}
+}
+
+// checkpoint runs a passive checkpoint, which never blocks the writer or
+// readers and does the bulk of the copying and syncing.
+func (s *Store) checkpoint() {
+	var busy, frames, copied int
+	if err := s.ckpt.QueryRow(`PRAGMA wal_checkpoint(PASSIVE)`).Scan(&busy, &frames, &copied); err == nil {
+		s.walLong.Store(frames >= walLongFrames)
+	}
+}
+
+// Close closes the database. Calling it again does nothing.
+func (s *Store) Close() error {
+	s.closeOnce.Do(func() {
+		close(s.stop)
+		<-s.done
+		s.closeStmts()
+		s.closeErr = errors.Join(s.ro.Close(), s.ckpt.Close(), s.db.Close())
+	})
+	return s.closeErr
+}
+
+func (s *Store) closeStmts() {
+	for _, st := range s.stmts {
+		st.Close()
+	}
+}
+
+// prepare prepares the hot write statements: parsing SQL is a large share
+// of a small insert's cost. It must run before any transaction holds the
+// only connection.
+func (s *Store) prepare(ctx context.Context) error {
+	for _, q := range []string{sqlInsertEvent, sqlInsertSearch, sqlPutSession, sqlPutProject, sqlPutCursor} {
+		st, err := s.db.PrepareContext(ctx, q)
+		if err != nil {
+			return err
+		}
+		s.stmts[q] = st
+	}
+	return nil
+}
 
 // migrations are applied in order; PRAGMA user_version records progress.
 var migrations = []string{
@@ -156,6 +253,11 @@ var migrations = []string{
 		last_error TEXT NOT NULL DEFAULT '',
 		last_error_at INTEGER NOT NULL DEFAULT 0
 	);`,
+	// v7: what boards and project totals filter and sum on, readable from
+	// an index without decoding session bodies
+	`ALTER TABLE sessions ADD COLUMN cost_usd REAL NOT NULL DEFAULT 0;
+	UPDATE sessions SET cost_usd = COALESCE(json_extract(body, '$.best_cost_usd'), 0);
+	CREATE INDEX sessions_board ON sessions(project_id, status, parent_id, last_event_at, root_id, cost_usd);`,
 }
 
 func (s *Store) migrate(ctx context.Context) error {
@@ -183,6 +285,28 @@ func (s *Store) migrate(ctx context.Context) error {
 	return nil
 }
 
+// Hot write statements, prepared once when the store opens.
+const (
+	sqlInsertEvent = `INSERT INTO events (id, ts, kind, agent, session_id, actor_id, turn_id, collector, dedup_key, body)
+	 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	 ON CONFLICT(dedup_key) DO NOTHING`
+	sqlInsertSearch = `INSERT INTO search (text, event_id, session_id, kind, ts) VALUES (?, ?, ?, ?, ?)`
+	sqlPutSession   = `INSERT INTO sessions (id, root_id, parent_id, agent, status, started_at, last_event_at, body, project_id, cost_usd)
+	 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	 ON CONFLICT(id) DO UPDATE SET
+	   root_id = excluded.root_id, parent_id = excluded.parent_id, agent = excluded.agent,
+	   status = excluded.status, started_at = excluded.started_at,
+	   last_event_at = excluded.last_event_at, body = excluded.body, project_id = excluded.project_id,
+	   cost_usd = excluded.cost_usd`
+	sqlPutProject = `INSERT INTO projects (id, name, kind, remote, repo_root, first_seen, last_seen)
+	 VALUES (?, ?, ?, ?, ?, ?, ?)
+	 ON CONFLICT(id) DO UPDATE SET
+	   name = excluded.name, kind = excluded.kind, remote = excluded.remote, repo_root = excluded.repo_root,
+	   last_seen = MAX(projects.last_seen, excluded.last_seen)`
+	sqlPutCursor = `INSERT INTO cursors (source, offset, updated_at) VALUES (?, ?, ?)
+	 ON CONFLICT(source) DO UPDATE SET offset = excluded.offset, updated_at = excluded.updated_at`
+)
+
 // Cursor is how far a source (e.g. one spool file) has been processed.
 type Cursor struct {
 	Source string
@@ -193,7 +317,9 @@ type Cursor struct {
 // produced and the cursors that cover them commit together, so a crash
 // never loses or double-counts an event.
 type Tx struct {
-	tx *sql.Tx
+	tx    *sql.Tx
+	s     *Store
+	stmts map[string]*sql.Stmt
 }
 
 // Begin starts a write transaction.
@@ -202,7 +328,22 @@ func (s *Store) Begin(ctx context.Context) (*Tx, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Tx{tx: tx}, nil
+	return &Tx{tx: tx, s: s, stmts: map[string]*sql.Stmt{}}, nil
+}
+
+// exec runs a write, with the prepared statement for query if there is
+// one, bound to the transaction once.
+func (t *Tx) exec(ctx context.Context, query string, args ...any) (sql.Result, error) {
+	st, ok := t.stmts[query]
+	if !ok {
+		ps, prepared := t.s.stmts[query]
+		if !prepared {
+			return t.tx.ExecContext(ctx, query, args...)
+		}
+		st = t.tx.StmtContext(ctx, ps)
+		t.stmts[query] = st
+	}
+	return st.ExecContext(ctx, args...)
 }
 
 // InsertEvent stores e unless an event with the same dedup key exists.
@@ -216,10 +357,8 @@ func (t *Tx) InsertEvent(ctx context.Context, e model.Event) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	res, err := t.tx.ExecContext(ctx,
-		`INSERT INTO events (id, ts, kind, agent, session_id, actor_id, turn_id, collector, dedup_key, body)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-		 ON CONFLICT(dedup_key) DO NOTHING`,
+	res, err := t.exec(ctx,
+		sqlInsertEvent,
 		e.ID, e.TS.UnixMilli(), string(e.Kind), e.Agent.Name, e.SessionID, e.ActorID, e.TurnID,
 		string(e.Collector), e.DedupKey, body)
 	if err != nil {
@@ -230,7 +369,7 @@ func (t *Tx) InsertEvent(ctx context.Context, e model.Event) (bool, error) {
 		return false, err
 	}
 	if text := searchText(e); text != "" {
-		if _, err := t.tx.ExecContext(ctx, `INSERT INTO search (text, event_id, session_id, kind, ts) VALUES (?, ?, ?, ?, ?)`,
+		if _, err := t.exec(ctx, sqlInsertSearch,
 			text, e.ID, e.SessionID, string(e.Kind), e.TS.UnixMilli()); err != nil {
 			return false, err
 		}
@@ -306,7 +445,7 @@ func (s *Store) Meta(ctx context.Context, key string) (string, error) {
 
 // SetMeta stores a value in the transaction.
 func (t *Tx) SetMeta(ctx context.Context, key, value string) error {
-	_, err := t.tx.ExecContext(ctx, `INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`, key, value)
+	_, err := t.exec(ctx, `INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`, key, value)
 	return err
 }
 
@@ -384,47 +523,49 @@ func (t *Tx) PutSession(ctx context.Context, s *engine.Session) error {
 	if err != nil {
 		return err
 	}
-	_, err = t.tx.ExecContext(ctx,
-		`INSERT INTO sessions (id, root_id, parent_id, agent, status, started_at, last_event_at, body, project_id)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-		 ON CONFLICT(id) DO UPDATE SET
-		   root_id = excluded.root_id, parent_id = excluded.parent_id, agent = excluded.agent,
-		   status = excluded.status, started_at = excluded.started_at,
-		   last_event_at = excluded.last_event_at, body = excluded.body, project_id = excluded.project_id`,
+	_, err = t.exec(ctx,
+		sqlPutSession,
 		s.ID, s.RootID, nullable(s.ParentID), s.Agent, string(s.Status),
-		s.StartedAt.UnixMilli(), s.LastEventAt.UnixMilli(), body, nullable(s.ProjectID))
+		s.StartedAt.UnixMilli(), s.LastEventAt.UnixMilli(), body, nullable(s.ProjectID), s.BestCostUSD)
 	return err
 }
 
 // PutProject inserts or refreshes a project; first_seen never moves.
 func (t *Tx) PutProject(ctx context.Context, p projects.Project, seen time.Time) error {
-	_, err := t.tx.ExecContext(ctx,
-		`INSERT INTO projects (id, name, kind, remote, repo_root, first_seen, last_seen)
-		 VALUES (?, ?, ?, ?, ?, ?, ?)
-		 ON CONFLICT(id) DO UPDATE SET
-		   name = excluded.name, kind = excluded.kind, remote = excluded.remote, repo_root = excluded.repo_root,
-		   last_seen = MAX(projects.last_seen, excluded.last_seen)`,
+	_, err := t.exec(ctx,
+		sqlPutProject,
 		p.ID, p.Name, p.Kind, nullable(p.Remote), nullable(p.RepoRoot), seen.UnixMilli(), seen.UnixMilli())
 	return err
 }
 
 // PutCursor records progress for a source.
 func (t *Tx) PutCursor(ctx context.Context, c Cursor) error {
-	_, err := t.tx.ExecContext(ctx,
-		`INSERT INTO cursors (source, offset, updated_at) VALUES (?, ?, ?)
-		 ON CONFLICT(source) DO UPDATE SET offset = excluded.offset, updated_at = excluded.updated_at`,
+	_, err := t.exec(ctx,
+		sqlPutCursor,
 		c.Source, c.Offset, time.Now().UnixMilli())
 	return err
 }
 
 // DeleteCursor forgets a source, e.g. after its spool file was removed.
 func (t *Tx) DeleteCursor(ctx context.Context, source string) error {
-	_, err := t.tx.ExecContext(ctx, `DELETE FROM cursors WHERE source = ?`, source)
+	_, err := t.exec(ctx, `DELETE FROM cursors WHERE source = ?`, source)
 	return err
 }
 
 // Commit commits the transaction.
-func (t *Tx) Commit() error { return t.tx.Commit() }
+func (t *Tx) Commit() error {
+	if err := t.tx.Commit(); err != nil {
+		return err
+	}
+	// Under steady writes a checkpoint running beside the writer never
+	// catches up with it, so the WAL would grow without bound. Between
+	// transactions the writer can finish one (the checkpointer already
+	// copied most pages), and the next transaction starts the WAL over.
+	if t.s.walLong.CompareAndSwap(true, false) {
+		_, _ = t.s.db.Exec(`PRAGMA wal_checkpoint(PASSIVE)`)
+	}
+	return nil
+}
 
 // Rollback aborts the transaction. It is safe to call after Commit.
 func (t *Tx) Rollback() error {
@@ -510,16 +651,11 @@ func (s *Store) DeleteOverride(ctx context.Context, cardID string) error {
 
 // Project returns one project summary, or nil.
 func (s *Store) Project(ctx context.Context, id string) (*ProjectSummary, error) {
-	list, err := s.Projects(ctx)
-	if err != nil {
+	list, err := s.projects(ctx, id)
+	if err != nil || len(list) == 0 {
 		return nil, err
 	}
-	for i := range list {
-		if list[i].ID == id {
-			return &list[i], nil
-		}
-	}
-	return nil, nil
+	return &list[0], nil
 }
 
 // ProjectSummary is a project with live counts of its root sessions.
@@ -534,7 +670,16 @@ type ProjectSummary struct {
 
 // Projects returns every project with session counts, most recent first.
 func (s *Store) Projects(ctx context.Context) ([]ProjectSummary, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT id, name, kind, COALESCE(remote,''), COALESCE(repo_root,''), first_seen, last_seen FROM projects ORDER BY last_seen DESC`)
+	return s.projects(ctx, "")
+}
+
+// projects returns one project (id) or all of them (id "").
+func (s *Store) projects(ctx context.Context, id string) ([]ProjectSummary, error) {
+	where, args := "", []any{}
+	if id != "" {
+		where, args = " WHERE id = ?", []any{id}
+	}
+	rows, err := s.db.QueryContext(ctx, `SELECT id, name, kind, COALESCE(remote,''), COALESCE(repo_root,''), first_seen, last_seen FROM projects`+where+` ORDER BY last_seen DESC`, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -555,9 +700,12 @@ func (s *Store) Projects(ctx context.Context) ([]ProjectSummary, error) {
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
+	if id != "" {
+		where = " AND project_id = ?"
+	}
 	agg, err := s.db.QueryContext(ctx, `
-		SELECT project_id, status, COUNT(*), COALESCE(SUM(json_extract(body, '$.best_cost_usd')), 0)
-		FROM sessions WHERE parent_id IS NULL AND project_id IS NOT NULL GROUP BY 1, 2`)
+		SELECT project_id, status, COUNT(*), SUM(cost_usd)
+		FROM sessions WHERE parent_id IS NULL AND project_id IS NOT NULL`+where+` GROUP BY 1, 2`, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -600,6 +748,10 @@ func (s *Store) SessionsIn(ctx context.Context, projectID string, limit int) ([]
 	if err != nil {
 		return nil, err
 	}
+	return scanSessions(rows)
+}
+
+func scanSessions(rows *sql.Rows) ([]*engine.Session, error) {
 	defer rows.Close()
 	var out []*engine.Session
 	for rows.Next() {
@@ -614,6 +766,26 @@ func (s *Store) SessionsIn(ctx context.Context, projectID string, limit int) ([]
 		out = append(out, &sess)
 	}
 	return out, rows.Err()
+}
+
+// BoardSessions returns the sessions of a project that can be on its
+// board from `since` on: every root session active since then, still
+// open (it or a subagent isn't done or failed) or changed by the user,
+// with all their subagents. Older closed work stays in older sprints, so
+// a board doesn't decode a project's whole history.
+func (s *Store) BoardSessions(ctx context.Context, projectID string, since time.Time) ([]*engine.Session, error) {
+	// The inner query reads only the sessions_board index. "+project_id"
+	// makes the outer one look rows up by root_id instead of scanning
+	// the project's whole history.
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT body FROM sessions WHERE +project_id = ?1 AND root_id IN (
+			SELECT root_id FROM sessions WHERE project_id = ?1 AND (last_event_at >= ?2 OR status NOT IN ('done', 'failed'))
+			UNION SELECT id FROM cards WHERE project_id = ?1)
+		ORDER BY last_event_at DESC`, projectID, since.UnixMilli())
+	if err != nil {
+		return nil, err
+	}
+	return scanSessions(rows)
 }
 
 // Session returns one session, or nil if it doesn't exist.

@@ -7,7 +7,6 @@ import (
 	"context"
 	"path/filepath"
 
-	"github.com/elephaant/shiplino/internal/store"
 	"github.com/elephaant/shiplino/pkg/engine"
 	"github.com/elephaant/shiplino/pkg/model"
 )
@@ -53,5 +52,8 @@ func (d *Daemon) checkCommits(ctx context.Context) error {
 	if len(events) == 0 {
 		return nil
 	}
-	return d.commit(ctx, events, store.Cursor{})
+	for i := range events {
+		d.redactor.Event(&events[i], d.level) // before anything touches disk
+	}
+	return d.commit(ctx, events, nil)
 }

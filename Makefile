@@ -1,6 +1,6 @@
 BIN := bin/shiplino
 
-.PHONY: build ui ui-dev test lint clean
+.PHONY: build ui ui-dev test bench lint clean
 
 UI_OUT := internal/api/dist
 
@@ -23,6 +23,11 @@ ui-dev:
 
 test:
 	go test ./...
+
+# bench runs the full-size load tests (see bench/README.md); CI runs the
+# short variant as part of go test.
+bench:
+	go test -count=1 -v ./bench -full
 
 lint:
 	@test -z "$$(gofmt -l .)" || (gofmt -l . && echo "run gofmt -w ." && exit 1)
