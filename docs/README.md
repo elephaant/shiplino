@@ -9,3 +9,4 @@
 - [Notifications](notifications.md): desktop, phone (ntfy) and team (webhook, Slack, Discord) alerts, and exactly what they send
 - [Sending events to Shiplino](ingest.md): the ingest endpoint for custom agents, and the OTLP receiver
 - [Updating](updating.md): `shiplino update`, how downloads are verified, rollback and opt-in checks
+- [Releasing](releasing.md): for maintainers, what a release publishes and the one-time setup for Homebrew, Scoop and npm

@@ -128,6 +128,18 @@ jobs:
           version: v2.18.2
           args: check
 
+  npm-package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: ShellCheck the test
+        run: shellcheck -s sh packaging/npm/test.sh
+      - name: Build, pack, install and run the npm packages from fake release archives
+        run: packaging/npm/test.sh
+
   installer:
     runs-on: ubuntu-latest
     steps:

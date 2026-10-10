@@ -34,7 +34,17 @@ The background service (systemd user service, LaunchAgent, Task Scheduler task o
 
 ## Package managers
 
-If the binary you run was installed by Homebrew, Scoop, winget, Nix or Snap, `shiplino update` refuses and prints that manager's command instead (for example `brew upgrade shiplino`). Run `shiplino setup` after upgrading so the hooks use the new version.
+If the binary you run was installed by Homebrew, Scoop, npm (or pnpm, Yarn, Bun), winget, Nix or Snap, `shiplino update` refuses and prints that manager's command instead:
+
+| Installed with | Update with |
+|----------------|-------------|
+| Homebrew | `brew upgrade --cask shiplino` |
+| Scoop | `scoop update shiplino` |
+| npm | `npm install -g shiplino@latest` |
+
+Run `shiplino setup` after upgrading so the hooks use the new version.
+
+A binary built with `go install` reports version `0.0.0-dev`, so `shiplino update` treats it as a development build (`--force` replaces it with a release).
 
 ## Checking automatically (opt-in)
 

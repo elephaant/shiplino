@@ -295,13 +295,19 @@ func TestRunVersion(t *testing.T) {
 
 func TestManaged(t *testing.T) {
 	for path, want := range map[string]string{
-		"/opt/homebrew/bin/shiplino":                            "Homebrew",
-		"/usr/local/Cellar/shiplino/0.2.0/bin/shiplino":         "Homebrew",
-		"/home/linuxbrew/.linuxbrew/bin/shiplino":               "Homebrew",
-		`C:\Users\dev\scoop\apps\shiplino\current\shiplino.exe`: "Scoop",
-		"/nix/store/abc-shiplino/bin/shiplino":                  "Nix",
-		"/home/dev/.shiplino/bin/shiplino":                      "",
-		"/usr/local/bin/shiplino":                               "",
+		"/opt/homebrew/bin/shiplino":                                                                                         "Homebrew",
+		"/usr/local/Cellar/shiplino/0.2.0/bin/shiplino":                                                                      "Homebrew",
+		"/home/linuxbrew/.linuxbrew/bin/shiplino":                                                                            "Homebrew",
+		`C:\Users\dev\scoop\apps\shiplino\current\shiplino.exe`:                                                              "Scoop",
+		"/nix/store/abc-shiplino/bin/shiplino":                                                                               "Nix",
+		"/usr/local/Caskroom/shiplino/0.2.0/shiplino":                                                                        "Homebrew",
+		"/usr/lib/node_modules/shiplino/node_modules/@shiplino/linux-x64/bin/shiplino":                                       "npm",
+		`C:\Users\dev\AppData\Roaming\npm\node_modules\shiplino\node_modules\@shiplino\win32-x64\bin\shiplino.exe`:           "npm",
+		"/home/dev/.local/share/pnpm/global/5/.pnpm/@shiplino+linux-x64@0.2.0/node_modules/@shiplino/linux-x64/bin/shiplino": "pnpm",
+		"/home/dev/.bun/install/global/node_modules/@shiplino/linux-x64/bin/shiplino":                                        "Bun",
+		"/home/dev/.config/yarn/global/node_modules/@shiplino/linux-x64/bin/shiplino":                                        "Yarn",
+		"/home/dev/.shiplino/bin/shiplino":                                                                                   "",
+		"/usr/local/bin/shiplino":                                                                                            "",
 	} {
 		if runtime.GOOS != "windows" && strings.Contains(path, `\`) {
 			path = strings.ReplaceAll(path, `\`, "/")
@@ -309,6 +315,9 @@ func TestManaged(t *testing.T) {
 		if got, _ := Managed(path); got != want {
 			t.Errorf("Managed(%s) = %q, want %q", path, got, want)
 		}
+	}
+	if _, cmd := Managed("/opt/homebrew/Caskroom/shiplino/0.2.0/shiplino"); cmd != "brew upgrade --cask shiplino" {
+		t.Errorf("cask upgrade command = %q", cmd)
 	}
 }
 

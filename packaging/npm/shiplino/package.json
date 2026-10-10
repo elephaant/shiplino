@@ -1,0 +1,22 @@
+{
+  "name": "shiplino",
+  "version": "0.0.0",
+  "description": "Flight recorder and kanban board for AI coding agents",
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/elephaant/shiplino",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/elephaant/shiplino.git",
+    "directory": "packaging/npm/shiplino"
+  },
+  "bugs": "https://github.com/elephaant/shiplino/issues",
+  "keywords": ["ai", "agents", "claude-code", "codex", "cursor", "kanban", "observability"],
+  "bin": {
+    "shiplino": "bin/shiplino.js"
+  },
+  "files": ["bin"],
+  "engines": {
+    "node": ">=18"
+  },
+  "optionalDependencies": {}
+}

@@ -80,6 +80,15 @@ irm https://raw.githubusercontent.com/elephaant/shiplino/main/scripts/install.ps
 
 The installer downloads the release for your OS and CPU, **verifies its SHA-256 checksum** (and, if [cosign](https://docs.sigstore.dev/cosign/system_config/installation/) is installed, the Sigstore signature that ties the release to this repository's build), installs to `~/.shiplino/bin`, then runs `shiplino setup`: agents are detected and connected, the daemon starts at login, and the board is at http://localhost:4777.
 
+**Package managers (coming soon, not published yet):** these install the same release binaries; run `shiplino setup` afterwards.
+
+```bash
+brew install --cask elephaant/tap/shiplino                  # Homebrew (macOS, Linux)
+scoop bucket add elephaant https://github.com/elephaant/scoop-bucket
+scoop install elephaant/shiplino                            # Scoop (Windows)
+npm install -g shiplino                                     # npm (any OS with Node 18+)
+```
+
 To see exactly what setup would change in each agent's config first, run `shiplino setup --dry-run`: it prints a unified diff per file and writes nothing. The Settings → Agents page shows the same diff before you connect or remove an agent. Every file Shiplino edits is backed up to `~/.shiplino/backups/` first.
 
 Prefer to run the daemon yourself (a terminal, tmux, your own process manager)? `shiplino setup --no-service` connects the agents without registering a login item; then start `shiplino daemon` when you want recording. Until it runs, hook events wait in `~/.shiplino/spool/`.
@@ -96,6 +105,8 @@ Remove everything with `shiplino uninstall` (add `--purge` to delete recorded da
 make build        # builds the web app (if Node is installed) and ./bin/shiplino
 ./bin/shiplino setup
 ```
+
+`go install github.com/elephaant/shiplino/cmd/shiplino@latest` also builds, but without the web app: the built app isn't committed, so the board shows a plain fallback page, and the binary reports version `0.0.0-dev`. Use the installer above for the full app.
 
 ## Repository layout
 

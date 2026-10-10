@@ -35,6 +35,46 @@ signs:
     signature: "${artifact}.sigstore.json"
     args: ["sign-blob", "--yes", "--bundle=${signature}", "${artifact}"]
 
+# Homebrew cask (macOS and Linux) and Scoop manifest (Windows), pushed to
+# their own repositories on each release. Both need HOMEBREW_TAP_TOKEN, a
+# token that can write to those two repositories. Without it the files are
+# still generated in dist/ but not pushed, and the release succeeds. See
+# docs/releasing.md.
+homebrew_casks:
+  - name: shiplino
+    binaries: [shiplino]
+    homepage: https://github.com/elephaant/shiplino
+    description: Flight recorder and kanban board for AI coding agents
+    skip_upload: '{{ if envOrDefault "HOMEBREW_TAP_TOKEN" "" }}false{{ else }}true{{ end }}'
+    repository:
+      owner: elephaant
+      name: homebrew-tap
+      token: '{{ envOrDefault "HOMEBREW_TAP_TOKEN" "" }}'
+    commit_msg_template: "shiplino {{ .Tag }}"
+    caveats: |
+      Run `shiplino setup` to connect your agents and start the board at http://localhost:4777.
+      After `brew upgrade --cask shiplino`, run `shiplino setup` again so the hooks use the new version.
+    # The binary isn't notarized by Apple, so Gatekeeper would refuse the
+    # quarantined download. Homebrew has already verified its SHA-256.
+    hooks:
+      post:
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/shiplino"]
+          end
+
+scoops:
+  - name: shiplino
+    homepage: https://github.com/elephaant/shiplino
+    description: Flight recorder and kanban board for AI coding agents
+    license: Apache-2.0
+    skip_upload: '{{ if envOrDefault "HOMEBREW_TAP_TOKEN" "" }}false{{ else }}true{{ end }}'
+    repository:
+      owner: elephaant
+      name: scoop-bucket
+      token: '{{ envOrDefault "HOMEBREW_TAP_TOKEN" "" }}'
+    commit_msg_template: "shiplino {{ .Tag }}"
+
 release:
   github:
     owner: elephaant

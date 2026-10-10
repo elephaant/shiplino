@@ -34,3 +34,22 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Optional: pushes the Homebrew cask and Scoop manifest. Empty
+          # (secret not set) skips that step; see docs/releasing.md.
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+      # The generated cask and manifest, also when they weren't pushed.
+      - uses: actions/upload-artifact@v7
+        with:
+          name: package-manifests
+          path: |
+            dist/homebrew/
+            dist/scoop/
+
+  # A release made with GITHUB_TOKEN doesn't trigger other workflows, so
+  # npm publishing is called from here. It skips itself without NPM_TOKEN.
+  npm:
+    needs: release
+    uses: ./.github/workflows/npm.yml
+    with:
+      tag: ${{ github.ref_name }}
+    secrets: inherit
