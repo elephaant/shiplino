@@ -25,6 +25,7 @@ Commands:
   open              open the board in your browser
   search <words>    find prompts, commands, files and commits (--project)
   export            sessions as CSV or JSON (--format, --project, --since 7d, --out)
+                    or a conversation as Markdown (--session <id>)
   notify test       show a sample desktop notification
   backfill          import agent history from before setup (--since 30d)
   sync              opt-in cloud sync: login, status [--dry-run], allow, deny, logout
