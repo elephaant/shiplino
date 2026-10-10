@@ -60,6 +60,7 @@ export interface Session {
   plan_items?: PlanItem[];
   waiting_ms: number;
   waiting_since?: string;
+  waiting_reason?: WaitingReason;
 }
 
 export interface PlanItem {
@@ -67,6 +68,9 @@ export interface PlanItem {
   text?: string;
   status?: "pending" | "in_progress" | "completed" | "cancelled" | "blocked";
 }
+
+/** Why a session waits on you, as the agent reported it. */
+export type WaitingReason = "permission" | "question" | "idle";
 
 export interface Sprint {
   number: number;
@@ -101,6 +105,7 @@ export interface NeedsYou {
   agent: string;
   title: string;
   message: string;
+  reason?: WaitingReason;
   since: string;
 }
 
@@ -349,6 +354,8 @@ export interface BoardCard {
   status?: Status;
   branch?: string;
   now_doing?: string;
+  waiting_reason?: WaitingReason;
+  waiting_since?: string;
   started_at: string;
   last_event_at: string;
   duration_ms: number;

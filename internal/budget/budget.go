@@ -156,7 +156,8 @@ func (w *Watcher) Check(ctx context.Context) error {
 				title = s.Label + ": budget reached"
 			}
 			body := fmt.Sprintf("$%.2f of $%.2f spent at list prices.", s.SpentUSD, s.LimitUSD)
-			if err := w.send(ctx, notify.Note{Title: title, Body: body}); err != nil {
+			alert := notify.Alert{Event: notify.EventBudget, At: now, Scope: s.Scope, CostUSD: s.SpentUSD, LimitUSD: s.LimitUSD, Percent: float64(level)}
+			if err := w.send(ctx, notify.Note{Title: title, Body: body, Alerts: []notify.Alert{alert}}); err != nil {
 				return err
 			}
 			// Reaching 100% first also marks 80% as sent.
@@ -193,6 +194,7 @@ func (w *Watcher) digest(ctx context.Context, now time.Time) error {
 	var cost float64
 	var waiting int64
 	agents := map[string]bool{}
+	ids := map[string]bool{}
 	for _, s := range list {
 		if s.ParentID != "" || s.StartedAt.Before(startOfDay(now)) {
 			continue
@@ -202,6 +204,7 @@ func (w *Watcher) digest(ctx context.Context, now time.Time) error {
 		files += len(s.Files)
 		waiting += s.WaitingMS
 		agents[notify.AgentName(s.Agent)] = true
+		ids[s.Agent] = true
 		if s.Status == engine.StatusFailed {
 			failed++
 		}
@@ -222,7 +225,12 @@ func (w *Watcher) digest(ctx context.Context, now time.Time) error {
 	if failed > 0 {
 		body += fmt.Sprintf(", %d failed", failed)
 	}
-	if err := w.send(ctx, notify.Note{Title: "Today with your agents", Body: body + "."}); err != nil {
+	alert := notify.Alert{Event: notify.EventDigest, At: now, Sessions: sessions, CostUSD: cost, FilesChanged: files, WaitingMS: waiting, Failed: failed}
+	for id := range ids {
+		alert.Agents = append(alert.Agents, id)
+	}
+	sort.Strings(alert.Agents)
+	if err := w.send(ctx, notify.Note{Title: "Today with your agents", Body: body + ".", Alerts: []notify.Alert{alert}}); err != nil {
 		return err
 	}
 	return w.st.SetMeta(ctx, key, now.Format(time.RFC3339))

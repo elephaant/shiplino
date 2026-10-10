@@ -1,14 +1,25 @@
 "use client";
 
 import { cn } from "cn";
-import { FileText, GitBranch, GitCommitHorizontal, Pin, RotateCcw, Search, SquarePen, Terminal } from "lucide-react";
+import {
+  FileText,
+  GitBranch,
+  GitCommitHorizontal,
+  Hand,
+  Pin,
+  RotateCcw,
+  Search,
+  SquarePen,
+  Terminal,
+} from "lucide-react";
 import { AgentDot } from "@/components/common/agent-dot";
 import { PlanProgress } from "@/components/common/plan-progress";
 import { PRBadge } from "@/components/common/pr-badge";
 import { Badge } from "@/components/ui/badge";
 import type { BoardCard } from "@/lib/api";
-import { formatCost, formatDuration, noUsageReason } from "@/lib/format";
+import { formatCost, formatDuration, noUsageReason, waitingLabel } from "@/lib/format";
 import { API_EQUIVALENT, onPlan, useLimits } from "@/lib/limits";
+import { isUnseen, useSeen } from "@/lib/seen";
 
 const statusDot: Record<string, string> = {
   running: "bg-status-running",
@@ -31,6 +42,12 @@ function DoingIcon({ text }: { text: string }) {
 export function CardView({ card, dragging, onOpen }: { card: BoardCard; dragging?: boolean; onOpen?: () => void }) {
   const waiting = card.status === "waiting";
   const limits = useLimits();
+  const { seen, markSeen } = useSeen();
+  const unseen = waiting && isUnseen(seen, card.id, card.waiting_since);
+  const open = () => {
+    if (waiting) markSeen(card.id, card.waiting_since);
+    onOpen?.();
+  };
   const subs = card.subagents ?? [];
   const shown =
     subs.length > 3 ? subs.filter((s) => s.status === "running" || s.status === "waiting").slice(0, 3) : subs;
@@ -43,11 +60,11 @@ export function CardView({ card, dragging, onOpen }: { card: BoardCard; dragging
     <div
       role="button"
       tabIndex={0}
-      onClick={onOpen}
+      onClick={open}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          onOpen?.();
+          open();
         }
       }}
       className={cn(
@@ -63,6 +80,14 @@ export function CardView({ card, dragging, onOpen }: { card: BoardCard; dragging
           <span className="mt-1 size-2.5 shrink-0 rounded-full border" />
         )}
         <span className="line-clamp-2 font-medium leading-snug">{card.title}</span>
+        {unseen && (
+          <span
+            className="mt-1.5 ml-auto size-2 shrink-0 rounded-full bg-primary"
+            role="img"
+            aria-label="New: not opened since it started waiting"
+            title="New: not opened since it started waiting"
+          />
+        )}
       </div>
 
       {card.origin === "auto" && (
@@ -83,6 +108,13 @@ export function CardView({ card, dragging, onOpen }: { card: BoardCard; dragging
         <p className="text-muted-foreground text-xs" title="No activity for 30 minutes: the agent may have been closed">
           Went quiet: no activity for a while
         </p>
+      )}
+
+      {waiting && (
+        <Badge variant="outline" className="w-fit border-status-waiting/60 px-1.5 py-0 font-normal text-xs">
+          <Hand className="size-3 text-status-waiting" aria-hidden />
+          {waitingLabel(card.waiting_reason)}
+        </Badge>
       )}
 
       {card.now_doing && (

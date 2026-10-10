@@ -105,13 +105,6 @@ const syncHeader = `[sync]
 // rest of the file, comments included, as it was. The result must load
 // cleanly, or nothing is written.
 func UpdateSync(home string, change func(*Sync)) error {
-	old, err := os.ReadFile(Path(home))
-	if errors.Is(err, os.ErrNotExist) {
-		old, err = []byte(defaultFile), nil
-	}
-	if err != nil {
-		return err
-	}
 	c, err := Load(home)
 	if err != nil {
 		return err
@@ -127,13 +120,25 @@ func UpdateSync(home string, change func(*Sync)) error {
 	if err != nil {
 		return err
 	}
-	section := syncHeader + string(body)
+	return rewriteSection(home, "sync", syncHeader+string(body))
+}
 
+// rewriteSection replaces the [name] table of config.toml (header line
+// included) with section, or appends it, and leaves the rest of the
+// file as it was. The result must load cleanly, or nothing is written.
+func rewriteSection(home, name, section string) error {
+	old, err := os.ReadFile(Path(home))
+	if errors.Is(err, os.ErrNotExist) {
+		old, err = []byte(defaultFile), nil
+	}
+	if err != nil {
+		return err
+	}
 	lines := strings.SplitAfter(string(old), "\n")
 	start, end := -1, len(lines)
 	for i, l := range lines {
 		t := strings.TrimSpace(l)
-		if start < 0 && t == "[sync]" {
+		if start < 0 && t == "["+name+"]" {
 			start = i
 		} else if start >= 0 && strings.HasPrefix(t, "[") {
 			end = i
@@ -144,6 +149,10 @@ func UpdateSync(home string, change func(*Sync)) error {
 	if start < 0 {
 		out = strings.TrimRight(string(old), "\n") + "\n\n" + section
 	} else {
+		// Keep comment lines just above the next table with that table.
+		for end > start+1 && end < len(lines) && strings.HasPrefix(strings.TrimSpace(lines[end-1]), "#") {
+			end--
+		}
 		rest := strings.Join(lines[end:], "")
 		if rest != "" {
 			section += "\n"
@@ -155,10 +164,10 @@ func UpdateSync(home string, change func(*Sync)) error {
 	dec := toml.NewDecoder(bytes.NewReader([]byte(out)))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(&check); err != nil {
-		return fmt.Errorf("%s: can't update [sync]: %w", Path(home), err)
+		return fmt.Errorf("%s: can't update [%s]: %w", Path(home), name, err)
 	}
-	if err := validateSync(check.Sync); err != nil {
-		return err
+	if err := validate(check); err != nil {
+		return fmt.Errorf("%s: %w", Path(home), err)
 	}
 	return writeAtomic(Path(home), []byte(out))
 }

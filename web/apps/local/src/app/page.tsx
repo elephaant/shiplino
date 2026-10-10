@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api, type Overview } from "@/lib/api";
-import { formatAgo, formatCost } from "@/lib/format";
+import { formatAgo, formatCost, waitingLabel } from "@/lib/format";
 import { useLive } from "@/lib/live";
 
 const cols = [
@@ -66,6 +66,9 @@ export default function OverviewPage() {
               >
                 <AgentDot agent={n.agent} />
                 <span className="font-medium">{n.title || n.root_id}</span>
+                <Badge variant="outline" className="shrink-0 px-1.5 py-0 font-normal text-xs">
+                  {waitingLabel(n.reason)}
+                </Badge>
                 <span className="truncate text-muted-foreground">{n.message}</span>
                 <span className="ml-auto shrink-0 font-mono text-xs text-muted-foreground">
                   waiting {formatAgo(n.since).replace(" ago", "")}

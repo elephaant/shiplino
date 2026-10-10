@@ -101,9 +101,12 @@ type Session struct {
 	ActiveMS      int64     `json:"active_ms"`
 	TurnStartedAt time.Time `json:"turn_started_at,omitzero"`
 	// InFlight is the number of tool calls started and not yet finished.
-	InFlight       int       `json:"in_flight,omitempty"`
-	WaitingSince   time.Time `json:"waiting_since,omitzero"`
-	TranscriptPath string    `json:"transcript_path,omitempty"`
+	InFlight     int       `json:"in_flight,omitempty"`
+	WaitingSince time.Time `json:"waiting_since,omitzero"`
+	// WaitingReason is why it waits, while it does: "permission",
+	// "question" or "idle" (the agent's waiting.start reason).
+	WaitingReason  string `json:"waiting_reason,omitempty"`
+	TranscriptPath string `json:"transcript_path,omitempty"`
 	// HookSeen is set once the session has events from the agent's hooks.
 	// Activity then comes from hooks; the transcript adds usage and titles.
 	HookSeen bool `json:"hook_seen,omitempty"`
@@ -180,7 +183,7 @@ func (s *Session) FilesChanged() int { return len(s.Files) }
 // Rev identifies the engine's folding rules. Bump it whenever Apply would
 // produce different sessions from the same events (a new field, a fix);
 // the daemon then rebuilds stored sessions from their events once.
-const Rev = 10
+const Rev = 11
 
 // Engine folds events into sessions. It is not safe for concurrent use;
 // the daemon feeds it from a single goroutine.
@@ -296,6 +299,7 @@ func (e *Engine) Apply(ev model.Event) []*Session {
 		}
 		s.Status = StatusWaiting
 		s.NowDoing = str(ev.Data, "message")
+		s.WaitingReason = str(ev.Data, "reason")
 
 	case model.KindWaitingEnd:
 		e.endWaiting(s, ev.TS)
@@ -564,6 +568,7 @@ func (e *Engine) depthOf(id string) int {
 }
 
 func (e *Engine) endWaiting(s *Session, at time.Time) {
+	s.WaitingReason = ""
 	if s.Status != StatusWaiting || s.WaitingSince.IsZero() {
 		return
 	}

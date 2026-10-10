@@ -38,6 +38,8 @@ func TestRejectsMistakes(t *testing.T) {
 		"bad level":    "capture_level = \"everything\"\n",
 		"bad pattern":  "[redaction]\nextra_patterns = [\"([\"]\n",
 		"invalid toml": "capture_level = \n",
+		"push target":  "[notify.push]\ntargets = [\"pager\"]\n",
+		"push event":   "[notify.push]\nevents = [\"prompt\"]\n",
 	} {
 		home := t.TempDir()
 		os.WriteFile(Path(home), []byte(content), 0o600)
@@ -148,6 +150,42 @@ func TestSyncDefaultsAndValidation(t *testing.T) {
 	os.WriteFile(Path(home), []byte("[sync]\nendpoint = \"http://127.0.0.1:9999/\"\n"), 0o600)
 	if c, err := Load(home); err != nil || c.SyncEndpoint() != "http://127.0.0.1:9999" {
 		t.Fatalf("loopback endpoint: %v %q", err, c.SyncEndpoint())
+	}
+}
+
+func TestUpdatePush(t *testing.T) {
+	// An older file without [notify.push]: the section is appended.
+	home := t.TempDir()
+	old := "[notify]\nenabled = false # mine\n\n# my budget\n[budget]\ndaily_usd = 5\n"
+	os.WriteFile(Path(home), []byte(old), 0o600)
+	if err := UpdatePush(home, func(p *Push) { p.Targets = append(p.Targets, "ntfy") }); err != nil {
+		t.Fatal(err)
+	}
+	after := readFile(t, Path(home))
+	if !strings.HasPrefix(after, old) {
+		t.Fatalf("rest changed:\n%s", after)
+	}
+	c, err := Load(home)
+	if err != nil || len(c.PushSettings().Targets) != 1 || c.Budget.DailyUSD != 5 {
+		t.Fatalf("after: %+v %v", c, err)
+	}
+	// Desktop off, a push target on: plan limit alerts still go out.
+	if c.LimitPercent() != 80 {
+		t.Fatalf("limit percent %v", c.LimitPercent())
+	}
+	// In the default file, the section sits between [notify] and the
+	// comments of the next table, which stay.
+	home = t.TempDir()
+	WriteDefault(home)
+	if err := UpdatePush(home, func(p *Push) { p.Targets = []string{"slack"} }); err != nil {
+		t.Fatal(err)
+	}
+	after = readFile(t, Path(home))
+	if strings.Count(after, "[notify.push]") != 1 || !strings.Contains(after, "targets = ['slack']") || !strings.Contains(after, "\n[budget]\n# Spend limits") {
+		t.Fatalf("default file:\n%s", after)
+	}
+	if err := UpdatePush(home, func(p *Push) { p.Targets = []string{"pager"} }); err == nil {
+		t.Fatal("unknown target written")
 	}
 }
 

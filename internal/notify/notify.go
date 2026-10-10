@@ -23,10 +23,13 @@ import (
 	"github.com/elephaant/shiplino/pkg/engine"
 )
 
-// Note is one desktop notification.
+// Note is one notification. Title and Body are shown on this machine
+// only and may hold content (the agent's own notification text); Alerts
+// say what it is about, as metadata, for phone and team targets.
 type Note struct {
-	Title string
-	Body  string
+	Title  string
+	Body   string
+	Alerts []Alert
 }
 
 // Settings choose what is notified.
@@ -180,13 +183,25 @@ func (n *Notifier) Due() []Note {
 	var out []Note
 	for _, r := range []reason{needsYou, failed, finished} {
 		if ps := groups[r]; len(ps) > 0 {
-			out = append(out, compose(r, ps))
+			out = append(out, n.compose(r, ps))
 		}
 	}
 	return out
 }
 
-func compose(r reason, ps []pending) Note {
+func (n *Notifier) compose(r reason, ps []pending) Note {
+	note := n.text(r, ps)
+	event := map[reason]string{needsYou: EventWaiting, failed: EventFailed, finished: EventDone}[r]
+	now := n.now()
+	for _, p := range ps {
+		note.Alerts = append(note.Alerts, AlertFor(event, p.s, now, p.turn))
+	}
+	return note
+}
+
+// text is the desktop notification. It stays on this machine, so it may
+// quote the agent's own words (NowDoing).
+func (n *Notifier) text(r reason, ps []pending) Note {
 	if len(ps) == 1 {
 		p := ps[0]
 		s := p.s
@@ -197,7 +212,7 @@ func compose(r reason, ps []pending) Note {
 			if what == "" {
 				what = "Waiting for your input"
 			}
-			return Note{Title: AgentName(s.Agent) + " needs you", Body: head + "\n" + what}
+			return Note{Title: WaitingTitle(s.Agent, s.WaitingReason), Body: head + "\n" + what}
 		case failed:
 			body := head
 			if s.NowDoing != "" {
@@ -205,7 +220,7 @@ func compose(r reason, ps []pending) Note {
 			}
 			return Note{Title: AgentName(s.Agent) + " failed", Body: body}
 		default:
-			extra := "Finished in " + shortDuration(p.turn)
+			extra := "Finished in " + ShortDuration(p.turn)
 			if n := len(s.Files); n > 0 {
 				extra += fmt.Sprintf(" · %d file%s changed", n, plural(n))
 			}
@@ -253,11 +268,20 @@ func AgentName(id string) string {
 		return "Copilot CLI"
 	case "opencode":
 		return "OpenCode"
+	case "gemini-cli":
+		return "Gemini CLI"
+	case "windsurf":
+		return "Windsurf"
+	case "cline":
+		return "Cline"
+	case "aider":
+		return "Aider"
 	}
 	return id
 }
 
-func shortDuration(d time.Duration) string {
+// ShortDuration is "45s", "3m 20s" or "2h 5m".
+func ShortDuration(d time.Duration) string {
 	switch {
 	case d < time.Minute:
 		return fmt.Sprintf("%ds", int(d.Seconds()))

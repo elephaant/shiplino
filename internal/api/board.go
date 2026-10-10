@@ -326,6 +326,7 @@ type NeedsYou struct {
 	Agent     string    `json:"agent"`
 	Title     string    `json:"title"`
 	Message   string    `json:"message"`
+	Reason    string    `json:"reason,omitempty"` // "permission", "question" or "idle"
 	Since     time.Time `json:"since"`
 }
 
@@ -352,7 +353,7 @@ func (s *Server) overview(w http.ResponseWriter, r *http.Request) {
 	for _, se := range all {
 		if se.Status == engine.StatusWaiting {
 			needs = append(needs, NeedsYou{SessionID: se.ID, RootID: se.RootID, ProjectID: se.ProjectID, Agent: se.Agent,
-				Title: titles[se.RootID], Message: se.NowDoing, Since: se.WaitingSince})
+				Title: titles[se.RootID], Message: se.NowDoing, Reason: se.WaitingReason, Since: se.WaitingSince})
 		}
 	}
 	sort.Slice(needs, func(i, j int) bool { return needs[i].Since.Before(needs[j].Since) })

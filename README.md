@@ -38,7 +38,7 @@ Read more: [How it works](docs/how-it-works.md).
 - **Cost and tokens** per agent, model, project and day. The agent's own figures are used when it reports them, otherwise list prices, and the source of every number is shown.
 - **Insights:** spend, agent working time, time spent waiting on you, and code changed, compared with the previous period.
 - **Search** across all history (⌘K), and CSV/JSON export.
-- **Desktop notifications** when an agent waits on you, finishes a long turn or fails.
+- **Notifications** when an agent waits on you (and why: a permission prompt, a question, or your turn), finishes a long turn or fails: on the desktop, and opt-in on your phone or in a team channel via ntfy, a signed webhook, Slack or Discord. Phone and team alerts carry metadata only, never prompts or code ([docs/notifications.md](docs/notifications.md)).
 - **Commits linked** to the sessions that made them.
 - **History backfill** from agents' own transcripts, so the board isn't empty on day one.
 - **Local-first and private:** secrets are redacted before anything is stored, with three capture levels. Nothing leaves your machine unless you turn on [cloud sync](docs/sync-protocol.md), and even then only metadata: never prompts, replies, commands, code or diffs.
@@ -48,7 +48,7 @@ Read more: [How it works](docs/how-it-works.md).
 
 ## Planned
 
-- Integrations: Slack/Discord/webhooks, Linear and Jira
+- Integrations: Linear and Jira
 - VS Code / Cursor extension, an optional read-only MCP server, auto-update
 - **Virtual office:** pixel characters that show what each agent is doing
 
@@ -129,7 +129,7 @@ shiplino backfill [--since 30d]        import history from before setup
 shiplino pause [--for 1h] | resume     stop and restart recording
 shiplino wrap -- <command>             record a CLI agent that has no hooks
 shiplino sync login | status | allow   opt-in team sync
-shiplino notify test                   show a sample notification
+shiplino notify test | add | list      desktop notifications and phone/team alerts
 ```
 
 ## Contributing

@@ -56,8 +56,10 @@ type Budget struct {
 	Projects   map[string]float64 `toml:"projects"`
 }
 
-// Notify controls desktop notifications. Unset fields use the defaults
-// (everything on, finished after 30s).
+// Notify controls notifications. Unset fields use the defaults
+// (everything on, finished after 30s). Enabled turns desktop
+// notifications off; Waiting, Finished and Failed apply to push targets
+// too.
 type Notify struct {
 	Enabled  *bool  `toml:"enabled"`
 	Waiting  *bool  `toml:"waiting"`
@@ -67,6 +69,7 @@ type Notify struct {
 	// LimitPercent notifies when an agent reports this much of a plan
 	// usage window used (default 80; 0 = off).
 	LimitPercent *float64 `toml:"limit_percent"`
+	Push         Push     `toml:"push"`
 }
 
 // Limits says which agents run on a flat-rate plan.
@@ -78,7 +81,7 @@ type Limits struct {
 
 // LimitPercent returns the plan usage alert threshold; 0 when off.
 func (c Config) LimitPercent() float64 {
-	if _, on := c.NotifySettings(); !on {
+	if _, on := c.NotifySettings(); !on && len(c.Notify.Push.Targets) == 0 {
 		return 0
 	}
 	if c.Notify.LimitPercent == nil {
@@ -111,42 +114,50 @@ func Load(home string) (Config, error) {
 	if err := dec.Decode(&c); err != nil {
 		return c, fmt.Errorf("%s: %w", Path(home), err)
 	}
-	if _, err := redact.ParseLevel(c.CaptureLevel); err != nil {
+	if err := validate(c); err != nil {
 		return c, fmt.Errorf("%s: %w", Path(home), err)
 	}
+	return c, nil
+}
+
+// validate checks values the TOML types can't.
+func validate(c Config) error {
+	if _, err := redact.ParseLevel(c.CaptureLevel); err != nil {
+		return err
+	}
 	if c.Budget.DailyUSD < 0 || c.Budget.MonthlyUSD < 0 {
-		return c, fmt.Errorf("%s: budget amounts can't be negative", Path(home))
+		return errors.New("budget amounts can't be negative")
 	}
 	for k, v := range c.Budget.Projects {
 		if v <= 0 {
-			return c, fmt.Errorf("%s: budget.projects.%s must be more than 0", Path(home), k)
+			return fmt.Errorf("budget.projects.%s must be more than 0", k)
 		}
 	}
 	if c.Budget.Digest != "" {
 		if _, err := time.Parse("15:04", c.Budget.Digest); err != nil {
-			return c, fmt.Errorf("%s: budget.digest: want a time like \"18:00\"", Path(home))
+			return fmt.Errorf("budget.digest: want a time like \"18:00\"")
 		}
 	}
 	if c.Notify.MinTurn != "" {
 		if d, err := time.ParseDuration(c.Notify.MinTurn); err != nil || d < 0 {
-			return c, fmt.Errorf("%s: notify.min_turn: want a duration like \"30s\" or \"2m\"", Path(home))
+			return fmt.Errorf("notify.min_turn: want a duration like \"30s\" or \"2m\"")
 		}
 	}
 	if p := c.Notify.LimitPercent; p != nil && (*p < 0 || *p > 100) {
-		return c, fmt.Errorf("%s: notify.limit_percent must be 0-100", Path(home))
+		return errors.New("notify.limit_percent must be 0-100")
 	}
 	for k, v := range c.Limits.Plans {
 		if v != "plan" && v != "api" {
-			return c, fmt.Errorf("%s: limits.plans.%s: want \"plan\" or \"api\"", Path(home), k)
+			return fmt.Errorf("limits.plans.%s: want \"plan\" or \"api\"", k)
 		}
 	}
 	if _, err := redact.New(c.Redaction.ExtraPatterns); err != nil {
-		return c, fmt.Errorf("%s: redaction.extra_patterns: %w", Path(home), err)
+		return fmt.Errorf("redaction.extra_patterns: %w", err)
 	}
 	if err := validateSync(c.Sync); err != nil {
-		return c, fmt.Errorf("%s: %w", Path(home), err)
+		return err
 	}
-	return c, nil
+	return validatePush(c.Notify.Push)
 }
 
 // Level returns the capture level (Standard by default).
@@ -204,6 +215,9 @@ finished = true     # a turn finished...
 min_turn = "30s"    # ...that ran at least this long
 failed = true       # a session failed
 limit_percent = 80  # an agent reports this much of a plan usage window used (0 = off)
+
+` + pushHeader + `targets = []
+events = []
 
 [budget]
 # Spend limits in USD at list prices (0 = none). You're notified at 80%

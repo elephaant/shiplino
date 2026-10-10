@@ -101,3 +101,21 @@ func TestQuietCases(t *testing.T) {
 		t.Fatalf("expected silence, got %+v", got)
 	}
 }
+
+func TestWaitingSaysWhyAndCarriesAlerts(t *testing.T) {
+	n, c := setup(Defaults)
+	s := sess("a", engine.StatusWaiting, c.t)
+	s.WaitingReason, s.Branch, s.StartedAt, s.BestCostUSD = "permission", "main", c.t.Add(-2*time.Minute), 0.5
+	n.Observe([]*engine.Session{sess("a", engine.StatusRunning, c.t)})
+	n.Observe([]*engine.Session{s})
+	c.advance(WaitDelay)
+	got := n.Due()
+	if len(got) != 1 || got[0].Title != "Claude Code needs your approval" || len(got[0].Alerts) != 1 {
+		t.Fatalf("note: %+v", got)
+	}
+	a := got[0].Alerts[0]
+	if a.Event != EventWaiting || a.Reason != "permission" || a.Project != "api" || a.Branch != "main" || a.CostUSD != 0.5 ||
+		a.DurationMS != (2*time.Minute+WaitDelay).Milliseconds() {
+		t.Fatalf("alert: %+v", a)
+	}
+}
