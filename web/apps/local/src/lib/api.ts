@@ -192,6 +192,7 @@ export interface Settings {
     watch_error?: string;
   };
   sync?: SyncState;
+  budget: { spends: { scope: string; label: string; spent_usd: number; limit_usd: number }[]; digest?: string };
 }
 
 /** Cloud sync state. It never contains tokens. */

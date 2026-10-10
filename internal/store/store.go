@@ -751,6 +751,22 @@ func (s *Store) SessionsIn(ctx context.Context, projectID string, limit int) ([]
 	return scanSessions(rows)
 }
 
+// SessionsActiveSince returns sessions (and subagents) with activity at or
+// after t, using the last-event index.
+func (s *Store) SessionsActiveSince(ctx context.Context, t time.Time) ([]*engine.Session, error) {
+	rows, err := s.db.QueryContext(ctx, `SELECT body FROM sessions WHERE last_event_at >= ?`, t.UnixMilli())
+	if err != nil {
+		return nil, err
+	}
+	return scanSessions(rows)
+}
+
+// SetMeta stores a value outside a write transaction.
+func (s *Store) SetMeta(ctx context.Context, key, value string) error {
+	_, err := s.db.ExecContext(ctx, `INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`, key, value)
+	return err
+}
+
 func scanSessions(rows *sql.Rows) ([]*engine.Session, error) {
 	defer rows.Close()
 	var out []*engine.Session

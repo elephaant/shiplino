@@ -329,3 +329,22 @@ func TestLongWALStartsOver(t *testing.T) {
 		t.Fatal("walLong not cleared")
 	}
 }
+
+func TestSessionsActiveSinceAndMeta(t *testing.T) {
+	s, _ := openTemp(t)
+	now := time.Now()
+	tx, _ := s.Begin(ctx)
+	tx.PutSession(ctx, &engine.Session{ID: "a:old", RootID: "a:old", Agent: "a", StartedAt: now.Add(-48 * time.Hour), LastEventAt: now.Add(-48 * time.Hour)})
+	tx.PutSession(ctx, &engine.Session{ID: "a:new", RootID: "a:new", Agent: "a", StartedAt: now.Add(-time.Hour), LastEventAt: now})
+	tx.Commit()
+	list, err := s.SessionsActiveSince(ctx, now.Add(-24*time.Hour))
+	if err != nil || len(list) != 1 || list[0].ID != "a:new" {
+		t.Fatalf("%v %v", list, err)
+	}
+	if err := s.SetMeta(ctx, "k", "v"); err != nil {
+		t.Fatal(err)
+	}
+	if v, _ := s.Meta(ctx, "k"); v != "v" {
+		t.Fatalf("meta: %q", v)
+	}
+}
