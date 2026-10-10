@@ -228,6 +228,9 @@ type Health struct {
 	// WatchError is set when file notifications are unavailable and the
 	// daemon polls instead (slower to react, a little more CPU).
 	WatchError string `json:"watch_error,omitempty"`
+	// Imported counts, per agent, transcripts skipped because they copy
+	// another agent's session (whose own record is used instead).
+	Imported map[string]int `json:"imported,omitempty"`
 }
 
 // noCWD reports whether the session doesn't know its folder yet.
@@ -241,6 +244,14 @@ func (d *Daemon) Health() Health {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	h := Health{Stats: d.stats.snapshot(), Transcripts: len(d.transcripts), Paused: spool.Paused(d.home, time.Now()), WatchError: d.watchErr}
+	for path, agent := range d.transcripts {
+		if d.tstate["transcript:"+path][adapters.StateImported] == "1" {
+			if h.Imported == nil {
+				h.Imported = map[string]int{}
+			}
+			h.Imported[agent]++
+		}
+	}
 	files, _ := filepath.Glob(filepath.Join(d.spoolRoot, "*", "*.jsonl"))
 	for _, f := range files {
 		fi, err := os.Stat(f)

@@ -106,3 +106,30 @@ func TestCodexHooksWinOverRolloutActivity(t *testing.T) {
 		t.Fatal("HookSeen not set")
 	}
 }
+
+// A session Codex imported from another agent is skipped (that agent's
+// own record is used) and counted for doctor, also after a restart.
+func TestCodexImportedRolloutSkipped(t *testing.T) {
+	home := withHome(t)
+	e := newEnv(t)
+	codexRollout(t, home, "th-imp", fixtureLines(t, "imported.jsonl"))
+	codexRollout(t, home, "th-2", fixtureLines(t, "rollout.jsonl"))
+	e.poll()
+
+	if s, err := e.st.Session(ctx, "codex:th-imp"); err != nil || s != nil {
+		t.Fatalf("imported session stored: %+v %v", s, err)
+	}
+	if s := e.session("codex:th-2"); s.Turns != 3 {
+		t.Fatalf("native session: %+v", s)
+	}
+	if got := e.d.Health().Imported; got["codex"] != 1 || len(got) != 1 {
+		t.Fatalf("imported = %v", got)
+	}
+	n := e.eventCount()
+
+	e.restart()
+	e.poll()
+	if got := e.d.Health().Imported; got["codex"] != 1 || e.eventCount() != n {
+		t.Fatalf("after restart: imported = %v, events %d → %d", got, n, e.eventCount())
+	}
+}

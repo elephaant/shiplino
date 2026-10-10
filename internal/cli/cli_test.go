@@ -421,3 +421,29 @@ func TestSetupWindsurfJetBrains(t *testing.T) {
 		t.Fatalf("after uninstall:\n%s", b)
 	}
 }
+
+// Doctor says how many sessions were skipped as copies of another agent's.
+func TestDoctorShowsSkippedImports(t *testing.T) {
+	e, out := testEnv(t)
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.MkdirAll(e.home, 0o700)
+	os.WriteFile(filepath.Join(e.home, "port"), []byte(fmt.Sprint(ln.Addr().(*net.TCPAddr).Port)), 0o600)
+	os.WriteFile(filepath.Join(e.home, "token"), []byte("t"), 0o600)
+	srv := &http.Server{Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/v1/status" {
+			w.Write([]byte(`{"daemon":{"imported":{"codex":3}}}`))
+			return
+		}
+		w.Write([]byte(`{}`))
+	})}
+	go srv.Serve(ln)
+	defer srv.Close()
+
+	doctor(context.Background(), e, nil)
+	if !strings.Contains(out.String(), "3 Codex sessions imported from other agents skipped") {
+		t.Fatalf("doctor:\n%s", out)
+	}
+}

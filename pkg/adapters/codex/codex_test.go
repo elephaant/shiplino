@@ -162,6 +162,58 @@ func TestHelperThreadsSkipped(t *testing.T) {
 	}
 }
 
+// Sessions Codex imported from another agent produce nothing, whether
+// read in one go or resumed after a restart at any line.
+func TestImportedSessionsSkipped(t *testing.T) {
+	ls := lines(t, "imported.jsonl")
+	for warm := 0; warm <= len(ls); warm++ {
+		st := map[string]string{}
+		all := []model.Event{}
+		for i, l := range ls {
+			evs, err := Adapter{}.ParseTranscriptLine(l, adapters.TranscriptMeta{ReceivedAt: t0, State: st, Warmup: i < warm})
+			if err != nil {
+				t.Fatalf("line %d: %v", i+1, err)
+			}
+			all = append(all, evs...)
+		}
+		if warm == 0 {
+			golden(t, "imported.golden.json", all)
+		} else if len(all) != 0 {
+			t.Fatalf("warmup %d: %+v", warm, all)
+		}
+		if st[adapters.StateImported] != "1" {
+			t.Fatalf("warmup %d: not marked imported: %v", warm, st)
+		}
+	}
+}
+
+// session.start waits for the line after session_meta, also across a
+// restart right after it, and is emitted once.
+func TestSessionStartAfterRestart(t *testing.T) {
+	ls := lines(t, "rollout.jsonl")
+	for warm := 1; warm <= 4; warm++ {
+		st := map[string]string{}
+		starts := 0
+		for i, l := range ls {
+			evs, _ := Adapter{}.ParseTranscriptLine(l, adapters.TranscriptMeta{ReceivedAt: t0, State: st, Warmup: i < warm})
+			for _, e := range evs {
+				if e.Kind == model.KindSessionStart {
+					starts++
+					if !e.TS.Equal(time.Date(2026, 10, 9, 10, 0, 0, 0, time.UTC)) || e.TurnID != "" {
+						t.Fatalf("session.start: %+v", e)
+					}
+				}
+			}
+		}
+		// Lines 2 and 3 (turn_context, task_started) yield nothing, so a
+		// restart before line 4 still emits the start; after it, the start
+		// was already emitted live.
+		if want := map[bool]int{true: 1, false: 0}[warm < 4]; starts != want {
+			t.Fatalf("warmup %d: %d session.start, want %d", warm, starts, want)
+		}
+	}
+}
+
 func TestInstall(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, ".codex", "hooks.json")

@@ -270,6 +270,16 @@ var migrations = []string{
 			  AND json_extract(body, '$.data.report') IS NULL
 		) WHERE n > 1
 	);`,
+	// v10: sessions Codex imported from another agent (turn ids
+	// "external-import-turn-N") copy that agent's history, which its own
+	// record already holds. The adapter now skips them; drop stored ones.
+	`CREATE TEMP TABLE imported AS
+		SELECT DISTINCT session_id AS id FROM events WHERE agent = 'codex' AND turn_id GLOB 'external-import-turn-*';
+	DELETE FROM search WHERE session_id IN (SELECT id FROM imported);
+	DELETE FROM cards WHERE origin != 'manual' AND id IN (SELECT id FROM imported);
+	DELETE FROM sessions WHERE id IN (SELECT id FROM imported);
+	DELETE FROM events WHERE session_id IN (SELECT id FROM imported);
+	DROP TABLE imported;`,
 }
 
 func (s *Store) migrate(ctx context.Context) error {
