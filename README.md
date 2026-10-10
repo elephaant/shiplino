@@ -58,9 +58,9 @@ Read more: [How it works](docs/how-it-works.md).
 |-------|-----|
 | Claude Code, OpenAI Codex, Cursor, Gemini CLI | hooks + transcripts |
 | Windsurf (Cascade), editor and JetBrains plugin | hooks: prompts, turns, file reads and edits, commands, MCP calls. Windsurf's hooks carry no token counts, so no cost yet |
-| GitHub Copilot CLI | hooks (`~/.copilot/hooks/shiplino.json`; no token usage yet) |
+| GitHub Copilot CLI | hooks (`~/.copilot/hooks/shiplino.json`) + its session log: tokens and Copilot's own cost (AI credits), recorded when a session ends |
 | OpenCode | plugin (`~/.config/opencode/plugins/shiplino.js`, observe-only): sessions, subagents, prompts, tools, file edits, permission prompts, tokens and OpenCode's own cost |
-| Cline (VS Code/JetBrains extension and CLI) | hook scripts in `~/Documents/Cline/Hooks`: tasks, prompts, tool calls with their real durations, file reads and edits, commands with exit codes (CLI), MCP calls, subagents. Hooks carry no token counts, so no cost yet |
+| Cline (VS Code/JetBrains extension and CLI) | hook scripts in `~/Documents/Cline/Hooks`: tasks, prompts, tool calls with their real durations, file reads and edits, commands with exit codes (CLI), MCP calls, subagents; tokens and Cline's own cost from its task files |
 | Aider, any CLI agent | `shiplino wrap -- <command>` + git (Aider: prompts, tokens, cost and edits from its chat history) |
 | Custom agents (Agent SDK, LangGraph, …) | [TypeScript and Python SDKs](sdk/), the [ingest API](docs/ingest.md) or OpenTelemetry |
 

@@ -29,6 +29,10 @@ const HooksFile = "shiplino.json"
 // RestartNote is shown after installing.
 const RestartNote = "Copilot CLI reads hooks when a session starts: restart running copilot sessions"
 
+// UsageNote is shown by doctor: Copilot records token usage only when a
+// session ends (see transcript.go).
+const UsageNote = "tokens and cost arrive when a session ends (Copilot CLI writes usage only on exit)"
+
 // Detection describes what was found on this machine.
 type Detection struct {
 	Installed bool

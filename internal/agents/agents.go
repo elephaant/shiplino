@@ -28,6 +28,9 @@ type Hooks struct {
 	Uninstall func(path, backupDir string) (changed bool, err error)
 	Installed func(path string) (bool, string, error)
 	Note      string // shown after a fresh install
+	// Usage is shown by doctor when the agent records token usage in a
+	// limited way (e.g. only when a session ends).
+	Usage string
 }
 
 // errUnparseable is shared by every hook-file adapter.
@@ -136,6 +139,7 @@ var All = []Hooks{
 		},
 		Installed: copilotcli.Installed,
 		Note:      copilotcli.RestartNote,
+		Usage:     copilotcli.UsageNote,
 	},
 	{
 		Name: "Gemini CLI", ID: geminicli.Name,

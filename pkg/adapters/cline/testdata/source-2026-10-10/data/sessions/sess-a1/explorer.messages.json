@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "updated_at": "2026-10-10T08:01:20.000Z",
+  "agent": "subagent",
+  "sessionId": "sess-a1__explorer",
+  "messages": [
+    { "id": "msg_s1", "role": "user", "content": [{ "type": "text", "text": "Find every caller of load()" }] },
+    {
+      "id": "msg_s2", "role": "assistant", "ts": 1791648070000,
+      "modelInfo": { "id": "local-model", "provider": "ollama" },
+      "metrics": { "inputTokens": 1500, "outputTokens": 40, "cacheReadTokens": 0, "cacheWriteTokens": 0, "cost": 0 },
+      "content": [{ "type": "text", "text": "Two callers." }]
+    }
+  ]
+}

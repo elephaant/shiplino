@@ -283,7 +283,11 @@ func doctor(ctx context.Context, e *env, args []string) int {
 		case !strings.Contains(cmd, bin):
 			checks = append(checks, check{name: a.Name, detail: "hooks point at " + cmd + ", not " + bin, fix: reinstall, fixHint: "shiplino doctor --fix"})
 		default:
-			checks = append(checks, check{ok: true, name: a.Name, detail: strings.TrimSpace(version + " hooks installed")})
+			detail := strings.TrimSpace(version + " hooks installed")
+			if a.Usage != "" {
+				detail += "; " + a.Usage
+			}
+			checks = append(checks, check{ok: true, name: a.Name, detail: detail})
 		}
 	}
 

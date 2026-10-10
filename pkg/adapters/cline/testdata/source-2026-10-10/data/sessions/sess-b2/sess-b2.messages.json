@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "updated_at": "2026-10-10T09:00:10.000Z",
+  "agent": "lead",
+  "sessionId": "sess-b2",
+  "messages": [
+    { "id": "msg_l1", "role": "user", "content": [{ "type": "text", "text": "Old task prompt" }] },
+    {
+      "id": "msg_l2", "role": "assistant",
+      "modelInfo": { "id": "claude-sonnet-4-6", "provider": "unknown" },
+      "metrics": { "inputTokens": 50000, "outputTokens": 3000, "cacheReadTokens": 30000, "cacheWriteTokens": 10000, "cost": 1.25 },
+      "content": [{ "type": "text", "text": "Old answer" }]
+    },
+    { "id": "msg_l3", "role": "user", "content": "Warning: this is a legacy conversation, which means tool names may have changed. Please use the most up-to-date tools you are aware of." },
+    { "id": "msg_l4", "role": "user", "content": [{ "type": "text", "text": "Keep going" }] },
+    {
+      "id": "msg_l5", "role": "assistant", "ts": 1791651605000,
+      "modelInfo": { "id": "claude-sonnet-4-6", "provider": "anthropic" },
+      "metrics": { "inputTokens": 1200, "outputTokens": 60, "cacheReadTokens": 0, "cacheWriteTokens": 0, "cost": 0.0045 },
+      "content": [{ "type": "text", "text": "Continuing." }]
+    }
+  ]
+}
