@@ -48,22 +48,38 @@ export function agentName(id: string): string {
   return agentNames[id] ?? id;
 }
 
+const agentTokens: Record<string, string> = {
+  "claude-code": "claude",
+  codex: "codex",
+  cursor: "cursor",
+  "gemini-cli": "gemini",
+  "copilot-cli": "copilot",
+  windsurf: "windsurf",
+};
+
+// Full class names, so Tailwind sees them in the source.
+const agentClasses: Record<string, string> = {
+  claude: "bg-agent-claude",
+  codex: "bg-agent-codex",
+  cursor: "bg-agent-cursor",
+  gemini: "bg-agent-gemini",
+  copilot: "bg-agent-copilot",
+  windsurf: "bg-agent-windsurf",
+  other: "bg-agent-other",
+};
+
 /** Tailwind classes for an agent's identity color. */
 export function agentColor(id: string): string {
-  switch (id) {
-    case "claude-code":
-      return "bg-agent-claude";
-    case "codex":
-      return "bg-agent-codex";
-    case "cursor":
-      return "bg-agent-cursor";
-    case "gemini-cli":
-      return "bg-agent-gemini";
-    case "copilot-cli":
-      return "bg-agent-copilot";
-    case "windsurf":
-      return "bg-agent-windsurf";
-    default:
-      return "bg-agent-other";
-  }
+  return agentClasses[agentTokens[id] ?? "other"] ?? "bg-agent-other";
+}
+
+/** CSS color value of an agent's identity color (for charts). */
+export function agentVar(id: string): string {
+  return `var(--agent-${agentTokens[id] ?? "other"})`;
+}
+
+/** Percent change from prev to cur, or undefined when there's no base. */
+export function change(cur: number, prev: number): number | undefined {
+  if (!prev) return undefined;
+  return ((cur - prev) / prev) * 100;
 }

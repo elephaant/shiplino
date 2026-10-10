@@ -13,6 +13,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Search: prompts, commands, file paths, session titles and commit messages are indexed (SQLite FTS5, existing data included) and searchable with ⌘K / Ctrl K in the web app, `shiplino search <words>` and `GET /api/v1/search`. Every word must match, as a prefix.
 - Export: `shiplino export [--format csv|json] [--project] [--since 7d] [--out file]`, `GET /api/v1/export`, and "Export" in the ⌘K menu. CSV cells that a spreadsheet would run as formulas are escaped.
 - Desktop notifications on Linux, macOS and Windows: an agent is waiting on you (only if it's still waiting after 3 seconds), finished a turn that ran at least 30 seconds, or failed. Several at once are grouped, and a session isn't notified twice within 30 seconds. Configure under `[notify]` in `config.toml`; check with `shiplino notify test` and `doctor`.
+- Insights page: spend, sessions, time agents spent working, time they waited on you and code changed, each compared with the previous period; a per-day chart (spend by agent, sessions, time); breakdowns by agent, project, model and tool; and where the dollar figures come from (reported by the agent, computed, or none). `GET /api/v1/insights?days=&project=`.
+- Settings page: pause and resume recording, which agents are connected (and how to connect the rest), capture level and data location, notification settings with a test button, daemon health, and data export. `GET /api/v1/settings`, `POST /api/v1/pause`, `/resume`, `/notify/test`.
+- Sessions record their active time: the time spent in turns, using the agent's own turn duration when it reports one, so idle time between prompts isn't counted.
+- When an update changes how sessions are computed, the daemon rebuilds them from the stored events once at startup, so past sessions benefit too.
 - `doctor` explains degraded modes and how to fix them: the board running on another port because 4777 was busy, and file notifications being unavailable.
 
 ### Changed

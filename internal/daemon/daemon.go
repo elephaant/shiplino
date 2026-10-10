@@ -106,10 +106,55 @@ func New(ctx context.Context, home string, st *store.Store, logger *log.Logger) 
 	if u, err := user.Current(); err == nil {
 		d.user = u.Username
 	}
+	if err := d.rebuildIfStale(ctx); err != nil {
+		return nil, fmt.Errorf("rebuild sessions: %w", err)
+	}
 	if err := d.reload(ctx); err != nil {
 		return nil, err
 	}
 	return d, nil
+}
+
+// rebuildIfStale replays every stored event through the current engine
+// when the sessions were built by an older one, so improvements (new
+// fields, fixes) apply to past sessions too. Runs once per engine change.
+func (d *Daemon) rebuildIfStale(ctx context.Context) error {
+	rev, err := d.st.Meta(ctx, "engine_rev")
+	if err != nil || rev == strconv.Itoa(engine.Rev) {
+		return err
+	}
+	start := time.Now()
+	eng := engine.New(nil, nil)
+	n := 0
+	if err := d.st.EachEvent(ctx, func(e model.Event) error {
+		eng.Apply(e)
+		n++
+		return nil
+	}); err != nil {
+		return err
+	}
+	tx, err := d.st.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	sessions := eng.Sessions()
+	for _, s := range sessions {
+		if err := tx.PutSession(ctx, s); err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+	if err := tx.SetMeta(ctx, "engine_rev", strconv.Itoa(engine.Rev)); err != nil {
+		tx.Rollback()
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	if n > 0 {
+		d.log.Printf("rebuilt %d sessions from %d events for engine rev %d in %s", len(sessions), n, engine.Rev, time.Since(start).Round(time.Millisecond))
+	}
+	return nil
 }
 
 // SetPrivacy sets the capture level and redactor applied to every event

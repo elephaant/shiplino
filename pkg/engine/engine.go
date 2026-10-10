@@ -73,8 +73,13 @@ type Session struct {
 
 	LastGitCommitAt time.Time `json:"last_git_commit_at,omitzero"` // agent ran `git commit` itself
 	WaitingMS       int64     `json:"waiting_ms"`
-	WaitingSince    time.Time `json:"waiting_since,omitzero"`
-	TranscriptPath  string    `json:"transcript_path,omitempty"`
+	// ActiveMS is time spent in turns (prompt to answer), the agent's own
+	// turn duration when it reports one. Idle time between turns isn't
+	// counted.
+	ActiveMS       int64     `json:"active_ms"`
+	TurnStartedAt  time.Time `json:"turn_started_at,omitzero"`
+	WaitingSince   time.Time `json:"waiting_since,omitzero"`
+	TranscriptPath string    `json:"transcript_path,omitempty"`
 	// HookSeen is set once the session has events from the agent's hooks.
 	// Activity then comes from hooks; the transcript adds usage and titles.
 	HookSeen bool `json:"hook_seen,omitempty"`
@@ -103,6 +108,11 @@ func (s *Session) setTitle(title, source string) {
 
 // FilesChanged is the number of distinct files the session edited.
 func (s *Session) FilesChanged() int { return len(s.Files) }
+
+// Rev identifies the engine's folding rules. Bump it whenever Apply would
+// produce different sessions from the same events (a new field, a fix);
+// the daemon then rebuilds stored sessions from their events once.
+const Rev = 2
 
 // Engine folds events into sessions. It is not safe for concurrent use;
 // the daemon feeds it from a single goroutine.
@@ -172,6 +182,7 @@ func (e *Engine) Apply(ev model.Event) []*Session {
 		e.endWaiting(s, ev.TS)
 		s.Status = StatusRunning
 		s.Turns++
+		s.TurnStartedAt = ev.TS
 		s.NowDoing = "Thinking…"
 		if t := str(ev.Data, "title"); t != "" {
 			s.setTitle(t, "agent")
@@ -216,6 +227,13 @@ func (e *Engine) Apply(ev model.Event) []*Session {
 	case model.KindTurnEnd:
 		e.endWaiting(s, ev.TS)
 		s.NowDoing = ""
+		switch d := int64(num(ev.Data, "duration_ms")); {
+		case d > 0:
+			s.ActiveMS += d
+		case !s.TurnStartedAt.IsZero() && ev.TS.After(s.TurnStartedAt):
+			s.ActiveMS += ev.TS.Sub(s.TurnStartedAt).Milliseconds()
+		}
+		s.TurnStartedAt = time.Time{}
 		switch {
 		case str(ev.Data, "status") == "error":
 			s.Status = StatusFailed

@@ -30,6 +30,7 @@ import (
 const token = "test-token-0123456789abcdef0123456789abcdef"
 
 type fixture struct {
+	s   *Server
 	srv *httptest.Server
 	hub *Hub
 	url string // http://127.0.0.1:port
@@ -64,7 +65,7 @@ func setup(t *testing.T) *fixture {
 	s := New(st, hub, token, "test", log.New(io.Discard, "", 0))
 	srv := httptest.NewServer(s.Handler())
 	t.Cleanup(srv.Close)
-	return &fixture{srv: srv, hub: hub, url: srv.URL}
+	return &fixture{s: s, srv: srv, hub: hub, url: srv.URL}
 }
 
 func (f *fixture) get(t *testing.T, path string, mod func(*http.Request)) (*http.Response, []byte) {

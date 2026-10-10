@@ -71,6 +71,39 @@ func Paused(home string, now time.Time) bool {
 	return now.Unix() < until
 }
 
+// Pause stops recording until resumed, or until `until` if it isn't zero.
+func Pause(home string, until time.Time) error {
+	content := ""
+	if !until.IsZero() {
+		content = strconv.FormatInt(until.Unix(), 10)
+	}
+	if err := os.MkdirAll(home, 0o700); err != nil {
+		return err
+	}
+	return os.WriteFile(filepath.Join(home, "paused"), []byte(content), 0o600)
+}
+
+// Resume restarts recording.
+func Resume(home string) error {
+	if err := os.Remove(filepath.Join(home, "paused")); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	return nil
+}
+
+// PausedUntil reports whether recording is paused and until when (zero
+// time: until resumed).
+func PausedUntil(home string, now time.Time) (bool, time.Time) {
+	if !Paused(home, now) {
+		return false, time.Time{}
+	}
+	b, _ := os.ReadFile(filepath.Join(home, "paused"))
+	if n, err := strconv.ParseInt(strings.TrimSpace(string(b)), 10, 64); err == nil {
+		return true, time.Unix(n, 0)
+	}
+	return true, time.Time{}
+}
+
 // Dir returns the spool directory under a Shiplino home.
 func Dir(home string) string { return filepath.Join(home, "spool") }
 

@@ -128,7 +128,7 @@ export function AppSidebar() {
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild tooltip="Settings">
+            <SidebarMenuButton asChild isActive={pathname.startsWith("/settings")} tooltip="Settings">
               <Link href="/settings/">
                 <Settings aria-hidden />
                 <span>Settings</span>

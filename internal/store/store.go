@@ -131,6 +131,8 @@ var migrations = []string{
 			WHEN 'git.pr' THEN json_extract(body, '$.data.url')
 		END AS t FROM events
 	) WHERE t IS NOT NULL AND t != '';`,
+	// v5: small key/value settings (e.g. which engine built the sessions)
+	`CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);`,
 }
 
 func (s *Store) migrate(ctx context.Context) error {
@@ -265,6 +267,77 @@ func (s *Store) Search(ctx context.Context, query, projectID string, limit int) 
 		}
 		h.TS = time.UnixMilli(ts).UTC()
 		out = append(out, h)
+	}
+	return out, rows.Err()
+}
+
+// Meta returns a stored value ("" if unset).
+func (s *Store) Meta(ctx context.Context, key string) (string, error) {
+	var v string
+	err := s.db.QueryRowContext(ctx, `SELECT value FROM meta WHERE key = ?`, key).Scan(&v)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", nil
+	}
+	return v, err
+}
+
+// SetMeta stores a value in the transaction.
+func (t *Tx) SetMeta(ctx context.Context, key, value string) error {
+	_, err := t.tx.ExecContext(ctx, `INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`, key, value)
+	return err
+}
+
+// EachEvent calls fn for every stored event in time order.
+func (s *Store) EachEvent(ctx context.Context, fn func(model.Event) error) error {
+	rows, err := s.db.QueryContext(ctx, `SELECT body FROM events ORDER BY ts, id`)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var body []byte
+		if err := rows.Scan(&body); err != nil {
+			return err
+		}
+		var e model.Event
+		if err := json.Unmarshal(body, &e); err != nil {
+			continue // unreadable rows are skipped, as at ingest
+		}
+		if err := fn(e); err != nil {
+			return err
+		}
+	}
+	return rows.Err()
+}
+
+// ToolCount is how often a tool was called in a time range.
+type ToolCount struct {
+	Tool  string `json:"tool"` // the agent's own tool name
+	Kind  string `json:"kind"` // normalized: edit, shell, read, …
+	Calls int    `json:"calls"`
+}
+
+// ToolCounts returns the most used tools in [from, to), optionally for
+// one project.
+func (s *Store) ToolCounts(ctx context.Context, from, to time.Time, projectID string, limit int) ([]ToolCount, error) {
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT coalesce(json_extract(e.body, '$.data.tool_raw'), json_extract(e.body, '$.data.tool'), 'other') AS raw,
+		        coalesce(json_extract(e.body, '$.data.tool'), 'other'), count(*) AS n
+		 FROM events e LEFT JOIN sessions ss ON ss.id = e.session_id
+		 WHERE e.kind = 'tool.start' AND e.ts >= ? AND e.ts < ? AND (? = '' OR ss.project_id = ?)
+		 GROUP BY raw ORDER BY n DESC LIMIT ?`,
+		from.UnixMilli(), to.UnixMilli(), projectID, projectID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []ToolCount
+	for rows.Next() {
+		var t ToolCount
+		if err := rows.Scan(&t.Tool, &t.Kind, &t.Calls); err != nil {
+			return nil, err
+		}
+		out = append(out, t)
 	}
 	return out, rows.Err()
 }
