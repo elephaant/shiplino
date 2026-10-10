@@ -27,6 +27,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"sync"
@@ -299,6 +300,9 @@ func payload(session, cwd, event, extra string) string {
 // the running daemon, and measures hook → OnChange and hook → WebSocket
 // latency, per-commit time, and board queries on the result.
 func TestLoad(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("stalls on Windows CI under load; see #99")
+	}
 	sh := load()
 	byChange, byUI := newTracker(), newTracker()
 	r := newRig(t, func(list []*engine.Session) {
