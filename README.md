@@ -135,6 +135,7 @@ shiplino status | ls | open | doctor   what's running, recent sessions, the boar
 shiplino demo [--no-open]              a throwaway board with synthetic data, until Ctrl-C
 shiplino search <words> | export       find anything; sessions as CSV or JSON
 shiplino export --session <id>         one conversation as Markdown
+shiplino report [--since 7d] [--json]  usage from agent transcripts, no setup, writes nothing (docs/report.md)
 shiplino backfill [--since 30d]        import history from before setup
 shiplino pause [--for 1h] | resume     stop and restart recording
 shiplino wrap -- <command>             record a CLI agent that has no hooks
