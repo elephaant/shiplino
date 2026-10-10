@@ -19,6 +19,7 @@ import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { AgentDot } from "@/components/common/agent-dot";
 import { Empty } from "@/components/common/empty";
+import { AgentChange } from "@/components/settings/agent-change";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -294,18 +295,9 @@ export default function SettingsPage() {
               );
             } else if (a.connected) {
               badge = <Badge variant="outline">Points at another Shiplino</Badge>;
-              hint = (
-                <>
-                  Run <Mono>shiplino doctor --fix</Mono>
-                </>
-              );
+              hint = "Connect again to point it at this one";
             } else if (a.found) {
               badge = <Badge variant="outline">Not connected</Badge>;
-              hint = (
-                <>
-                  Run <Mono>shiplino setup</Mono> to connect it
-                </>
-              );
             } else {
               badge = (
                 <Badge variant="ghost" className="text-muted-foreground">
@@ -319,7 +311,13 @@ export default function SettingsPage() {
                   <AgentDot agent={a.id} />
                   <span className="font-medium">{a.name}</span>
                   {a.version && <span className="font-mono text-muted-foreground text-xs">{a.version}</span>}
-                  <span className="ml-auto">{badge}</span>
+                  <span className="ml-auto flex items-center gap-2">
+                    {badge}
+                    {a.found && !a.problem && !(a.connected && a.current) && (
+                      <AgentChange agent={a} action="connect" onDone={setS} />
+                    )}
+                    {a.connected && <AgentChange agent={a} action="remove" onDone={setS} />}
+                  </span>
                 </div>
                 {(a.found || hint) && (
                   <div className="flex flex-wrap gap-x-4 pl-4.5 text-muted-foreground text-xs">

@@ -228,3 +228,36 @@ func TestUpdateSyncKeepsTheRestOfTheFile(t *testing.T) {
 		t.Fatalf("broken file: %v", err)
 	}
 }
+
+func TestSetAutostart(t *testing.T) {
+	home := t.TempDir()
+	if c, _ := Load(home); !c.Autostart() {
+		t.Fatal("autostart is the default")
+	}
+	// No file yet: the default file is written, with autostart off.
+	if err := SetAutostart(home, false); err != nil {
+		t.Fatal(err)
+	}
+	if c, err := Load(home); err != nil || c.Autostart() || c.Level() != redact.Standard {
+		t.Fatalf("off: %+v %v", c.Service, err)
+	}
+	after := readFile(t, Path(home))
+	if strings.Count(after, "[service]") != 1 || !strings.Contains(after, "[sync]") {
+		t.Fatalf("file:\n%s", after)
+	}
+	// An older file without [service] keeps its content.
+	os.WriteFile(Path(home), []byte("# mine\ncapture_level = \"full\"\n"), 0o600)
+	if err := SetAutostart(home, false); err != nil {
+		t.Fatal(err)
+	}
+	if err := SetAutostart(home, true); err != nil {
+		t.Fatal(err)
+	}
+	after = readFile(t, Path(home))
+	if !strings.HasPrefix(after, "# mine\ncapture_level = \"full\"\n\n[service]\n") || strings.Count(after, "[service]") != 1 {
+		t.Fatalf("file:\n%s", after)
+	}
+	if c, err := Load(home); err != nil || !c.Autostart() || c.Level() != redact.Full {
+		t.Fatalf("on: %+v %v", c.Service, err)
+	}
+}

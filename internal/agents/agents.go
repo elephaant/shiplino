@@ -213,12 +213,42 @@ func clineUninstall(dir, _ string) (bool, error) {
 	return r.Changed, err
 }
 
+// Key names one entry of All in URLs: its Name in lower case, with
+// anything but letters and digits as dashes ("windsurf-jetbrains").
+func (a Hooks) Key() string {
+	var b strings.Builder
+	dash := false
+	for _, r := range strings.ToLower(a.Name) {
+		if r >= 'a' && r <= 'z' || r >= '0' && r <= '9' {
+			if dash && b.Len() > 0 {
+				b.WriteByte('-')
+			}
+			b.WriteRune(r)
+			dash = false
+		} else {
+			dash = true
+		}
+	}
+	return b.String()
+}
+
+// Find returns the entry of All with this Key.
+func Find(key string) (Hooks, bool) {
+	for _, a := range All {
+		if a.Key() == key {
+			return a, true
+		}
+	}
+	return Hooks{}, false
+}
+
 // IsUnparseable reports whether err means the config file isn't plain
 // JSON, so Shiplino left it untouched.
 func IsUnparseable(err error) bool { return errors.Is(err, errUnparseable) }
 
 // Status is an agent's connection state on this machine.
 type Status struct {
+	Key       string `json:"key"` // Hooks.Key, for the connect and remove endpoints
 	ID        string `json:"id"`
 	Name      string `json:"name"`
 	Found     bool   `json:"found"`
@@ -234,7 +264,7 @@ type Status struct {
 func Statuses(ctx context.Context, home, bin string) []Status {
 	out := make([]Status, 0, len(All))
 	for _, a := range All {
-		st := Status{ID: a.ID, Name: a.Name}
+		st := Status{Key: a.Key(), ID: a.ID, Name: a.Name}
 		st.Found, st.Version, st.HooksPath = a.Detect(ctx, home)
 		if st.Found {
 			ok, cmd, err := a.Installed(st.HooksPath)

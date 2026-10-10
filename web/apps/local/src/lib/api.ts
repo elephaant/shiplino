@@ -231,6 +231,8 @@ export interface Failures {
 }
 
 export interface AgentStatus {
+  /** Names this entry in /api/v1/agents/{key}/… (an agent can have two config files). */
+  key: string;
   id: string;
   name: string;
   found: boolean;
@@ -239,6 +241,16 @@ export interface AgentStatus {
   connected: boolean;
   current: boolean;
   problem?: string;
+}
+
+/** What connecting or removing an agent would write: a unified diff per file. */
+export interface AgentPlan {
+  key: string;
+  name: string;
+  action: "connect" | "remove";
+  changes: { path: string; diff: string }[];
+  problem?: string;
+  note?: string;
 }
 
 export interface Settings {
