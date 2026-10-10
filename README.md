@@ -47,7 +47,6 @@ Read more: [How it works](docs/how-it-works.md).
 
 ## Planned
 
-- More agents: Cline, OpenCode
 - Integrations: Slack/Discord/webhooks, Linear and Jira
 - VS Code / Cursor extension, an optional read-only MCP server, auto-update
 - **Virtual office:** pixel characters that show what each agent is doing
@@ -60,7 +59,7 @@ Read more: [How it works](docs/how-it-works.md).
 | Windsurf (Cascade), editor and JetBrains plugin | hooks: prompts, turns, file reads and edits, commands, MCP calls. Windsurf's hooks carry no token counts, so no cost yet |
 | GitHub Copilot CLI | hooks (`~/.copilot/hooks/shiplino.json`; no token usage yet) |
 | OpenCode | plugin (`~/.config/opencode/plugins/shiplino.js`, observe-only): sessions, subagents, prompts, tools, file edits, permission prompts, tokens and OpenCode's own cost |
-| Cline | planned |
+| Cline (VS Code/JetBrains extension and CLI) | hook scripts in `~/Documents/Cline/Hooks`: tasks, prompts, tool calls with their real durations, file reads and edits, commands with exit codes (CLI), MCP calls, subagents. Hooks carry no token counts, so no cost yet |
 | Aider, any CLI agent | `shiplino wrap -- <command>` + git (Aider: prompts, tokens, cost and edits from its chat history) |
 | Custom agents (Agent SDK, LangGraph, …) | [TypeScript and Python SDKs](sdk/), the [ingest API](docs/ingest.md) or OpenTelemetry |
 

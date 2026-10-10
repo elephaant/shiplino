@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/elephaant/shiplino/pkg/adapters/claudecode"
+	"github.com/elephaant/shiplino/pkg/adapters/cline"
 	"github.com/elephaant/shiplino/pkg/adapters/codex"
 	"github.com/elephaant/shiplino/pkg/adapters/copilotcli"
 	"github.com/elephaant/shiplino/pkg/adapters/cursor"
@@ -173,6 +174,46 @@ var All = []Hooks{
 		Installed: opencode.Installed,
 		Note:      opencode.RestartNote,
 	},
+	{
+		// Hook scripts in a directory, not a config file: path is the
+		// directory. Events taken by the user's own scripts are an error,
+		// so setup and doctor show them.
+		Name: "Cline", ID: cline.Name,
+		Detect: func(ctx context.Context, home string) (bool, string, string) {
+			d := cline.Detect(ctx, home)
+			return d.Installed, d.Version, d.HooksDir
+		},
+		Install:   clineInstall,
+		Uninstall: clineUninstall,
+		Installed: cline.Installed,
+		Note:      cline.Note,
+	},
+	{
+		// The extension's own Documents folder, when the OS moved it
+		// (OneDrive, xdg-user-dirs); not found otherwise.
+		Name: "Cline (VS Code)", ID: cline.Name,
+		Detect: func(ctx context.Context, home string) (bool, string, string) {
+			d := cline.DetectExtension(ctx, home)
+			return d.Installed, d.Version, d.HooksDir
+		},
+		Install:   clineInstall,
+		Uninstall: clineUninstall,
+		Installed: cline.Installed,
+		Note:      cline.NoteExtension,
+	},
+}
+
+func clineInstall(dir, bin, _, _ string) (bool, int, error) {
+	r, err := cline.Install(dir, bin)
+	if err == nil {
+		err = r.Err()
+	}
+	return r.Changed, len(r.Events), err
+}
+
+func clineUninstall(dir, _ string) (bool, error) {
+	r, err := cline.Uninstall(dir)
+	return r.Changed, err
 }
 
 // IsUnparseable reports whether err means the config file isn't plain

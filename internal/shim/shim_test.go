@@ -211,6 +211,47 @@ func TestMinimalStripsWindsurfToolInfo(t *testing.T) {
 	}
 }
 
+func TestRunClinePayload(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("SHIPLINO_HOME", home)
+	Run([]string{"--agent", "cline"}, strings.NewReader(`{"hookName":"TaskComplete","taskId":"1791619200000"}`))
+	e := readLines(t, spool.SessionFile(spool.Dir(home), "cline", "1791619200000"))[0]
+	if e.Event != "TaskComplete" {
+		t.Fatalf("event = %q", e.Event)
+	}
+}
+
+func TestMinimalStripsClineContent(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("SHIPLINO_HOME", home)
+	os.WriteFile(filepath.Join(home, spool.MinimalMarker), nil, 0o600)
+	for _, p := range []string{
+		`{"hookName":"TaskStart","taskId":"c1","taskStart":{"taskMetadata":{"initialTask":"my secret plan"}}}`,
+		`{"hookName":"UserPromptSubmit","taskId":"c1","userPromptSubmit":{"prompt":"my secret plan"}}`,
+		`{"hookName":"PostToolUse","taskId":"c1","postToolUse":{"toolName":"editor","parameters":{"path":"/app/x.go","old_text":"a","new_text":"private edit"},"result":"private output","success":true,"executionTimeMs":4}}`,
+		`{"hookName":"tool_result","taskId":"c1","tool_result":{"id":"t1","name":"run_commands","input":{"commands":["cat notes.txt"]},"output":[{"query":"cat notes.txt","result":"private output"}],"error":"private error","durationMs":9},"postToolUse":{"toolName":"run_commands","parameters":{"commands":"[\"cat notes.txt\"]"},"result":"private output"}}`,
+		`{"hookName":"tool_result","taskId":"c1","tool_result":{"id":"t2","name":"read_files","input":{"files":[{"path":"/app/src/a.go"}]},"output":"private file"}}`,
+		`{"hookName":"agent_end","taskId":"c1","turn":{"outputText":"private answer"},"taskComplete":{"taskMetadata":{"result":"private answer"}}}`,
+		`{"hookName":"agent_error","taskId":"c1","error":{"message":"private error"}}`,
+	} {
+		Run([]string{"--agent", "cline"}, strings.NewReader(p))
+	}
+	raw, err := os.ReadFile(spool.SessionFile(spool.Dir(home), "cline", "c1"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, leaked := range []string{"secret plan", "private edit", "private output", "cat notes.txt", "private file", "private answer", "private error"} {
+		if strings.Contains(string(raw), leaked) {
+			t.Errorf("%q reached the spool at minimal level", leaked)
+		}
+	}
+	for _, kept := range []string{"/app/x.go", "/app/src/a.go", "run_commands", "executionTimeMs", "durationMs", `"id":"t1"`} {
+		if !strings.Contains(string(raw), kept) {
+			t.Errorf("%s missing: %s", kept, raw)
+		}
+	}
+}
+
 func TestMinimalStripsGeminiCLIContent(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("SHIPLINO_HOME", home)
