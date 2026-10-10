@@ -32,14 +32,20 @@ function LiveStrip() {
   }, [waiting]);
 
   return (
-    <Link href="/#needs-you" className="flex items-center gap-3 rounded-md px-2 py-1 text-sm hover:bg-accent">
+    <Link
+      href="/#needs-you"
+      aria-label={`${running} running, ${waiting} waiting on you`}
+      className="flex shrink-0 items-center gap-3 whitespace-nowrap rounded-md px-2 py-1 text-sm hover:bg-accent"
+    >
       <span className="flex items-center gap-1.5">
         <span className="size-2 rounded-full bg-status-running" aria-hidden />
-        <span className="font-mono tabular-nums">{running}</span> running
+        <span className="font-mono tabular-nums">{running}</span>
+        <span className="hidden sm:inline">running</span>
       </span>
       <span className="flex items-center gap-1.5">
         <span className={`size-2 rounded-full bg-status-waiting ${waiting ? "animate-pulse" : ""}`} aria-hidden />
-        <span className="font-mono tabular-nums">{waiting}</span> waiting on you
+        <span className="font-mono tabular-nums">{waiting}</span>
+        <span className="hidden sm:inline">waiting on you</span>
       </span>
     </Link>
   );

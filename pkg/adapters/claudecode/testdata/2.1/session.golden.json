@@ -206,6 +206,8 @@
       "lines_removed": 1,
       "lines_source": "estimated",
       "op": "modify",
+      "patch": "@@ @@\n-return 'hi'\n+return 'hello'\n+// fixed\n",
+      "patch_source": "computed",
       "path": "/home/dev/demo/src/greet.ts"
     },
     "dedup_key": "claude-code:sess-0001:toolu_03:file"
@@ -400,6 +402,8 @@
       "lines_removed": 0,
       "lines_source": "agent",
       "op": "create",
+      "patch": "@@ -0,0 +1,3 @@\n+a\n+b\n+c\n",
+      "patch_source": "computed",
       "path": "/home/dev/demo/NOTES.md"
     },
     "dedup_key": "claude-code:sess-0001:toolu_06:file"
@@ -586,6 +590,8 @@
       "lines_removed": 1,
       "lines_source": "agent",
       "op": "modify",
+      "patch": "@@ -10,3 +10,5 @@\n ctx\n-old line\n+new line 1\n+new line 2\n+new line 3\n ctx\n",
+      "patch_source": "agent",
       "path": "/home/dev/demo/src/app.ts"
     },
     "dedup_key": "claude-code:sess-0001:toolu_10:file"

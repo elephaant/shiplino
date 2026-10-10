@@ -258,15 +258,19 @@ func items(st map[string]string, meta adapters.TranscriptMeta, l line, raw json.
 				op = "modify"
 			}
 			added, removed := diffLines(ch.UnifiedDiff)
+			patch := ch.UnifiedDiff
 			if ch.Type == "add" {
 				added, removed = countLines(ch.Content), 0
+				patch = adapters.NewFilePatch(ch.Content)
 			}
 			if st["cwd"] != "" {
 				path = joinPath(st["cwd"], path)
 			}
-			out = append(out, event(st, meta, l, model.KindFileEdit, map[string]any{
-				"path": path, "op": op, "lines_added": added, "lines_removed": removed, "lines_source": "agent",
-			}, fmt.Sprintf("%s:file%d", key, i)))
+			d := map[string]any{"path": path, "op": op, "lines_added": added, "lines_removed": removed, "lines_source": "agent"}
+			if patch != "" {
+				d["patch"], d["patch_source"] = patch, "agent"
+			}
+			out = append(out, event(st, meta, l, model.KindFileEdit, d, fmt.Sprintf("%s:file%d", key, i)))
 		}
 		return out
 	case "McpToolCall":

@@ -224,3 +224,18 @@ func TestJoinPath(t *testing.T) {
 		}
 	}
 }
+
+func TestPatchText(t *testing.T) {
+	patch := "*** Begin Patch\n*** Update File: a.ts\n@@\n-x\n+y\n*** End Patch"
+	for _, in := range []string{`{"command":` + jsonString(patch) + `}`, `{"input":` + jsonString(patch) + `}`, jsonString(patch)} {
+		if got := patchText([]byte(in)); got != patch {
+			t.Errorf("patchText(%s) = %q", in, got)
+		}
+	}
+	files := patchFiles(patch, "")
+	if len(files) != 1 || files[0]["patch"] != "@@\n-x\n+y\n" {
+		t.Errorf("patchFiles: %v", files)
+	}
+}
+
+func jsonString(s string) string { b, _ := json.Marshal(s); return string(b) }

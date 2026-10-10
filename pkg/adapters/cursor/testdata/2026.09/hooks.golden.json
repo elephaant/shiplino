@@ -120,6 +120,8 @@
       "lines_removed": 1,
       "lines_source": "computed",
       "op": "modify",
+      "patch": "@@ @@\n function t() {\n-  return Math.round(x)\n+  return Math.round(x * 100) / 100\n+  // cents\n }\n",
+      "patch_source": "computed",
       "path": "/home/dev/shop/src/cart.ts"
     },
     "dedup_key": "cursor:cv-1:file.edit:env-03"

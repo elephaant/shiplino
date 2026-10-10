@@ -4,7 +4,7 @@
 "use client";
 
 import { cn } from "cn";
-import { ChartColumn, Kanban, LayoutDashboard, Settings } from "lucide-react";
+import { ChartColumn, ChartGantt, Kanban, LayoutDashboard, Settings } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
@@ -87,6 +87,7 @@ function ProjectList() {
 const nav = [
   { href: "/", label: "Overview", icon: LayoutDashboard },
   { href: "/board/", label: "Board", icon: Kanban },
+  { href: "/timeline/", label: "Timeline", icon: ChartGantt },
   { href: "/insights/", label: "Insights", icon: ChartColumn },
 ];
 

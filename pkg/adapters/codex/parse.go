@@ -261,11 +261,19 @@ func commandText(raw json.RawMessage) string {
 }
 
 func patchText(raw json.RawMessage) string {
+	// The hooks docs (checked 2026-10-10) put the patch in "command";
+	// older payloads used "input" or "patch".
 	var in struct {
-		Input string `json:"input"`
-		Patch string `json:"patch"`
+		Command json.RawMessage `json:"command"`
+		Input   string          `json:"input"`
+		Patch   string          `json:"patch"`
 	}
 	if json.Unmarshal(raw, &in) == nil {
+		var cmd string
+		_ = json.Unmarshal(in.Command, &cmd)
+		if strings.Contains(cmd, "*** Begin Patch") {
+			return cmd
+		}
 		if in.Input != "" {
 			return in.Input
 		}
@@ -278,12 +286,24 @@ func patchText(raw json.RawMessage) string {
 
 // patchFiles reads Codex's apply_patch format ("*** Add File: p",
 // "*** Update File: p", "*** Delete File: p"; +/- lines) into file edits.
+// Each file's hunks are kept as its patch (the agent's own diff).
 func patchFiles(patch, cwd string) []map[string]any {
 	var out []map[string]any
 	var cur map[string]any
+	var body []string
+	flush := func() {
+		if cur != nil && len(body) > 0 {
+			if !strings.HasPrefix(body[0], "@@") {
+				body = append([]string{"@@ @@"}, body...)
+			}
+			cur["patch"], cur["patch_source"] = strings.Join(body, "\n")+"\n", "agent"
+		}
+		body = nil
+	}
 	for _, line := range strings.Split(patch, "\n") {
 		for _, h := range [][2]string{{"*** Add File: ", "create"}, {"*** Update File: ", "modify"}, {"*** Delete File: ", "delete"}} {
 			if strings.HasPrefix(line, h[0]) {
+				flush()
 				path := strings.TrimSpace(strings.TrimPrefix(line, h[0]))
 				if cwd != "" {
 					path = joinPath(cwd, path)
@@ -295,12 +315,18 @@ func patchFiles(patch, cwd string) []map[string]any {
 		if cur == nil || strings.HasPrefix(line, "***") {
 			continue
 		}
-		if strings.HasPrefix(line, "+") {
+		switch {
+		case strings.HasPrefix(line, "+"):
 			cur["lines_added"] = cur["lines_added"].(int) + 1
-		} else if strings.HasPrefix(line, "-") {
+		case strings.HasPrefix(line, "-"):
 			cur["lines_removed"] = cur["lines_removed"].(int) + 1
+		case strings.HasPrefix(line, " "), strings.HasPrefix(line, "@@"):
+		default:
+			continue // not part of a hunk
 		}
+		body = append(body, line)
 	}
+	flush()
 	return out
 }
 

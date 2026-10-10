@@ -5,6 +5,7 @@ package redact
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/elephaant/shiplino/pkg/model"
 )
@@ -33,6 +34,12 @@ func ParseLevel(s string) (Level, error) {
 	}
 	return "", fmt.Errorf("unknown capture level %q (use minimal, standard or full)", s)
 }
+
+// MaxPatchBytes caps the diff kept per file edit ("patch" on file.edit,
+// a full-level field: code is content). Longer patches are cut at a line
+// boundary and marked patch_truncated. Below full, and for secret files
+// (see SecretFile), the patch is dropped and patch_omitted says why.
+const MaxPatchBytes = 64 << 10
 
 const (
 	maxPrompt  = 2000
@@ -81,6 +88,23 @@ func (r *Redactor) Event(e *model.Event, level Level) {
 			delete(d, "error") // tool errors carry output text
 		}
 	}
+	if _, ok := d["patch"]; ok {
+		switch {
+		case minimal:
+			delete(d, "patch")
+			delete(d, "patch_source")
+		case level != Full:
+			delete(d, "patch")
+			d["patch_omitted"] = "capture_level"
+		case SecretFile(str(d, "path")):
+			delete(d, "patch")
+			d["patch_omitted"] = "secret_file"
+		default:
+			if p, cut := capPatch(str(d, "patch")); cut {
+				d["patch"], d["patch_truncated"] = p, true
+			}
+		}
+	}
 	cut("prompt", maxPrompt)
 	cut("assistant_summary", maxSummary)
 	cut("error", maxError)
@@ -115,6 +139,18 @@ func (r *Redactor) value(v any) any {
 		}
 	}
 	return v
+}
+
+// capPatch cuts a patch to MaxPatchBytes at a line boundary.
+func capPatch(p string) (string, bool) {
+	if len(p) <= MaxPatchBytes {
+		return p, false
+	}
+	p = p[:MaxPatchBytes]
+	if i := strings.LastIndexByte(p, '\n'); i >= 0 {
+		return p[:i+1], true
+	}
+	return "", true
 }
 
 func waitingText(reason string) string {
