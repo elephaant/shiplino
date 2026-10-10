@@ -60,8 +60,42 @@ func ColumnFor(s engine.Status) string {
 		return Done
 	case engine.StatusFailed:
 		return Failed
+	case engine.StatusIdle:
+		return Review // stopped without finishing: worth a look
 	}
-	return Running // running and idle
+	return Running
+}
+
+// rollUp is a card's live state: a session is waiting if it or any of its
+// subagents waits on you, and running if any of them still works.
+func rollUp(root *engine.Session, kids []*engine.Session) (engine.Status, string) {
+	status, doing := root.Status, root.NowDoing
+	if status == engine.StatusWaiting {
+		return status, doing
+	}
+	var running *engine.Session
+	for _, k := range kids {
+		switch k.Status {
+		case engine.StatusWaiting:
+			label := k.ActorType
+			if label == "" {
+				label = "subagent"
+			}
+			return engine.StatusWaiting, label + ": " + k.NowDoing
+		case engine.StatusRunning:
+			if running == nil {
+				running = k
+			}
+		}
+	}
+	if running != nil && status != engine.StatusRunning {
+		label := running.ActorType
+		if label == "" {
+			label = "subagent"
+		}
+		return engine.StatusRunning, label + ": " + running.NowDoing
+	}
+	return status, doing
 }
 
 // ErrAgentColumn: auto cards can't be put in Running or Waiting by hand;
@@ -132,6 +166,8 @@ type Card struct {
 	LinesRemoved   int           `json:"lines_removed"`
 	Links          []engine.Link `json:"links,omitempty"`
 	Subagents      []Subagent    `json:"subagents,omitempty"`
+	ToolCalls      int           `json:"tool_calls"` // including subagents'
+	ActiveMS       int64         `json:"active_ms"`
 	Sprint         int           `json:"sprint"`
 	RolledOverFrom int           `json:"rolled_over_from,omitempty"`
 	Notes          string        `json:"notes,omitempty"`
@@ -155,19 +191,35 @@ func Build(sessions []*engine.Session, overrides map[string]Override, cal Calend
 		if !s.EndedAt.IsZero() {
 			end = s.EndedAt
 		}
+		status, doing := rollUp(s, children[s.ID])
 		c := Card{
-			ID: s.ID, Origin: OriginAuto, Title: s.Title, TitleSource: s.TitleSource, Column: ColumnFor(s.Status),
-			ProjectID: s.ProjectID, Agent: s.Agent, Model: s.Model, Status: s.Status, Branch: s.Branch, NowDoing: s.NowDoing,
+			ID: s.ID, Origin: OriginAuto, Title: s.Title, TitleSource: s.TitleSource, Column: ColumnFor(status),
+			ProjectID: s.ProjectID, Agent: s.Agent, Model: s.Model, Status: status, Branch: s.Branch, NowDoing: doing,
 			StartedAt: s.StartedAt, LastEventAt: s.LastEventAt, DurationMS: end.Sub(s.StartedAt).Milliseconds(), WaitingMS: s.WaitingMS,
 			CostUSD: s.BestCostUSD, CostSource: s.CostSource, Files: len(s.Files), LinesAdded: s.LinesAdded, LinesRemoved: s.LinesRemoved,
-			Links: s.Links,
+			Links: s.Links, ToolCalls: s.ToolCalls, ActiveMS: s.ActiveMS,
+		}
+		if status == engine.StatusIdle && len(s.Files) == 0 {
+			c.Column = Done // went quiet without changing anything
 		}
 		if c.Title == "" {
 			c.Title = "Session in " + s.ProjectID
 		}
+		files := map[string]bool{}
+		for _, f := range s.Files {
+			files[f] = true
+		}
 		for _, ch := range children[s.ID] {
 			c.Subagents = append(c.Subagents, Subagent{ID: ch.ID, Type: ch.ActorType, Status: ch.Status, NowDoing: ch.NowDoing, CostUSD: ch.CostUSD})
+			// Work done by subagents counts on the card.
+			for _, f := range ch.Files {
+				files[f] = true
+			}
+			c.LinesAdded += ch.LinesAdded
+			c.LinesRemoved += ch.LinesRemoved
+			c.ToolCalls += ch.ToolCalls
 		}
+		c.Files = len(files)
 		sort.Slice(c.Subagents, func(i, j int) bool { return c.Subagents[i].ID < c.Subagents[j].ID })
 		closed := c.Column == Done || c.Column == Failed
 		if o, ok := overrides[s.ID]; ok {

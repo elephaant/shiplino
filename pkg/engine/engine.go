@@ -76,8 +76,10 @@ type Session struct {
 	// ActiveMS is time spent in turns (prompt to answer), the agent's own
 	// turn duration when it reports one. Idle time between turns isn't
 	// counted.
-	ActiveMS       int64     `json:"active_ms"`
-	TurnStartedAt  time.Time `json:"turn_started_at,omitzero"`
+	ActiveMS      int64     `json:"active_ms"`
+	TurnStartedAt time.Time `json:"turn_started_at,omitzero"`
+	// InFlight is the number of tool calls started and not yet finished.
+	InFlight       int       `json:"in_flight,omitempty"`
 	WaitingSince   time.Time `json:"waiting_since,omitzero"`
 	TranscriptPath string    `json:"transcript_path,omitempty"`
 	// HookSeen is set once the session has events from the agent's hooks.
@@ -112,7 +114,7 @@ func (s *Session) FilesChanged() int { return len(s.Files) }
 // Rev identifies the engine's folding rules. Bump it whenever Apply would
 // produce different sessions from the same events (a new field, a fix);
 // the daemon then rebuilds stored sessions from their events once.
-const Rev = 2
+const Rev = 3
 
 // Engine folds events into sessions. It is not safe for concurrent use;
 // the daemon feeds it from a single goroutine.
@@ -195,10 +197,14 @@ func (e *Engine) Apply(ev model.Event) []*Session {
 		e.endWaiting(s, ev.TS)
 		s.Status = StatusRunning
 		s.ToolCalls++
+		s.InFlight++
 		s.NowDoing = nowDoing(str(ev.Data, "tool"), str(ev.Data, "tool_raw"), str(ev.Data, "input_summary"))
 
 	case model.KindToolEnd:
 		e.endWaiting(s, ev.TS)
+		if s.InFlight > 0 {
+			s.InFlight--
+		}
 		if s.Status != StatusFailed {
 			s.Status = StatusRunning
 		}
@@ -234,6 +240,7 @@ func (e *Engine) Apply(ev model.Event) []*Session {
 			s.ActiveMS += ev.TS.Sub(s.TurnStartedAt).Milliseconds()
 		}
 		s.TurnStartedAt = time.Time{}
+		s.InFlight = 0
 		switch {
 		case str(ev.Data, "status") == "error":
 			s.Status = StatusFailed
@@ -254,6 +261,7 @@ func (e *Engine) Apply(ev model.Event) []*Session {
 		e.endWaiting(child, ev.TS)
 		child.Status = StatusDone
 		child.NowDoing = ""
+		child.InFlight = 0
 		child.EndedAt = ev.TS
 		setIfEmpty(&child.TranscriptPath, str(ev.Data, "transcript_path"))
 		changed = append(changed, child)
@@ -318,6 +326,7 @@ func (e *Engine) Apply(ev model.Event) []*Session {
 	case model.KindSessionEnd:
 		e.endWaiting(s, ev.TS)
 		s.EndedAt = ev.TS
+		s.InFlight = 0
 		s.NowDoing = ""
 		if s.Status == StatusRunning || s.Status == StatusWaiting || s.Status == StatusIdle {
 			s.Status = StatusDone
@@ -327,6 +336,35 @@ func (e *Engine) Apply(ev model.Event) []*Session {
 		s.Status, s.NowDoing = prevStatus, prevNow
 	}
 	return changed
+}
+
+// Quiet periods after which a running session counts as idle (the agent
+// was likely closed without saying so). A tool still running, such as a
+// long build, gets longer.
+const (
+	IdleAfter         = 30 * time.Minute
+	IdleAfterInFlight = 2 * time.Hour
+)
+
+// MarkIdle sets running sessions that have been quiet too long to idle and
+// returns them. Waiting sessions stay waiting: they really need the user.
+// The next event brings a session back.
+func (e *Engine) MarkIdle(now time.Time) []*Session {
+	var out []*Session
+	for _, s := range e.sessions {
+		if s.Status != StatusRunning {
+			continue
+		}
+		after := IdleAfter
+		if s.InFlight > 0 {
+			after = IdleAfterInFlight
+		}
+		if now.Sub(s.LastEventAt) >= after {
+			s.Status, s.NowDoing = StatusIdle, ""
+			out = append(out, s)
+		}
+	}
+	return out
 }
 
 // Redundant reports whether ev is transcript-derived activity for a

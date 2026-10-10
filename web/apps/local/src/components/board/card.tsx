@@ -87,6 +87,12 @@ export function CardView({ card, dragging, onOpen }: { card: BoardCard; dragging
         </div>
       )}
 
+      {card.status === "idle" && (
+        <p className="text-muted-foreground text-xs" title="No activity for 30 minutes: the agent may have been closed">
+          Went quiet: no activity for a while
+        </p>
+      )}
+
       {card.now_doing && (
         <div
           className={cn(
