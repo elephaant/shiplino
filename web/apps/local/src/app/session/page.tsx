@@ -36,6 +36,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { type AgentEvent, api, download, type Session } from "@/lib/api";
 import { agentName, formatCost, formatDuration, formatTokens, noUsageReason } from "@/lib/format";
+import { API_EQUIVALENT, onPlan, useLimits } from "@/lib/limits";
 import { useLive } from "@/lib/live";
 
 const str = (d: Record<string, unknown> | undefined, k: string) => (typeof d?.[k] === "string" ? (d[k] as string) : "");
@@ -144,6 +145,7 @@ function SessionPage() {
   const [session, setSession] = useState<Session | null>(null);
   const [events, setEvents] = useState<AgentEvent[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const limits = useLimits();
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: refetch on live changes
   useEffect(() => {
@@ -189,6 +191,7 @@ function SessionPage() {
   const rel = (p: string) => (root && p.startsWith(root) ? p.slice(root.length) : p);
   const usage = events.filter((e) => e.kind === "usage" && !e.data?.report);
   const end = session.ended_at && !session.ended_at.startsWith("0001") ? session.ended_at : session.last_event_at;
+  const planCost = onPlan(limits, session.agent);
   const resume = session.agent === "claude-code" ? `claude --resume ${session.id.split(":")[1]}` : "";
   const enc = encodeURIComponent(session.id);
   const exportMarkdown = () =>
@@ -261,14 +264,14 @@ function SessionPage() {
         <CardContent className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-8">
           <Stat label="Duration" value={formatDuration(Date.parse(end) - Date.parse(session.started_at))} />
           <Stat
-            label={session.cost_source === "reported" ? "Cost (reported)" : "Cost"}
+            label={planCost ? "API-equivalent" : session.cost_source === "reported" ? "Cost (reported)" : "Cost"}
             value={
               session.usage === "none" ? (
                 <span className="font-sans text-muted-foreground" title={noUsageReason(session.agent)}>
                   no cost data
                 </span>
               ) : (
-                formatCost(session.best_cost_usd)
+                <span title={planCost ? API_EQUIVALENT : undefined}>{formatCost(session.best_cost_usd)}</span>
               )
             }
           />

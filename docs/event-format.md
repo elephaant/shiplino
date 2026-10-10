@@ -36,6 +36,7 @@ Every adapter converts its agent's native hooks and transcripts into this format
 | `git.commit` / `git.branch` | `sha`, `message`, `files` / `from`, `to`, `action` |
 | `git.push` / `git.pr` | `branch` / `number`, `url`, `action` (as reported by the agent) |
 | `session.update` | metadata the agent reports, e.g. `title` with `title_source: agent` |
+| `limit` | a plan usage window as the agent reports it: `limit_window` (`5h`, `7d`, …), `window_minutes`, `used_percent`, `limit_reached`, `resets_at`, `limit_id`, `plan_type`, `limit_source: reported` (see [cost.md](cost.md#plan-limits)) |
 | `error`, `note` | `message` |
 
 ## Rules

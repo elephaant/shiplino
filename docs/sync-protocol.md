@@ -64,6 +64,7 @@ The sync service applies the same filter again when it receives events, so an ol
 | Files | `path`, `file_path`, `files`, `file_paths`, `paths` (project-relative), `lines_added`, `lines_removed`, `lines_source`, `files_changed`, `patch_omitted`, and a file tool's `input_summary` (its path) |
 | Git | `sha`, `branch`, `to`, `number`, `state`, `action`, `head`, and a pull request's `url` |
 | Plan progress | `plan_total`, `plan_done` (counts, not the items) |
+| Plan usage windows | `limit_window`, `window_minutes`, `used_percent`, `limit_reached`, `resets_at`, `limit_id`, `plan_type`, `limit_source` |
 | Waiting | `message`, replaced by a generic text such as "Waiting for your approval" |
 | Titles | `title`, `title_source` of session events, only with `send_titles = true` |
 

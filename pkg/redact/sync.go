@@ -42,6 +42,9 @@ var syncKeys = map[string]bool{
 	"sha": true, "branch": true, "to": true, "number": true, "url": true, "state": true, "action": true, "head": true,
 	// plan progress (counts only)
 	"plan_total": true, "plan_done": true,
+	// plan usage windows (limit events): numbers, window names, times
+	"limit_window": true, "window_minutes": true, "used_percent": true, "limit_reached": true, "resets_at": true,
+	"limit_id": true, "plan_type": true, "limit_source": true,
 }
 
 // freeKeys are synced fields whose value may be any short text: paths,

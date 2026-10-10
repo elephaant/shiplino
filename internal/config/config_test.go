@@ -83,6 +83,44 @@ func TestNotifySettings(t *testing.T) {
 	}
 }
 
+func TestLimitSettings(t *testing.T) {
+	home := t.TempDir()
+	if err := WriteDefault(home); err != nil {
+		t.Fatal(err)
+	}
+	c, err := Load(home)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.LimitPercent() != 80 || len(c.Limits.Plans) != 0 {
+		t.Fatalf("defaults: %v %v", c.LimitPercent(), c.Limits.Plans)
+	}
+	cases := []struct {
+		file    string
+		percent float64
+		err     string
+	}{
+		{"[notify]\nlimit_percent = 90\n[limits.plans]\nclaude-code = \"plan\"\ncodex = \"api\"\n", 90, ""},
+		{"[notify]\nenabled = false\n", 0, ""},
+		{"[notify]\nlimit_percent = 0\n", 0, ""},
+		{"[notify]\nlimit_percent = 120\n", 0, "limit_percent"},
+		{"[limits.plans]\ncodex = \"max\"\n", 0, "limits.plans.codex"},
+	}
+	for _, tc := range cases {
+		os.WriteFile(Path(home), []byte(tc.file), 0o600)
+		c, err := Load(home)
+		if tc.err != "" {
+			if err == nil || !strings.Contains(err.Error(), tc.err) {
+				t.Fatalf("%q: err %v", tc.file, err)
+			}
+			continue
+		}
+		if err != nil || c.LimitPercent() != tc.percent {
+			t.Fatalf("%q: %v %v", tc.file, c.LimitPercent(), err)
+		}
+	}
+}
+
 func TestSyncDefaultsAndValidation(t *testing.T) {
 	home := t.TempDir()
 	if err := WriteDefault(home); err != nil {

@@ -378,6 +378,62 @@
   {
     "id": "",
     "v": 1,
+    "ts": "2026-10-09T10:00:10Z",
+    "received_at": "2026-10-09T10:00:00Z",
+    "kind": "limit",
+    "agent": {
+      "name": "codex",
+      "version": "0.153.4"
+    },
+    "collector": "transcript",
+    "session_id": "codex:th-2",
+    "actor_id": "codex:th-2",
+    "turn_id": "tu-9",
+    "project": {
+      "cwd": "/home/dev/site",
+      "branch": "main"
+    },
+    "data": {
+      "limit_source": "reported",
+      "limit_window": "5h",
+      "plan_type": "plus",
+      "resets_at": "2026-10-09T12:20:00Z",
+      "used_percent": 62,
+      "window_minutes": 300
+    },
+    "dedup_key": "codex:limit:codex:300:1791548400:62"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-10-09T10:00:10Z",
+    "received_at": "2026-10-09T10:00:00Z",
+    "kind": "limit",
+    "agent": {
+      "name": "codex",
+      "version": "0.153.4"
+    },
+    "collector": "transcript",
+    "session_id": "codex:th-2",
+    "actor_id": "codex:th-2",
+    "turn_id": "tu-9",
+    "project": {
+      "cwd": "/home/dev/site",
+      "branch": "main"
+    },
+    "data": {
+      "limit_source": "reported",
+      "limit_window": "7d",
+      "plan_type": "plus",
+      "resets_at": "2026-10-13T14:00:00Z",
+      "used_percent": 18.5,
+      "window_minutes": 10080
+    },
+    "dedup_key": "codex:limit:codex:10080:1791900000:18.5"
+  },
+  {
+    "id": "",
+    "v": 1,
     "ts": "2026-10-09T10:00:11Z",
     "received_at": "2026-10-09T10:00:00Z",
     "kind": "turn.end",

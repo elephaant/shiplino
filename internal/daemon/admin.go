@@ -57,13 +57,15 @@ type BudgetView struct {
 
 // NotifyView is the notification part of SettingsView.
 type NotifyView struct {
-	Enabled   bool   `json:"enabled"`
-	Waiting   bool   `json:"waiting"`
-	Finished  bool   `json:"finished"`
-	Failed    bool   `json:"failed"`
-	MinTurnMS int64  `json:"min_turn_ms"`
-	Available bool   `json:"available"`
-	Via       string `json:"via,omitempty"`
+	Enabled   bool  `json:"enabled"`
+	Waiting   bool  `json:"waiting"`
+	Finished  bool  `json:"finished"`
+	Failed    bool  `json:"failed"`
+	MinTurnMS int64 `json:"min_turn_ms"`
+	// LimitPercent is the plan usage alert threshold (0 = off).
+	LimitPercent float64 `json:"limit_percent"`
+	Available    bool    `json:"available"`
+	Via          string  `json:"via,omitempty"`
 }
 
 func (a *admin) Settings(ctx context.Context) any {
@@ -78,7 +80,7 @@ func (a *admin) Settings(ctx context.Context) any {
 		Version: a.version, Home: a.home, ConfigPath: config.Path(a.home), Port: a.port,
 		CaptureLevel: string(a.cfg.Level()), ExtraRedact: len(a.cfg.Redaction.ExtraPatterns),
 		Notify: NotifyView{Enabled: on, Waiting: set.Waiting, Finished: set.Finished, Failed: set.Failed,
-			MinTurnMS: set.MinTurn.Milliseconds(), Available: ok, Via: via},
+			MinTurnMS: set.MinTurn.Milliseconds(), LimitPercent: a.cfg.LimitPercent(), Available: ok, Via: via},
 		Agents: agents.Statuses(ctx, userHome, bin),
 		Health: a.d.Health(),
 	}

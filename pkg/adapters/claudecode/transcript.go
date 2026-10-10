@@ -16,7 +16,9 @@ import (
 // 2026-10-10: ~/.claude/projects/<project>/<session>.jsonl, with subagents
 // in <session>/subagents/agent-<id>.jsonl. Assistant lines carry
 // message.{id, model, usage}, plus sessionId, agentId (subagents only),
-// version and timestamp.
+// version and timestamp. A request refused at a plan limit is written as
+// a synthetic assistant line with error "rate_limit" and quotaLimits
+// {rateLimitType, status, resetsAt}.
 //
 // One API response is written as several lines (one per content block),
 // each repeating the same usage. Usage events are therefore keyed by
@@ -51,6 +53,14 @@ type transcriptLine struct {
 
 	AITitle string `json:"aiTitle"` // ai-title lines: Claude Code's own session title
 
+	// QuotaLimits is on the synthetic assistant line Claude Code writes
+	// when a request was refused at a plan limit (error "rate_limit", 429).
+	QuotaLimits *struct {
+		RateLimitType string `json:"rateLimitType"` // five_hour, seven_day, …
+		Status        string `json:"status"`        // "rejected"
+		ResetsAt      int64  `json:"resetsAt"`      // Unix seconds
+	} `json:"quotaLimits"`
+
 	// cost-state lines: Claude Code's own running total for the process.
 	TotalCostUSD *float64                  `json:"totalCostUSD"`
 	StartTime    int64                     `json:"startTime"`
@@ -70,6 +80,9 @@ func (Adapter) ParseTranscriptLine(line []byte, meta adapters.TranscriptMeta) ([
 		return titleUpdate(l, meta)
 	}
 	acts := activity(line, meta)
+	if l.Type == "assistant" && l.QuotaLimits != nil && !meta.Warmup {
+		acts = append(acts, limitReached(l, meta)...)
+	}
 	u := l.Message.Usage
 	if l.Type != "assistant" || u == nil || l.Message.ID == "" || l.SessionID == "" {
 		return acts, nil
@@ -221,6 +234,53 @@ func costReport(l transcriptLine, meta adapters.TranscriptMeta) ([]model.Event, 
 		e.Raw = &model.RawRef{Ref: meta.Ref}
 	}
 	return []model.Event{e}, nil
+}
+
+// limitReached turns a refusal at a plan limit into a limit event: the
+// window is full until resetsAt. It's the only limit state Claude Code
+// writes to disk (checked 2026-10-10); the used percentage of each window
+// is passed only to status line commands. The windows belong to the
+// account, so the dedup key is global: one event per window and reset.
+func limitReached(l transcriptLine, meta adapters.TranscriptMeta) []model.Event {
+	q := l.QuotaLimits
+	if q.Status != "rejected" || l.SessionID == "" {
+		return nil
+	}
+	var minutes int64
+	var id string
+	switch {
+	case q.RateLimitType == "five_hour":
+		minutes = 300
+	case strings.HasPrefix(q.RateLimitType, "seven_day"):
+		minutes, id = 10080, strings.TrimPrefix(strings.TrimPrefix(q.RateLimitType, "seven_day"), "_") // e.g. seven_day_opus
+	default:
+		return nil
+	}
+	ts := meta.ReceivedAt
+	if t, err := time.Parse(time.RFC3339Nano, l.Timestamp); err == nil {
+		ts = t
+	}
+	var resets time.Time
+	if q.ResetsAt > 0 {
+		resets = time.Unix(q.ResetsAt, 0)
+	}
+	data := adapters.LimitData(minutes, id, 100, resets, "")
+	data["limit_reached"] = true
+	sid := model.SessionID(Name, l.SessionID)
+	e := model.Event{
+		ID: model.NewULID(ts), V: model.SchemaVersion, TS: ts.UTC(), ReceivedAt: meta.ReceivedAt.UTC(),
+		Kind: model.KindLimit, Agent: model.Agent{Name: Name, Version: l.Version}, Collector: model.CollectorTranscript,
+		User: meta.User, SessionID: sid, ActorID: sid, Data: data,
+		DedupKey: fmt.Sprintf("%s:limit:%s:%d", Name, q.RateLimitType, q.ResetsAt),
+	}
+	if l.AgentID != "" {
+		e.ActorID = sid + "/sub:" + l.AgentID
+		e.ParentActor = sid
+	}
+	if meta.Ref != "" {
+		e.Raw = &model.RawRef{Ref: meta.Ref}
+	}
+	return []model.Event{e}
 }
 
 // titleUpdate turns an ai-title line (the title Claude Code generated for

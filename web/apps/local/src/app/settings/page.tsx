@@ -413,6 +413,9 @@ export default function SettingsPage() {
               : "Off"}
           </Row>
           <Row label="A session fails">{s.notify.enabled && s.notify.failed ? "On" : "Off"}</Row>
+          <Row label="A plan usage window fills up">
+            {s.notify.limit_percent > 0 ? `On, at ${s.notify.limit_percent}% (once per window)` : "Off"}
+          </Row>
           <div className="flex flex-wrap items-center justify-between gap-2 pt-3">
             {restartNote}
             <Button

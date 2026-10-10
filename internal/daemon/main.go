@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/elephaant/shiplino/internal/budget"
 	"github.com/elephaant/shiplino/internal/integrations/github"
+	"github.com/elephaant/shiplino/internal/limits"
 	"github.com/elephaant/shiplino/pkg/model"
 	"log"
 	"net"
@@ -102,10 +103,16 @@ func Main(ctx context.Context, version string) error {
 		budgets = budget.New(bc, st, nil)
 		go budgets.Run(ctx)
 	}
+	// Plan usage windows: always served, notified only when on.
+	lw := limits.New(limits.Config{NotifyPercent: cfg.LimitPercent(), Plans: cfg.Limits.Plans}, st, nil)
+	if cfg.LimitPercent() > 0 {
+		go lw.Run(ctx)
+	}
 	apiErr := make(chan error, 1)
 	go func() {
 		srv := api.New(st, hub, token, version, logger)
 		srv.Status = func() any { return d.Health() }
+		srv.Limits = func(ctx context.Context) (any, error) { return lw.Status(ctx) }
 		srv.Admin = &admin{d: d, home: home, cfg: cfg, version: version, sync: uploader, budget: budgets, github: prs, port: ln.Addr().(*net.TCPAddr).Port, send: notify.Send}
 		srv.Ingest = d
 		srv.DevOrigin = os.Getenv("SHIPLINO_DEV_ORIGIN")

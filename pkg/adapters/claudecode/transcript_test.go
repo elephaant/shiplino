@@ -67,8 +67,18 @@ func TestTranscriptUsage(t *testing.T) {
 	for _, e := range evs {
 		keys[e.DedupKey]++
 	}
-	if keys["claude-code:usage:msg_A"] != 2 || keys["claude-code:sess-0001:cost-state:1791367200000:0.250000000"] != 2 || keys["claude-code:sess-0001:toolu_01:start"] != 1 || len(keys) != 8 {
+	if keys["claude-code:usage:msg_A"] != 2 || keys["claude-code:sess-0001:cost-state:1791367200000:0.250000000"] != 2 || keys["claude-code:sess-0001:toolu_01:start"] != 1 || len(keys) != 9 {
 		t.Fatalf("dedup keys: %v", keys)
+	}
+	// A request refused at the 5-hour limit: the window is full until reset.
+	for _, e := range evs {
+		if e.Kind != model.KindLimit {
+			continue
+		}
+		if e.DedupKey != "claude-code:limit:five_hour:1791549600" || e.Data["limit_window"] != "5h" || e.Data["used_percent"] != 100.0 ||
+			e.Data["limit_reached"] != true || e.Data["resets_at"] != "2026-10-09T12:40:00Z" || e.Data["limit_source"] != "reported" {
+			t.Fatalf("limit: %s %v", e.DedupKey, e.Data)
+		}
 	}
 
 	byMsg := map[string]model.Event{}

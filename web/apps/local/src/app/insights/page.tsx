@@ -7,10 +7,12 @@ import { ByAgent, ByProject, CostSources, Models, Tools } from "@/components/ins
 import { DailyChart } from "@/components/insights/daily-chart";
 import { Failures } from "@/components/insights/failures";
 import { Kpis } from "@/components/insights/kpis";
+import { PlanLimits } from "@/components/insights/plan-limits";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { API_BASE, api, type Insights, type ProjectSummary } from "@/lib/api";
+import { useLimits } from "@/lib/limits";
 import { useLive } from "@/lib/live";
 
 const ranges = [
@@ -27,6 +29,8 @@ export default function InsightsPage() {
   const [data, setData] = useState<Insights | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
+  const limits = useLimits();
+  const onPlan = Object.values(limits?.plans ?? {}).includes("plan");
 
   useEffect(() => {
     api<{ projects: ProjectSummary[] }>("/api/v1/projects")
@@ -117,7 +121,8 @@ export default function InsightsPage() {
         </Empty>
       ) : (
         <>
-          <Kpis t={data.totals} p={data.previous} days={data.days} />
+          <Kpis t={data.totals} p={data.previous} days={data.days} apiEquivalent={onPlan} />
+          {!!limits?.windows.length && <PlanLimits windows={limits.windows} />}
           <div className="grid grid-cols-1 items-stretch gap-4 xl:grid-cols-12">
             <div className="xl:col-span-8">
               <DailyChart data={data} />
