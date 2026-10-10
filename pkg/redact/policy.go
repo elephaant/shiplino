@@ -56,6 +56,18 @@ func (r *Redactor) Event(e *model.Event, level Level) {
 		return
 	}
 	minimal := level == Minimal
+	// A shell command's program ("go", "npm") is metadata, kept at every
+	// level: derived from the redacted command before the command goes,
+	// and checked when an agent or SDK sent it.
+	if e.Kind == model.KindShellExec {
+		if p, ok := d["program"]; ok {
+			if s, _ := p.(string); !ValidProgram(s) {
+				delete(d, "program")
+			}
+		} else if p := Program(r.Command(str(d, "command"))); p != "" {
+			d["program"] = p
+		}
+	}
 	cut := func(key string, max int) {
 		if s, ok := d[key].(string); ok && level != Full && len([]rune(s)) > max {
 			d[key] = string([]rune(s)[:max]) + "…"

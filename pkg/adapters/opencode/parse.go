@@ -190,6 +190,9 @@ func (Adapter) ParseHook(raw []byte, meta adapters.HookMeta) ([]model.Event, err
 			resolution = "rejected"
 		}
 		e := b.base(model.KindWaitingEnd, compact(map[string]any{"resolution": resolution}))
+		if event == "permission.replied" && p.Reply == "reject" {
+			e.Data["denied"] = true // the user refused the permission
+		}
 		e.DedupKey = b.actor + ":waiting:" + first(p.RequestID, meta.EnvelopeID) + ":end"
 		return []model.Event{e}, nil
 	}
