@@ -300,3 +300,47 @@ func TestListenFallsBackToNextPort(t *testing.T) {
 		t.Fatalf("port file = %q", b)
 	}
 }
+
+// A page on another localhost port is the same site and carries the
+// SameSite=Strict cookie; it must not be able to change anything.
+func TestCookieWritesOnlyFromThisPage(t *testing.T) {
+	f := setup(t)
+	host := strings.TrimPrefix(f.url, "http://")
+	cases := []struct {
+		name      string
+		mod       func(*http.Request)
+		forbidden bool
+	}{
+		{"other localhost port", func(r *http.Request) { r.Header.Set("Origin", "http://localhost:3001") }, true},
+		{"other site", func(r *http.Request) { r.Header.Set("Origin", "https://evil.example.com") }, true},
+		{"same-site fetch, no Origin", func(r *http.Request) { r.Header.Set("Sec-Fetch-Site", "same-site") }, true},
+		{"this page", func(r *http.Request) { r.Header.Set("Origin", "http://"+host) }, false},
+		{"same-origin fetch, no Origin", func(r *http.Request) { r.Header.Set("Sec-Fetch-Site", "same-origin") }, false},
+	}
+	for _, c := range cases {
+		req, _ := http.NewRequest("POST", f.url+"/api/v1/pause", nil)
+		req.AddCookie(&http.Cookie{Name: cookieName, Value: token})
+		c.mod(req)
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		resp.Body.Close()
+		if got := resp.StatusCode == http.StatusForbidden; got != c.forbidden {
+			t.Errorf("%s: status %d", c.name, resp.StatusCode)
+		}
+	}
+	// The token header (CLI, SDKs) and cookie reads are unaffected.
+	req, _ := http.NewRequest("POST", f.url+"/api/v1/pause", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Origin", "http://localhost:3001")
+	if resp, err := http.DefaultClient.Do(req); err != nil || resp.StatusCode == http.StatusForbidden {
+		t.Fatalf("bearer refused: %v %v", resp.StatusCode, err)
+	}
+	if resp, _ := f.get(t, "/api/v1/sessions", func(r *http.Request) {
+		r.AddCookie(&http.Cookie{Name: cookieName, Value: token})
+		r.Header.Set("Sec-Fetch-Site", "same-site")
+	}); resp.StatusCode != http.StatusOK {
+		t.Fatalf("cookie GET: %d", resp.StatusCode)
+	}
+}
