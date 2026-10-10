@@ -25,17 +25,19 @@ func calendarFor(p *store.ProjectSummary) board.Calendar {
 	return board.Calendar{Origin: p.FirstSeen}
 }
 
-// projectCards loads a project's sessions and overrides into cards.
-func (s *Server) projectCards(r *http.Request, p *store.ProjectSummary) ([]board.Card, error) {
-	sessions, err := s.st.SessionsIn(r.Context(), p.ID, 0)
+// boardData loads the sessions and overrides that can make cards in
+// sprint n (0: every sprint).
+func (s *Server) boardData(r *http.Request, p *store.ProjectSummary, n int) ([]*engine.Session, map[string]board.Override, error) {
+	var since time.Time
+	if n > 1 {
+		since = calendarFor(p).Get(n).Starts
+	}
+	sessions, err := s.st.BoardSessions(r.Context(), p.ID, since)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	overrides, err := s.st.Overrides(r.Context(), p.ID)
-	if err != nil {
-		return nil, err
-	}
-	return board.Build(sessions, overrides, calendarFor(p), now()), nil
+	return sessions, overrides, err
 }
 
 func (s *Server) projectFromPath(w http.ResponseWriter, r *http.Request) *store.ProjectSummary {
@@ -77,11 +79,12 @@ func (s *Server) getBoard(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	cards, err := s.projectCards(r, p)
+	sessions, overrides, err := s.boardData(r, p, n)
 	if err != nil {
 		s.internal(w, err)
 		return
 	}
+	cards := board.Build(sessions, overrides, cal, now())
 	out := map[string]any{"project": p, "columns": board.Layout(board.FilterSprint(cards, n)), "current_sprint": cal.Number(now())}
 	if n > 0 {
 		out["sprint"] = cal.Get(n)
@@ -235,12 +238,7 @@ func (s *Server) sprintReport(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "sprint must be a number")
 		return
 	}
-	sessions, err := s.st.SessionsIn(r.Context(), p.ID, 0)
-	if err != nil {
-		s.internal(w, err)
-		return
-	}
-	overrides, err := s.st.Overrides(r.Context(), p.ID)
+	sessions, overrides, err := s.boardData(r, p, n)
 	if err != nil {
 		s.internal(w, err)
 		return

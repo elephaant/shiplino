@@ -11,7 +11,7 @@ Status: pre-alpha. Only the skeleton exists.
 ```
 agent hook → `shiplino hook` (tiny, prints nothing, exit 0) → ~/.shiplino/spool/<agent>/<session>.jsonl
 daemon: spool + agent transcripts (tokens) + git (commits) → adapters → universal events
-      → dedup/merge → task engine (sharded by root session) → SQLite + FTS5
+      → dedup/merge → task engine → one batched SQLite writer + FTS5 (files parsed in parallel)
       → REST + WebSocket on 127.0.0.1:4777 → web UI embedded in the binary
 ```
 
