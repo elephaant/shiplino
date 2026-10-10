@@ -1,0 +1,17 @@
+{
+  "name": "@shiplino/e2e",
+  "version": "0.0.0",
+  "private": true,
+  "license": "FSL-1.1-ALv2",
+  "scripts": {
+    "test": "playwright test",
+    "typecheck": "tsc --noEmit",
+    "check": "biome check ."
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.15",
+    "@playwright/test": "1.63.0",
+    "@types/node": "22.20.5",
+    "typescript": "5.9.3"
+  }
+}

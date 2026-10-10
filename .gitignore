@@ -19,6 +19,8 @@ web/**/.next/
 sdk/ts/dist/
 sdk/python/build/
 sdk/python/dist/
+web/e2e/playwright-report/
+web/e2e/test-results/
 next-env.d.ts
 # Built web app embedded into the binary (make ui); only the placeholder is committed
 internal/api/dist/*

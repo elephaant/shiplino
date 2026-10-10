@@ -1,0 +1,10 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.5.15/schema.json",
+  "files": { "includes": ["**/*.ts", "*.json", "!playwright-report", "!test-results"] },
+  "formatter": { "enabled": true, "indentStyle": "space", "indentWidth": 2, "lineWidth": 120 },
+  "linter": {
+    "enabled": true,
+    "rules": { "preset": "recommended", "style": { "noNonNullAssertion": "off" } }
+  },
+  "assist": { "actions": { "source": { "organizeImports": "on" } } }
+}

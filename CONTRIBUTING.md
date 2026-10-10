@@ -22,6 +22,13 @@ cd shiplino
 make build && make test
 ```
 
+If you change the web app, also run the browser tests. They build the binary, start a daemon in a temp folder, feed it hook events and drive the app in Chromium (see [web/README.md](web/README.md)):
+
+```bash
+(cd web && npx playwright install chromium)   # once
+make e2e
+```
+
 ## The non-negotiable rules
 
 These protect users. Pull requests that break them won't be merged.

@@ -46,7 +46,18 @@ function SortableCard({
   );
 }
 
-function Column({ col, cards, onOpen }: { col: BoardColumn; cards: BoardCard[]; onOpen: (c: BoardCard) => void }) {
+function Column({
+  col,
+  cards,
+  blocked,
+  onOpen,
+}: {
+  col: BoardColumn;
+  cards: BoardCard[];
+  /** blocked: the card being dragged can't be dropped here. */
+  blocked: boolean;
+  onOpen: (c: BoardCard) => void;
+}) {
   const { ref, isDropTarget } = useDroppable({ id: col.id, type: "column", accept: "card", collisionPriority: 1 });
   if (col.id === "failed" && cards.length === 0) return null; // hidden while empty
   return (
@@ -57,9 +68,12 @@ function Column({ col, cards, onOpen }: { col: BoardColumn; cards: BoardCard[]; 
       </header>
       <div
         ref={ref}
+        data-blocked={blocked || undefined}
+        title={blocked ? "Follows the agent: cards move here by themselves" : undefined}
         className={cn(
           "flex min-h-24 flex-1 flex-col gap-2 rounded-lg bg-muted/60 p-2 transition-colors",
-          isDropTarget && "bg-accent",
+          isDropTarget && !blocked && "bg-accent",
+          blocked && "cursor-not-allowed bg-status-failed/10 ring-1 ring-status-failed/40",
         )}
       >
         {cards.map((c, i) => (
@@ -102,6 +116,19 @@ export function Board({
   const columnOf = (state: Items, id: string) =>
     (Object.keys(state) as ColumnId[]).find((k) => state[k].some((c) => c.id === id));
 
+  // refused returns the column a drag would wrongly put an auto card into:
+  // Running and Waiting follow the agent.
+  const refused = (op: { source: { data?: unknown } | null; target: { id: unknown; type?: unknown } | null }) => {
+    const card = (op.source?.data as { card?: BoardCard } | undefined)?.card;
+    const target = op.target;
+    const targetCol = (target?.type === "column" ? target.id : columnOf(items, String(target?.id))) as
+      | ColumnId
+      | undefined;
+    const no = card?.origin === "auto" && targetCol && agentColumns.includes(targetCol) && targetCol !== card.column;
+    return no ? targetCol : null;
+  };
+  const [blocked, setBlocked] = useState<ColumnId | null>(null);
+
   return (
     <DragDropProvider
       onDragStart={() => {
@@ -109,14 +136,9 @@ export function Board({
         snapshot.current = items;
       }}
       onDragOver={(event) => {
-        const source = event.operation.source;
-        const target = event.operation.target;
-        const card = (source?.data as { card?: BoardCard } | undefined)?.card;
-        const targetCol = (target?.type === "column" ? target.id : columnOf(items, String(target?.id))) as
-          | ColumnId
-          | undefined;
-        // Auto cards can't go to Running/Waiting: those follow the agent.
-        if (card?.origin === "auto" && targetCol && agentColumns.includes(targetCol) && targetCol !== card.column) {
+        const no = refused(event.operation);
+        setBlocked(no);
+        if (no) {
           event.preventDefault();
           return;
         }
@@ -124,9 +146,15 @@ export function Board({
       }}
       onDragEnd={async (event) => {
         dragging.current = false;
+        setBlocked(null);
         if (event.canceled) {
           setItems(snapshot.current);
           return;
+        }
+        if (refused(event.operation)) {
+          toast.info("Running and Waiting follow the agent", {
+            description: "This card moves there by itself when its agent is working or waiting on you.",
+          });
         }
         const id = String(event.operation.source?.id);
         const before = columnOf(snapshot.current, id);
@@ -150,7 +178,7 @@ export function Board({
     >
       <div className="flex w-full min-w-0 gap-3 overflow-x-auto pb-4">
         {columns.map((col) => (
-          <Column key={col.id} col={col} cards={items[col.id] ?? []} onOpen={onOpen} />
+          <Column key={col.id} col={col} cards={items[col.id] ?? []} blocked={blocked === col.id} onOpen={onOpen} />
         ))}
       </div>
       <DragOverlay>

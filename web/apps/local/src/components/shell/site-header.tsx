@@ -6,7 +6,7 @@
 import { Monitor, Moon, Sun } from "lucide-react";
 import Link from "next/link";
 import { useTheme } from "next-themes";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CommandMenu } from "@/components/shell/command-menu";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -52,7 +52,12 @@ function LiveStrip() {
 }
 
 function ThemeToggle() {
-  const { theme, setTheme } = useTheme();
+  const { theme: chosen, setTheme } = useTheme();
+  // The prerendered page can't know the stored choice: render "system"
+  // until mounted so hydration matches, then the real choice.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const theme = mounted ? chosen : undefined;
   const next = theme === "light" ? "dark" : theme === "dark" ? "system" : "light";
   const Icon = theme === "light" ? Sun : theme === "dark" ? Moon : Monitor;
   return (

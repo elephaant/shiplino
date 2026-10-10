@@ -1,6 +1,6 @@
 BIN := bin/shiplino
 
-.PHONY: build ui ui-dev test bench lint clean
+.PHONY: build ui ui-dev test e2e bench lint clean
 
 UI_OUT := internal/api/dist
 
@@ -24,6 +24,11 @@ ui-dev:
 test:
 	go test ./...
 
+# e2e runs the browser tests (web/e2e) against a fresh build. The first
+# time, install Chromium: cd web && npx playwright install chromium
+e2e: build
+	cd web && npm run e2e
+
 # bench runs the full-size load tests (see bench/README.md); CI runs the
 # short variant as part of go test.
 bench:
@@ -34,5 +39,5 @@ lint:
 	go vet ./...
 
 clean:
-	rm -rf bin dist web/apps/local/out web/apps/local/.next
+	rm -rf bin dist web/apps/local/out web/apps/local/.next web/e2e/playwright-report web/e2e/test-results
 	find $(UI_OUT) -mindepth 1 ! -name README.md -exec rm -rf {} +
