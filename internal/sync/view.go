@@ -20,6 +20,7 @@ type View struct {
 	Endpoint      string `json:"endpoint"`
 	SignedIn      bool   `json:"signed_in"`
 	Account       string `json:"account,omitempty"`
+	Role          string `json:"role,omitempty"` // in the workspace, as of sign-in
 	WorkspaceID   string `json:"workspace_id,omitempty"`
 	WorkspaceName string `json:"workspace_name,omitempty"`
 	// CredentialStore is "keychain" or "file"; CredentialNote says why
@@ -32,22 +33,29 @@ type View struct {
 	Exclude         []string  `json:"exclude"`
 	LastUpload      time.Time `json:"last_upload,omitzero"`
 	Uploaded        int64     `json:"uploaded"`
-	Backlog         int64     `json:"backlog"` // events stored since the last upload, not yet checked
+	Rejected        int64     `json:"rejected"` // dropped by the service as invalid
+	Backlog         int64     `json:"backlog"`  // events stored since the last upload, not yet checked
 	LastError       string    `json:"last_error,omitempty"`
 	LastErrorAt     time.Time `json:"last_error_at,omitzero"`
 	NextRetry       time.Time `json:"next_retry,omitzero"`
-	NeedsLogin      bool      `json:"needs_login,omitempty"`
+	// NeedsLogin: the service signed this device out (the tokens were
+	// deleted). Forbidden: the account's role can't sync.
+	NeedsLogin bool `json:"needs_login,omitempty"`
+	Forbidden  bool `json:"forbidden,omitempty"`
 }
 
 // Describe builds a View from the config, stored credentials and progress.
-func Describe(ctx context.Context, cfg config.Config, c *Creds, where, why string, st *store.Store) View {
+func Describe(ctx context.Context, home string, cfg config.Config, c *Creds, where, why string, st *store.Store) View {
 	level, capped := cfg.SyncLevel()
 	v := View{Enabled: cfg.Sync.Enabled, Endpoint: cfg.SyncEndpoint(), CaptureLevel: string(level), LevelCapped: capped,
 		Projects: nonNil(cfg.Sync.Projects), Exclude: nonNil(cfg.Sync.Exclude), CredentialStore: where, CredentialNote: why}
 	if c == nil {
+		if reason := (Vault{Home: home}).SignedOut(); reason != "" {
+			v.NeedsLogin, v.LastError = true, reason
+		}
 		return v
 	}
-	v.SignedIn, v.Account, v.WorkspaceID, v.WorkspaceName, v.Endpoint = true, c.Account, c.WorkspaceID, c.WorkspaceName, c.Endpoint
+	v.SignedIn, v.Account, v.Role, v.WorkspaceID, v.WorkspaceName, v.Endpoint = true, c.Account, c.Role, c.WorkspaceID, c.WorkspaceName, c.Endpoint
 	if st == nil {
 		return v
 	}
@@ -56,8 +64,8 @@ func Describe(ctx context.Context, cfg config.Config, c *Creds, where, why strin
 		v.LastError = err.Error()
 		return v
 	}
-	v.LastUpload, v.Uploaded, v.LastError, v.LastErrorAt = s.LastUpload, s.Uploaded, s.LastError, s.LastErrorAt
-	v.NeedsLogin = s.LastError == errLogin.Error()
+	v.LastUpload, v.Uploaded, v.Rejected, v.LastError, v.LastErrorAt = s.LastUpload, s.Uploaded, s.Rejected, s.LastError, s.LastErrorAt
+	v.Forbidden = s.LastError == errForbidden.Error()
 	cursor := s.Cursor
 	if ScopeFor(cfg).widens(s.Scope) {
 		cursor = 0
@@ -92,6 +100,13 @@ func NextBatch(ctx context.Context, home string, cfg config.Config, c *Creds, st
 		b.Events = append(b.Events, it.body)
 	}
 	return b, nil
+}
+
+// Role returns the workspace role from a GET /v1/me answer ("" if none).
+func Role(me map[string]any) string {
+	ws, _ := me["workspace"].(map[string]any)
+	r, _ := ws["role"].(string)
+	return r
 }
 
 // AccountName picks a readable identity from a GET /v1/me answer.

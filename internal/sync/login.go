@@ -16,7 +16,7 @@ var pollUnit = time.Second
 // the user can approve it in a browser, then polls until the user
 // approves, denies, or the code expires.
 func Login(ctx context.Context, c *Client, show func(DeviceCode)) (*Token, error) {
-	d, err := c.StartDevice(ctx)
+	d, err := c.StartDevice(ctx, deviceName())
 	if err != nil {
 		return nil, err
 	}
@@ -42,6 +42,10 @@ func Login(ctx context.Context, c *Client, show func(DeviceCode)) (*Token, error
 			return t, nil
 		case errors.Is(err, ErrSlowDown):
 			interval += 5 * pollUnit
+			var se *StatusError
+			if errors.As(err, &se) && se.RetryAfter/time.Second*pollUnit > interval {
+				interval = se.RetryAfter / time.Second * pollUnit
+			}
 		case errors.Is(err, ErrPending):
 		case errors.Is(err, ErrExpired), errors.Is(err, ErrDenied), IsStatus(err, 400, 401, 403, 404):
 			return nil, err

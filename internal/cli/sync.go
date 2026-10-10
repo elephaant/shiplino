@@ -91,7 +91,7 @@ func syncLogin(ctx context.Context, e *env, args []string) int {
 	}
 	creds := cloudsync.FromToken(endpoint, tok, time.Now())
 	if me, err := c.Me(ctx, tok.AccessToken); err == nil {
-		creds.Account = cloudsync.AccountName(me)
+		creds.Account, creds.Role = cloudsync.AccountName(me), cloudsync.Role(me)
 	}
 	where, why, err := cloudsync.Vault{Home: e.home}.Save(creds)
 	if err != nil {
@@ -113,7 +113,11 @@ func syncLogin(ctx context.Context, e *env, args []string) int {
 	if creds.Account != "" {
 		who = " as " + creds.Account
 	}
-	fmt.Fprintf(e.out, "\n✅ Signed in%s to workspace %s.\n", who, workspaceName(creds))
+	role := ""
+	if creds.Role != "" {
+		role = " (role: " + creds.Role + ")"
+	}
+	fmt.Fprintf(e.out, "\n✅ Signed in%s to workspace %s%s.\n", who, workspaceName(creds), role)
 	printCredStore(e, where, why)
 	cfg, _ = config.Load(e.home)
 	if len(cfg.Sync.Projects) == 0 {
@@ -187,12 +191,14 @@ func syncStatus(ctx context.Context, e *env, args []string) int {
 		return 0
 	}
 
-	v := cloudsync.Describe(ctx, cfg, creds, where, why, st)
+	v := cloudsync.Describe(ctx, e.home, cfg, creds, where, why, st)
 	switch {
 	case v.Enabled && v.SignedIn:
 		fmt.Fprintln(e.out, "● Sync is on")
 	case v.SignedIn:
 		fmt.Fprintln(e.out, "○ Sync is off (signed in; turn it on with `shiplino sync login`)")
+	case v.NeedsLogin:
+		fmt.Fprintf(e.out, "○ Signed out by the sync service, so nothing is sent: %s\n", v.LastError)
 	default:
 		fmt.Fprintln(e.out, "○ Sync is off: nothing leaves this machine (`shiplino sync login` to start)")
 	}
@@ -201,7 +207,11 @@ func syncStatus(ctx context.Context, e *env, args []string) int {
 		if v.Account != "" {
 			who = v.Account + " · "
 		}
-		fmt.Fprintf(e.out, "  %-14s %sworkspace %s\n", "Signed in", who, workspaceName(creds))
+		role := ""
+		if v.Role != "" {
+			role = " (" + v.Role + ")"
+		}
+		fmt.Fprintf(e.out, "  %-14s %sworkspace %s%s\n", "Signed in", who, workspaceName(creds), role)
 		fmt.Fprintf(e.out, "  %-14s %s\n", "Endpoint", v.Endpoint)
 		store := "OS keychain"
 		if v.CredentialStore == cloudsync.InFile {
@@ -224,6 +234,12 @@ func syncStatus(ctx context.Context, e *env, args []string) int {
 	}
 	if v.SignedIn {
 		fmt.Fprintf(e.out, "  %-14s %s · %d events uploaded\n", "Last upload", ago(v.LastUpload), v.Uploaded)
+		if v.Rejected > 0 {
+			fmt.Fprintf(e.out, "  %-14s %d events the service refused as invalid (dropped, not retried)\n", "Rejected", v.Rejected)
+		}
+		if v.Forbidden {
+			fmt.Fprintln(e.out, "  ⚠️  Uploads are paused: this account's role can't sync to the workspace. Ask an admin, then `shiplino sync login` again.")
+		}
 		fmt.Fprintf(e.out, "  %-14s %d events to check\n", "Backlog", v.Backlog)
 		if v.LastError != "" {
 			fmt.Fprintf(e.out, "  %-14s %s (%s)\n", "Last error", v.LastError, ago(v.LastErrorAt))
@@ -326,10 +342,13 @@ func syncChecks(e *env) []check {
 	if !cfg.Sync.Enabled {
 		return []check{{ok: true, name: "Sync", detail: "off (nothing leaves this machine)"}}
 	}
-	creds, where, why, err := cloudsync.Vault{Home: e.home}.Load()
+	vault := cloudsync.Vault{Home: e.home}
+	creds, where, why, err := vault.Load()
 	switch {
 	case err != nil:
 		return []check{{name: "Sync", detail: err.Error(), fixHint: "shiplino sync login"}}
+	case creds == nil && vault.SignedOut() != "":
+		return []check{{name: "Sync", detail: "signed out by the sync service; nothing is sent", fixHint: "shiplino sync login"}}
 	case creds == nil:
 		return []check{{name: "Sync", detail: "on, but not signed in", fixHint: "shiplino sync login"}}
 	}
@@ -347,12 +366,18 @@ func syncChecks(e *env) []check {
 		out = append(out, check{ok: true, name: "Sync creds", detail: "in the OS keychain"})
 	}
 	if st, err := store.Open(filepath.Join(e.home, "data", "shiplino.db")); err == nil {
-		s, _ := st.SyncState(context.Background(), creds.WorkspaceID)
+		v := cloudsync.Describe(context.Background(), e.home, cfg, creds, where, why, st)
 		st.Close()
-		if s.LastError != "" {
-			out = append(out, check{ok: true, warn: true, name: "Sync upload", detail: s.LastError + " (" + ago(s.LastErrorAt) + ")", fixHint: "shiplino sync status"})
-		} else if !s.LastUpload.IsZero() {
-			out = append(out, check{ok: true, name: "Sync upload", detail: "last upload " + ago(s.LastUpload)})
+		switch {
+		case v.Forbidden:
+			out = append(out, check{name: "Sync upload", detail: v.LastError, fixHint: "ask a workspace admin for a role that can sync"})
+		case v.LastError != "":
+			out = append(out, check{ok: true, warn: true, name: "Sync upload", detail: v.LastError + " (" + ago(v.LastErrorAt) + ")", fixHint: "shiplino sync status"})
+		case !v.LastUpload.IsZero():
+			out = append(out, check{ok: true, name: "Sync upload", detail: "last upload " + ago(v.LastUpload)})
+		}
+		if v.Rejected > 0 {
+			out = append(out, check{ok: true, warn: true, name: "Sync upload", detail: fmt.Sprintf("%d events refused by the service as invalid (dropped)", v.Rejected)})
 		}
 	}
 	return out

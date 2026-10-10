@@ -53,7 +53,7 @@ Events in the [universal event format](event-format.md), one JSON object per eve
 | `standard` | Also prompts (truncated to 2,000 characters), shell commands, session titles, short tool summaries, the agent's final message (500 characters), tool errors (500 characters) and commit messages. All redacted. |
 | `full` | Everything stored locally at `full`, still redacted. |
 
-Each request also carries a `device_id` (a random id created once and kept in `~/.shiplino/device_id`) and a `device_name` (the computer's hostname).
+The sign-in request carries the hostname as `device_name`. Each upload also carries a `device_id` (a random id created once and kept in `~/.shiplino/device_id`) and a `device_name` (the computer's hostname).
 
 ### Never sent
 
@@ -80,7 +80,7 @@ All paths are relative to the endpoint. Requests and responses are JSON. Errors 
 
 ### Sign-in: device authorization (RFC 8628)
 
-`POST /v1/device/code` → `200`
+`POST /v1/device/code` with `{"device_name": "<hostname>"}` (optional; shown on the approval page) → `200`
 
 ```json
 {"device_code": "…", "user_code": "ABCD-EFGH", "verification_uri": "https://…", "verification_uri_complete": "https://…?code=ABCD-EFGH", "interval": 5, "expires_in": 900}
@@ -93,8 +93,9 @@ The CLI shows `user_code` and `verification_uri`, opens `verification_uri_comple
 | Answer | Meaning | Client |
 |--------|---------|--------|
 | `428 {"error":"authorization_pending"}` | not approved yet | keep polling |
-| `429 {"error":"slow_down"}` | polling too fast | add 5 seconds to the interval |
-| `400 {"error":"expired_token"}` | the code expired | stop, ask to run `login` again |
+| `429 {"error":"slow_down"}` | polling too fast | add 5 seconds to the interval, or wait for `Retry-After` if that's longer |
+| `400 {"error":"expired_token"}` | the code expired (or is unknown or already used) | stop, ask to run `login` again |
+| `400 {"error":"invalid_request"}` | the request had no code | stop |
 | `400 {"error":"access_denied"}` | the user declined | stop |
 | `200` | approved | store the tokens |
 
@@ -104,11 +105,13 @@ The CLI shows `user_code` and `verification_uri`, opens `verification_uri_comple
 
 ### Refresh
 
-`POST /v1/token/refresh` with `{"refresh_token": "…"}` → the same `200` shape. The client refreshes a minute before `expires_in` runs out, and after any `401`. If the refresh is refused, the client stops uploading and asks you to run `shiplino sync login`.
+`POST /v1/token/refresh` with `{"refresh_token": "…"}` → the same `200` shape, or `400 {"error":"invalid_grant", "message": "…"}` (RFC 6749) when the refresh token is no longer valid. The client refreshes a minute before `expires_in` runs out, and after any `401`. If the refresh is refused, the client deletes the stored tokens, stops uploading, and `shiplino sync status`, `doctor` and the Settings page say the device was signed out and to run `shiplino sync login`.
 
 ### Who am I
 
-`GET /v1/me` with `Authorization: Bearer <access_token>`. The client shows the account's email or name.
+`GET /v1/me` with `Authorization: Bearer <access_token>` → `{"user": {…}, "workspace": {…, "role": "…"}, "device": {…}}`. At sign-in the client shows the account's email or name and its workspace role.
+
+Device tokens can only upload events. The client never reads data back from the service.
 
 ### Upload events
 
@@ -120,11 +123,13 @@ The CLI shows `user_code` and `verification_uri`, opens `verification_uri_comple
 
 - At most **2,000 events** and **8 MB** (uncompressed) per request.
 - The server is idempotent on the event `id` and `dedup_key`: sending an event twice stores it once.
-- `200 {"accepted": n, "duplicates": m}`.
+- `200 {"accepted": n, "duplicates": m, "rejected": k}`. `rejected` (optional) counts events that failed the server's schema check and were dropped. The client moves past them, never resends them, and shows the count in `shiplino sync status`, `doctor` and the Settings page.
 
 | Answer | Client |
 |--------|--------|
-| `401` | refresh the token and retry once; if the refresh fails, stop and ask you to sign in again |
+| `400` | the request was malformed (a client bug): log it and back off as below, never in a tight loop |
+| `401` | refresh the token and retry once; if the refresh fails, sign out as described above |
+| `403` | the account's workspace role can't sync: stop uploading, show it in `sync status` and `doctor`, and check again once an hour |
 | `413` | split the batch in half and send each half; a single event that's still too large is skipped and logged |
 | `429`, `503` | wait for `Retry-After` (seconds or an HTTP date), else back off exponentially with jitter (5 s doubling to 5 min) |
 | other errors, offline | back off the same way and retry |

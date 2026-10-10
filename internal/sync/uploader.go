@@ -34,8 +34,16 @@ const (
 	credsEvery = 30 * time.Second
 )
 
-// errLogin means the service no longer accepts our tokens.
+// errLogin means the service no longer accepts our tokens: they're
+// deleted and the user has to sign in again.
 var errLogin = errors.New("the sync service signed this device out: run `shiplino sync login`")
+
+// errForbidden means the account may not sync to this workspace (e.g. it
+// has a read-only role). The uploader checks again only every forbiddenWait.
+var errForbidden = errors.New("this account's role in the workspace can't sync (ask a workspace admin)")
+
+// forbiddenWait is how long to pause after a 403, in case the role changes.
+const forbiddenWait = time.Hour
 
 // Uploader sends recorded events to the sync service in the background.
 // It reads committed rows only, through the store's read-only pool, on
@@ -62,6 +70,7 @@ type Uploader struct {
 	failures   int
 	notBefore  time.Time
 	needsLogin bool
+	forbidden  bool
 }
 
 // NewUploader returns an uploader for a Shiplino home. Call Run to start it.
@@ -107,16 +116,28 @@ func (u *Uploader) Step(ctx context.Context) time.Duration {
 	u.mu.Lock()
 	defer u.mu.Unlock()
 	if err == nil {
-		u.failures = 0
+		u.failures, u.forbidden = 0, false
 		return u.every
 	}
 	if ctx.Err() != nil {
 		return u.every
 	}
 	u.recordError(ctx, err)
-	if errors.Is(err, errLogin) {
+	switch {
+	case errors.Is(err, errLogin):
+		u.log.Printf("sync: %v", err)
 		u.needsLogin = true
+		if serr := u.vault.signOut(err.Error()); serr != nil {
+			u.log.Printf("sync: %v", serr)
+		} else {
+			u.creds = nil
+		}
 		return u.every
+	case errors.Is(err, errForbidden):
+		u.log.Printf("sync: %v; checking again in %s", err, forbiddenWait)
+		u.forbidden = true
+		u.notBefore = u.now().Add(forbiddenWait)
+		return forbiddenWait
 	}
 	u.failures++
 	var se *StatusError
@@ -166,7 +187,7 @@ func (u *Uploader) reload() {
 		u.creds, u.where, u.why, u.credsErr = u.vault.Load()
 		u.credsAt = u.now()
 		if u.creds == nil || old == nil || u.creds.AccessToken != old.AccessToken {
-			u.needsLogin, u.failures, u.notBefore = false, 0, time.Time{}
+			u.needsLogin, u.forbidden, u.failures, u.notBefore = false, false, 0, time.Time{}
 		}
 	}
 }
@@ -252,6 +273,12 @@ func (u *Uploader) send(ctx context.Context, st *store.SyncState, items []item) 
 	}
 	st.Cursor = items[len(items)-1].rowid
 	st.Uploaded += int64(res.Accepted) // duplicates were already counted
+	if res.Rejected > 0 {
+		// Dropped by the service's schema check: resending can't help,
+		// so they're counted and passed, never retried.
+		st.Rejected += int64(res.Rejected)
+		u.log.Printf("sync: the service rejected %d event(s) as invalid", res.Rejected)
+	}
 	st.LastUpload = u.now()
 	// Save now: a crash before the next save would only resend this
 	// batch, and the service ignores duplicates anyway.
@@ -273,16 +300,29 @@ func (u *Uploader) post(ctx context.Context, items []item) (Result, error) {
 	c := u.client(u.creds.Endpoint)
 	res, err := c.Upload(ctx, u.creds.AccessToken, b)
 	if !IsStatus(err, 401) {
-		return res, err
+		return res, classify(err)
 	}
 	if err := u.refresh(ctx); err != nil {
 		return Result{}, err
 	}
 	res, err = c.Upload(ctx, u.creds.AccessToken, b)
-	if IsStatus(err, 401) {
-		return res, errLogin
+	return res, classify(err)
+}
+
+// classify turns upload answers that need special handling into errors
+// Step recognizes.
+func classify(err error) error {
+	switch {
+	case IsStatus(err, 401):
+		return errLogin
+	case IsStatus(err, 403):
+		return errForbidden
+	case IsStatus(err, 400):
+		// A malformed request is a client bug: back off like any failure
+		// rather than retry in a tight loop.
+		return fmt.Errorf("the service refused the request as malformed (please report this): %w", err)
 	}
-	return res, err
+	return err
 }
 
 func (u *Uploader) refresh(ctx context.Context) error {
@@ -290,14 +330,14 @@ func (u *Uploader) refresh(ctx context.Context) error {
 		return errLogin
 	}
 	t, err := u.client(u.creds.Endpoint).Refresh(ctx, u.creds.RefreshToken)
-	if IsStatus(err, 400, 401, 403) {
+	if IsStatus(err, 400, 401, 403) { // e.g. 400 invalid_grant (RFC 6749)
 		return errLogin
 	}
 	if err != nil {
 		return fmt.Errorf("refresh the sign-in: %w", err)
 	}
 	c := FromToken(u.creds.Endpoint, t, u.now())
-	c.Account = u.creds.Account
+	c.Account, c.Role = u.creds.Account, u.creds.Role
 	if c.RefreshToken == "" {
 		c.RefreshToken = u.creds.RefreshToken
 	}
@@ -318,15 +358,16 @@ func (u *Uploader) View(ctx context.Context) View {
 		u.reload() // before the first Step
 	}
 	cfg, c, where, why, cfgErr, credsErr := u.cfg, u.creds, u.where, u.why, u.cfgErr, u.credsErr
-	needsLogin, notBefore := u.needsLogin, u.notBefore
+	needsLogin, forbidden, notBefore := u.needsLogin, u.forbidden, u.notBefore
 	u.mu.Unlock()
-	v := Describe(ctx, cfg, c, where, why, u.st)
+	v := Describe(ctx, u.home, cfg, c, where, why, u.st)
 	if cfgErr != nil {
 		v.LastError = cfgErr.Error()
 	} else if credsErr != nil {
 		v.LastError = credsErr.Error()
 	}
 	v.NeedsLogin = v.NeedsLogin || needsLogin
+	v.Forbidden = v.Forbidden || forbidden
 	if notBefore.After(u.now()) {
 		v.NextRetry = notBefore
 	}

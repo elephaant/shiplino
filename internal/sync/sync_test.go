@@ -57,6 +57,10 @@ type fakeServer struct {
 	dedupKeys   map[string]bool
 	deviceIDs   map[string]bool
 	unavailable bool
+	forbidden   bool   // 403: the account's role can't sync
+	malformed   bool   // 400: the body is malformed
+	rejectKind  string // events of this kind fail the schema check
+	deviceName  string // sent to /v1/device/code
 }
 
 func newFake(t *testing.T) (*fakeServer, *httptest.Server) {
@@ -81,6 +85,9 @@ func (f *fakeServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	switch r.URL.Path {
 	case "/v1/device/code":
+		var body map[string]string
+		json.NewDecoder(r.Body).Decode(&body)
+		f.deviceName = body["device_name"]
 		json.NewEncoder(w).Encode(DeviceCode{DeviceCode: "dev-code", UserCode: "ABCD-EFGH", VerificationURI: "http://127.0.0.1/device",
 			VerificationURIComplete: "http://127.0.0.1/device?code=ABCD-EFGH", Interval: 1, ExpiresIn: 2000})
 	case "/v1/device/token":
@@ -101,6 +108,7 @@ func (f *fakeServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		case "authorization_pending":
 			writeErr(w, 428, next)
 		case "slow_down":
+			w.Header().Set("Retry-After", "20")
 			writeErr(w, 429, next)
 		default:
 			writeErr(w, 400, next)
@@ -110,7 +118,8 @@ func (f *fakeServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		json.NewDecoder(r.Body).Decode(&body)
 		f.refreshes++
 		if !f.refreshOK || !strings.HasPrefix(body["refresh_token"], "refresh-") {
-			writeErr(w, 400, "invalid_grant")
+			w.WriteHeader(400)
+			fmt.Fprint(w, `{"error":"invalid_grant","message":"refresh token revoked"}`)
 			return
 		}
 		f.access = fmt.Sprintf("access-%d", f.refreshes+1)
@@ -120,7 +129,7 @@ func (f *fakeServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			writeErr(w, 401, "unauthorized")
 			return
 		}
-		fmt.Fprint(w, `{"user":{"email":"dev@example.com"},"workspace":{"id":"ws_1"}}`)
+		fmt.Fprint(w, `{"user":{"email":"dev@example.com"},"workspace":{"id":"ws_1","name":"Acme","role":"member"},"device":{"name":"dev-laptop"}}`)
 	case "/v1/sync/events":
 		f.requests++
 		if f.unavailable {
@@ -129,6 +138,14 @@ func (f *fakeServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		if r.Header.Get("Authorization") != "Bearer "+f.access {
 			writeErr(w, 401, "unauthorized")
+			return
+		}
+		if f.forbidden {
+			writeErr(w, 403, "forbidden")
+			return
+		}
+		if f.malformed {
+			writeErr(w, 400, "malformed")
 			return
 		}
 		if f.tooMany > 0 {
@@ -167,8 +184,12 @@ func (f *fakeServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		f.deviceIDs[b.DeviceID] = true
-		acc, dup := 0, 0
+		acc, dup, rej := 0, 0, 0
 		for _, e := range b.Events {
+			if e["kind"] == f.rejectKind {
+				rej++
+				continue
+			}
 			id, _ := e["id"].(string)
 			key, _ := e["dedup_key"].(string)
 			if _, ok := f.events[id]; ok || f.dedupKeys[key] {
@@ -179,7 +200,7 @@ func (f *fakeServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			f.order = append(f.order, id)
 			acc++
 		}
-		json.NewEncoder(w).Encode(Result{Accepted: acc, Duplicates: dup})
+		json.NewEncoder(w).Encode(Result{Accepted: acc, Duplicates: dup, Rejected: rej})
 	default:
 		http.NotFound(w, r)
 	}
@@ -222,10 +243,14 @@ func TestDeviceFlow(t *testing.T) {
 			if tok.AccessToken != "access-1" || tok.WorkspaceID != "ws_1" || tok.WorkspaceName != "Acme" {
 				t.Fatalf("token: %+v", tok)
 			}
-			// slow_down adds 5 s (here 5 ms) to the interval from then on.
+			// slow_down adds 5 s to the interval, or waits for its
+			// Retry-After (20 s, here 20 ms) when that's longer.
 			p := f.pollTimes
-			if gap := p[3].Sub(p[2]); gap < 6*time.Millisecond {
-				t.Fatalf("interval after slow_down = %v, want >= 6ms", gap)
+			if gap := p[2].Sub(p[1]); gap < 20*time.Millisecond {
+				t.Fatalf("interval after slow_down = %v, want >= 20ms", gap)
+			}
+			if f.deviceName == "" {
+				t.Fatal("device_name not sent with the device code request")
 			}
 		})
 	}
@@ -454,27 +479,90 @@ func TestRefreshWhenExpired(t *testing.T) {
 	}
 }
 
-func TestRefreshRejectedNeedsLogin(t *testing.T) {
+func TestRefreshRejectedSignsOut(t *testing.T) {
 	fx := newFixture(t, syncOn)
 	fx.add(t, "github.com/acme/api", model.KindTurnStart, map[string]any{})
-	fx.f.access, fx.f.refreshOK = "access-other", false
+	fx.f.access, fx.f.refreshOK = "access-other", false // 400 invalid_grant
 	fx.u.Step(ctx)
+	vault := Vault{Home: fx.home}
+	if c, _, _, _ := vault.Load(); c != nil {
+		t.Fatal("tokens kept after the service signed the device out")
+	}
 	v := fx.u.View(ctx)
-	if !v.NeedsLogin || !strings.Contains(v.LastError, "sync login") || fx.state(t).Cursor != 0 {
+	if !v.NeedsLogin || v.SignedIn || !strings.Contains(v.LastError, "sync login") || fx.state(t).Cursor != 0 {
 		t.Fatalf("view: %+v", v)
 	}
 	reqs := fx.f.requests
+	fx.now = fx.now.Add(credsEvery)
 	fx.u.Step(ctx)
 	if fx.f.requests != reqs {
 		t.Fatal("kept uploading after being signed out")
 	}
-	// Signing in again (new creds) resumes.
+	// Signing in again resumes, and clears the notice.
 	fx.f.access = "access-new"
-	Vault{Home: fx.home}.Save(&Creds{Endpoint: fx.srv.URL, AccessToken: "access-new", RefreshToken: "refresh-access-new", WorkspaceID: "ws_1"})
+	vault.Save(&Creds{Endpoint: fx.srv.URL, AccessToken: "access-new", RefreshToken: "refresh-access-new", WorkspaceID: "ws_1"})
 	fx.now = fx.now.Add(credsEvery)
 	fx.u.Step(ctx)
-	if len(fx.f.received()) != 1 || fx.u.View(ctx).NeedsLogin {
-		t.Fatalf("after login: %d events", len(fx.f.received()))
+	if len(fx.f.received()) != 1 || fx.u.View(ctx).NeedsLogin || vault.SignedOut() != "" {
+		t.Fatalf("after login: %d events, %+v", len(fx.f.received()), fx.u.View(ctx))
+	}
+}
+
+func TestForbiddenPausesUploads(t *testing.T) {
+	fx := newFixture(t, syncOn)
+	fx.add(t, "github.com/acme/api", model.KindTurnStart, map[string]any{})
+	fx.f.forbidden = true
+	if wait := fx.u.Step(ctx); wait != forbiddenWait {
+		t.Fatalf("wait = %v", wait)
+	}
+	for range 3 {
+		fx.now = fx.now.Add(time.Minute)
+		fx.u.Step(ctx)
+	}
+	if fx.f.requests != 1 {
+		t.Fatalf("%d requests while forbidden", fx.f.requests)
+	}
+	if v := fx.u.View(ctx); !v.Forbidden || !v.SignedIn || fx.state(t).Cursor != 0 {
+		t.Fatalf("view: %+v", v)
+	}
+	// The role changed: the hourly check succeeds.
+	fx.f.forbidden = false
+	fx.now = fx.now.Add(forbiddenWait)
+	fx.u.Step(ctx)
+	if len(fx.f.received()) != 1 || fx.u.View(ctx).Forbidden {
+		t.Fatalf("after role change: %d events", len(fx.f.received()))
+	}
+}
+
+func TestMalformedBacksOff(t *testing.T) {
+	fx := newFixture(t, syncOn)
+	fx.add(t, "github.com/acme/api", model.KindTurnStart, map[string]any{})
+	fx.f.malformed = true
+	wait := fx.u.Step(ctx)
+	if wait < uploadEvery/2 || !strings.Contains(fx.state(t).LastError, "malformed") {
+		t.Fatalf("wait %v, state %+v", wait, fx.state(t))
+	}
+	fx.u.Step(ctx) // still backing off
+	if fx.f.requests != 1 {
+		t.Fatalf("%d requests: retried in a tight loop", fx.f.requests)
+	}
+}
+
+func TestRejectedEventsArePassed(t *testing.T) {
+	fx := newFixture(t, syncOn)
+	fx.add(t, "github.com/acme/api", model.KindTurnStart, map[string]any{})
+	fx.add(t, "github.com/acme/api", model.KindNote, map[string]any{})
+	fx.add(t, "github.com/acme/api", model.KindTurnEnd, map[string]any{})
+	fx.f.rejectKind = string(model.KindNote)
+	fx.u.Step(ctx)
+	st := fx.state(t)
+	if st.Cursor != 3 || st.Uploaded != 2 || st.Rejected != 1 {
+		t.Fatalf("state: %+v", st)
+	}
+	reqs := fx.f.requests
+	fx.u.Step(ctx)
+	if fx.f.requests != reqs || fx.u.View(ctx).Rejected != 1 {
+		t.Fatal("rejected event retried")
 	}
 }
 
@@ -687,7 +775,7 @@ func TestDescribeAndDryRun(t *testing.T) {
 	if fx.f.requests != 0 || fx.state(t).Cursor != 0 {
 		t.Fatal("dry run sent or saved something")
 	}
-	v := Describe(ctx, cfg, c, where, "", fx.st)
+	v := Describe(ctx, fx.home, cfg, c, where, "", fx.st)
 	if !v.SignedIn || v.WorkspaceName != "Acme" || v.Backlog != 1 || v.CredentialStore != InKeychain {
 		t.Fatalf("view: %+v", v)
 	}

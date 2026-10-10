@@ -92,10 +92,11 @@ func IsStatus(err error, codes ...int) bool {
 	return false
 }
 
-// StartDevice asks for a device code: POST /v1/device/code.
-func (c *Client) StartDevice(ctx context.Context) (DeviceCode, error) {
+// StartDevice asks for a device code: POST /v1/device/code. The device
+// name (the hostname) is shown on the approval page.
+func (c *Client) StartDevice(ctx context.Context, deviceName string) (DeviceCode, error) {
 	var d DeviceCode
-	err := c.do(ctx, "POST", "/v1/device/code", "", struct{}{}, &d)
+	err := c.do(ctx, "POST", "/v1/device/code", "", map[string]string{"device_name": deviceName}, &d)
 	if err == nil && (d.DeviceCode == "" || d.UserCode == "" || d.VerificationURI == "") {
 		err = errors.New("sync service: incomplete device code response")
 	}
@@ -103,8 +104,9 @@ func (c *Client) StartDevice(ctx context.Context) (DeviceCode, error) {
 }
 
 // PollDevice asks once whether the user approved the code:
-// POST /v1/device/token. It returns ErrPending, ErrSlowDown, ErrExpired
-// or ErrDenied until it returns a token.
+// POST /v1/device/token. It returns ErrPending, ErrSlowDown (joined with
+// the *StatusError, which may carry Retry-After), ErrExpired or ErrDenied
+// until it returns a token.
 func (c *Client) PollDevice(ctx context.Context, deviceCode string) (*Token, error) {
 	var t Token
 	err := c.do(ctx, "POST", "/v1/device/token", "", map[string]string{"device_code": deviceCode}, &t)
@@ -114,7 +116,7 @@ func (c *Client) PollDevice(ctx context.Context, deviceCode string) (*Token, err
 		case "authorization_pending":
 			return nil, ErrPending
 		case "slow_down":
-			return nil, ErrSlowDown
+			return nil, errors.Join(ErrSlowDown, se)
 		case "expired_token":
 			return nil, ErrExpired
 		case "access_denied":
@@ -154,6 +156,9 @@ type Batch struct {
 type Result struct {
 	Accepted   int `json:"accepted"`
 	Duplicates int `json:"duplicates"`
+	// Rejected events failed the service's schema check and were
+	// dropped; resending them can't help.
+	Rejected int `json:"rejected"`
 }
 
 // Upload sends one gzip-compressed batch: POST /v1/sync/events.
@@ -163,8 +168,9 @@ func (c *Client) Upload(ctx context.Context, accessToken string, b Batch) (Resul
 	return r, err
 }
 
-// Me returns what the service knows about the signed-in user:
-// GET /v1/me. Fields are passed through as the service sends them.
+// Me returns what the service knows about this device's sign-in:
+// GET /v1/me, {"user": {…}, "workspace": {…, "role"}, "device": {…}}.
+// Fields are passed through as the service sends them.
 func (c *Client) Me(ctx context.Context, accessToken string) (map[string]any, error) {
 	var m map[string]any
 	err := c.do(ctx, "GET", "/v1/me", accessToken, nil, &m)

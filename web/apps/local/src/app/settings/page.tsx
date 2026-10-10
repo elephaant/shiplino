@@ -71,7 +71,10 @@ function SyncCard({ sync }: { sync: SyncState }) {
       <CardContent>
         {sync.signed_in ? (
           <>
-            <Row label="Signed in as">{sync.account || "—"}</Row>
+            <Row label="Signed in as">
+              {sync.account || "—"}
+              {sync.role && <span className="text-muted-foreground text-xs"> · {sync.role}</span>}
+            </Row>
             <Row label="Workspace">
               {sync.workspace_name || sync.workspace_id}{" "}
               <span className="text-muted-foreground text-xs">
@@ -90,7 +93,7 @@ function SyncCard({ sync }: { sync: SyncState }) {
             </Row>
           </>
         ) : (
-          <Row label="Account">Not signed in</Row>
+          <Row label="Account">{sync.needs_login ? "Signed out by the sync service" : "Not signed in"}</Row>
         )}
         <Row label="Capture level">
           <span className="font-medium capitalize">{sync.capture_level}</span>
@@ -128,6 +131,12 @@ function SyncCard({ sync }: { sync: SyncState }) {
             <Row label="Last sync">
               {formatAgo(sync.last_upload)}
               <span className="text-muted-foreground text-xs"> · {sync.uploaded.toLocaleString()} events uploaded</span>
+              {sync.rejected > 0 && (
+                <span className="text-status-waiting text-xs">
+                  {" "}
+                  · {sync.rejected.toLocaleString()} refused by the service as invalid
+                </span>
+              )}
             </Row>
             <Row label="Backlog">
               {sync.backlog > 0 ? `${sync.backlog.toLocaleString()} events to check` : "Up to date"}

@@ -55,6 +55,7 @@ type SyncState struct {
 	Cursor      int64  // last events rowid uploaded or skipped
 	Scope       string // the allow/exclude lists the cursor was reached with
 	Uploaded    int64  // new events the service accepted
+	Rejected    int64  // events the service dropped as invalid
 	LastUpload  time.Time
 	LastError   string
 	LastErrorAt time.Time
@@ -65,8 +66,8 @@ func (s *Store) SyncState(ctx context.Context, workspace string) (SyncState, err
 	st := SyncState{WorkspaceID: workspace}
 	var up, errAt int64
 	err := s.ro.QueryRowContext(ctx,
-		`SELECT cursor, scope, uploaded, last_upload_at, last_error, last_error_at FROM sync_state WHERE workspace_id = ?`, workspace).
-		Scan(&st.Cursor, &st.Scope, &st.Uploaded, &up, &st.LastError, &errAt)
+		`SELECT cursor, scope, uploaded, rejected, last_upload_at, last_error, last_error_at FROM sync_state WHERE workspace_id = ?`, workspace).
+		Scan(&st.Cursor, &st.Scope, &st.Uploaded, &st.Rejected, &up, &st.LastError, &errAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return st, nil
 	}
@@ -77,12 +78,12 @@ func (s *Store) SyncState(ctx context.Context, workspace string) (SyncState, err
 // PutSyncState saves a workspace's progress.
 func (s *Store) PutSyncState(ctx context.Context, st SyncState) error {
 	_, err := s.db.ExecContext(ctx, `
-		INSERT INTO sync_state (workspace_id, cursor, scope, uploaded, last_upload_at, last_error, last_error_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?)
+		INSERT INTO sync_state (workspace_id, cursor, scope, uploaded, rejected, last_upload_at, last_error, last_error_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(workspace_id) DO UPDATE SET cursor = excluded.cursor, scope = excluded.scope,
-		  uploaded = excluded.uploaded, last_upload_at = excluded.last_upload_at,
+		  uploaded = excluded.uploaded, rejected = excluded.rejected, last_upload_at = excluded.last_upload_at,
 		  last_error = excluded.last_error, last_error_at = excluded.last_error_at`,
-		st.WorkspaceID, st.Cursor, st.Scope, st.Uploaded, unixMilli(st.LastUpload), st.LastError, unixMilli(st.LastErrorAt))
+		st.WorkspaceID, st.Cursor, st.Scope, st.Uploaded, st.Rejected, unixMilli(st.LastUpload), st.LastError, unixMilli(st.LastErrorAt))
 	return err
 }
 

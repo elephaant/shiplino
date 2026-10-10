@@ -198,6 +198,7 @@ export interface SyncState {
   endpoint: string;
   signed_in: boolean;
   account?: string;
+  role?: string;
   workspace_id?: string;
   workspace_name?: string;
   credential_store?: "keychain" | "file";
@@ -208,11 +209,13 @@ export interface SyncState {
   exclude: string[];
   last_upload?: string;
   uploaded: number;
+  rejected: number;
   backlog: number;
   last_error?: string;
   last_error_at?: string;
   next_retry?: string;
   needs_login?: boolean;
+  forbidden?: boolean;
 }
 
 export interface Overview {

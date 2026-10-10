@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -30,7 +31,7 @@ func fakeSync(t *testing.T) *httptest.Server {
 		case "/v1/device/token":
 			fmt.Fprint(w, `{"access_token":"tok-a","refresh_token":"tok-r","expires_in":3600,"workspace_id":"ws_1","workspace_name":"Acme"}`)
 		case "/v1/me":
-			fmt.Fprint(w, `{"email":"dev@example.com"}`)
+			fmt.Fprint(w, `{"user":{"email":"dev@example.com"},"workspace":{"id":"ws_1","role":"member"},"device":{}}`)
 		default:
 			http.NotFound(w, r)
 		}
@@ -64,7 +65,7 @@ func TestSyncCommands(t *testing.T) {
 	srv := fakeSync(t)
 
 	got := run(t, e, out, 0, "login", "--endpoint", srv.URL)
-	for _, want := range []string{"ABCD-EFGH", "Signed in as dev@example.com to workspace Acme", "OS keychain", "Nothing is sent until you allow a project"} {
+	for _, want := range []string{"ABCD-EFGH", "Signed in as dev@example.com to workspace Acme (role: member)", "OS keychain", "Nothing is sent until you allow a project"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("login output lacks %q:\n%s", want, got)
 		}
@@ -124,6 +125,18 @@ func TestSyncCommands(t *testing.T) {
 		t.Fatalf("status after logout:\n%s", got)
 	}
 	run(t, e, out, 2, "bogus")
+
+	// The service signed the device out (refresh refused): status and
+	// doctor say so.
+	run(t, e, out, 0, "login", "--endpoint", srv.URL)
+	(cloudsync.Vault{Home: e.home}).Delete()
+	os.WriteFile(filepath.Join(e.home, "sync-signed-out"), []byte("the sync service signed this device out: run `shiplino sync login`"), 0o600)
+	if got := run(t, e, out, 0, "status"); !strings.Contains(got, "Signed out by the sync service") {
+		t.Fatalf("status after a server sign-out:\n%s", got)
+	}
+	if c := syncChecks(e); len(c) != 1 || c[0].ok || !strings.Contains(c[0].detail, "signed out") {
+		t.Fatalf("doctor: %+v", c)
+	}
 }
 
 func TestSyncLoginRejectsPlainHTTP(t *testing.T) {

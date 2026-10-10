@@ -151,6 +151,7 @@ var migrations = []string{
 		cursor INTEGER NOT NULL DEFAULT 0,
 		scope TEXT NOT NULL DEFAULT '',
 		uploaded INTEGER NOT NULL DEFAULT 0,
+		rejected INTEGER NOT NULL DEFAULT 0,
 		last_upload_at INTEGER NOT NULL DEFAULT 0,
 		last_error TEXT NOT NULL DEFAULT '',
 		last_error_at INTEGER NOT NULL DEFAULT 0

@@ -24,6 +24,7 @@ type Creds struct {
 	WorkspaceID   string    `json:"workspace_id"`
 	WorkspaceName string    `json:"workspace_name"`
 	Account       string    `json:"account,omitempty"` // who signed in, from GET /v1/me
+	Role          string    `json:"role,omitempty"`    // their workspace role, from GET /v1/me
 }
 
 // FromToken builds credentials from a sign-in or refresh answer.
@@ -34,6 +35,25 @@ func FromToken(endpoint string, t *Token, now time.Time) *Creds {
 		c.ExpiresAt = now.Add(time.Duration(t.ExpiresIn) * time.Second)
 	}
 	return c
+}
+
+// signedOutFile records why the service signed this device out, so
+// status and doctor can say so after the tokens are gone.
+const signedOutFile = "sync-signed-out"
+
+// SignedOut returns why the service signed this device out ("" if it
+// didn't).
+func (v Vault) SignedOut() string {
+	b, _ := os.ReadFile(filepath.Join(v.Home, signedOutFile))
+	return string(b)
+}
+
+// signOut deletes the tokens and remembers why.
+func (v Vault) signOut(reason string) error {
+	if err := v.Delete(); err != nil {
+		return err
+	}
+	return os.WriteFile(filepath.Join(v.Home, signedOutFile), []byte(reason), 0o600)
 }
 
 // Where credentials are kept.
@@ -102,6 +122,7 @@ func (v Vault) Save(c *Creds) (where, why string, err error) {
 	if err != nil {
 		return "", "", err
 	}
+	_ = os.Remove(filepath.Join(v.Home, signedOutFile))
 	kerr := keyring.Set(keyringService, keyringUser, string(b))
 	if kerr == nil {
 		// Don't leave an older copy on disk.
