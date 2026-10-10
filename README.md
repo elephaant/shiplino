@@ -35,6 +35,7 @@ Read more: [How it works](docs/how-it-works.md).
 - **Session detail:** a timeline of every prompt, tool call, command, file edit and subagent, plus per-file changes (diffs at the `full` capture level) and per-response token usage.
 - **Conversation, export and handoff:** a session's prompts, replies and tool calls, read on demand from the agent's own transcript on your machine (never copied into Shiplino's database or synced), with secrets redacted. Export it as Markdown, or copy a short handoff prompt (goal, files changed, open todos, failing commands, last reply) to continue in another agent.
 - **Timeline:** a live Gantt of sessions and subagents (running, waiting on you, idle).
+- **Office:** a live pixel-art office with a room per project and a character at a desk for every session and subagent. Characters type, read, work the terminal, walk to the bell when they need you, doze off when idle, celebrate when done and raise a red alert when they fail. Hover for a summary, click to open the session. It is drawn on a plain canvas, goes still with reduced motion and pauses in background tabs.
 - **Cost and tokens** per agent, model, project and day. The agent's own figures are used when it reports them, otherwise list prices, and the source of every number is shown.
 - **Insights:** spend, agent working time, time spent waiting on you, and code changed, compared with the previous period. **Share week** turns the last 7 days into a PNG, drawn in your browser (totals and agent names only; project names are opt-in).
 - **Search** across all history (⌘K), and CSV/JSON export.
@@ -45,10 +46,6 @@ Read more: [How it works](docs/how-it-works.md).
 - **Budgets and alerts:** daily, monthly and per-project spend limits with alerts at 80% and 100%, and a daily digest.
 - **GitHub pull requests** (opt-in): PR state, CI checks and reviews on cards; a merged PR moves its card to Done.
 - **Custom agents:** TypeScript and Python SDKs, an HTTP ingest API and an OpenTelemetry receiver ([docs/ingest.md](docs/ingest.md)).
-
-## Planned
-
-- **Virtual office:** pixel characters that show what each agent is doing
 
 ## Supported agents
 
@@ -118,7 +115,7 @@ web/                React app (packages/ui = shared components, apps/local = app
 schema/             JSON Schema of the universal event format
 sdk/                TypeScript and Python SDKs for custom agents
 plugins/            Claude Code plugin, OpenCode plugin
-assets/office/      virtual office maps and sprites (planned)
+assets/office/      rules for virtual office art (today's sprites are drawn in code)
 scripts/            install scripts
 testdata/, bench/   end-to-end fixtures and benchmarks
 docs/               user and contributor docs

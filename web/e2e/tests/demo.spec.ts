@@ -64,3 +64,29 @@ test("the demo board is seeded and live", async ({ page }) => {
     timeout: 90_000,
   });
 });
+
+test("the demo office seats its sessions and links to them", async ({ page }, info) => {
+  await page.goto(`${url}/office/`);
+  const floor = page.getByRole("region", { name: "Office floor" });
+  const people = floor.locator("[data-office-character]");
+  // The demo has sessions waiting on you (three, plus live ones at times),
+  // and others working, failed or recently finished.
+  await expect(floor.locator('[data-office-character="waiting"]').nth(2)).toBeVisible();
+  expect(await people.count()).toBeGreaterThanOrEqual(6);
+  await expect(floor.locator("[data-office-room]")).toHaveText([
+    "billing-api",
+    "docs-site",
+    "mobile-app",
+    "storefront",
+  ]);
+  for (const scheme of ["light", "dark"] as const) {
+    await page.emulateMedia({ colorScheme: scheme });
+    await page.waitForTimeout(300);
+    await floor.screenshot({ path: info.outputPath(`demo-office-${scheme}.png`) });
+  }
+  const first = people.first();
+  const href = await first.getAttribute("href");
+  expect(href).toMatch(/^\/session\/\?id=/);
+  await first.click();
+  await expect(page).toHaveURL(`${url}${href}`);
+});

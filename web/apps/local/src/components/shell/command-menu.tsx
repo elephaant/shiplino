@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Building2,
   ChartColumn,
   ChartGantt,
   Download,
@@ -138,6 +139,9 @@ export function CommandMenu() {
                     </CommandItem>
                     <CommandItem onSelect={() => go("/timeline/")}>
                       <ChartGantt /> Timeline
+                    </CommandItem>
+                    <CommandItem onSelect={() => go("/office/")}>
+                      <Building2 /> Office
                     </CommandItem>
                     <CommandItem onSelect={() => go("/insights")}>
                       <ChartColumn /> Insights
