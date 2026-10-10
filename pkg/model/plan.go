@@ -1,6 +1,10 @@
 package model
 
-import "strings"
+import (
+	"fmt"
+	"hash/fnv"
+	"strings"
+)
 
 // An agent's own todo list (its plan) travels in session.update data:
 //
@@ -49,6 +53,35 @@ func PlanStatus(s string) string {
 		return PlanPending
 	}
 	return s
+}
+
+// planIDPrefix marks an id replaced by HashPlanID.
+const planIDPrefix = "~"
+
+// HashPlanID replaces a todo item id at the minimal capture level: ids
+// can be slugs the model wrote ("fix-login-race"), so they become a short
+// FNV-64a hash that still matches across updates. An id that is already
+// a hash is returned as it is, so the shim and the daemon agree.
+func HashPlanID(id string) string {
+	if id == "" || IsHashedPlanID(id) {
+		return id
+	}
+	h := fnv.New64a()
+	h.Write([]byte(id))
+	return fmt.Sprintf("%s%016x", planIDPrefix, h.Sum64())
+}
+
+// IsHashedPlanID reports whether id came from HashPlanID.
+func IsHashedPlanID(id string) bool {
+	if len(id) != len(planIDPrefix)+16 || !strings.HasPrefix(id, planIDPrefix) {
+		return false
+	}
+	for _, c := range id[len(planIDPrefix):] {
+		if (c < '0' || c > '9') && (c < 'a' || c > 'f') {
+			return false
+		}
+	}
+	return true
 }
 
 // PlanData is the session.update data for a plan update.

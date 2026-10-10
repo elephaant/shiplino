@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/elephaant/shiplino/internal/spool"
+	"github.com/elephaant/shiplino/pkg/model"
 )
 
 func readLines(t *testing.T, path string) []spool.Envelope {
@@ -169,21 +170,30 @@ func TestMinimalStripsContentBeforeDisk(t *testing.T) {
 	}
 }
 
-// Todo tools keep ids and statuses at minimal (progress), never the text.
+// Todo tools keep hashed ids and short statuses at minimal (progress),
+// never the text or any other value.
 func TestMinimalKeepsPlanProgress(t *testing.T) {
+	h := func(id string) string { return `"` + model.HashPlanID(id) + `"` }
+	bigID := strings.Repeat("x", 5000)
 	cases := []struct{ name, in, want string }{
 		{"todo list",
 			`{"tool_name":"TodoWrite","tool_input":{"todos":[{"content":"secret step","status":"completed","activeForm":"x"}]},"tool_response":{"newTodos":[{"content":"secret step"}]}}`,
 			`{"tool_input":{"todos":[{"status":"completed"}]},"tool_name":"TodoWrite","tool_response":{}}`},
 		{"task created",
 			`{"tool_name":"TaskCreate","tool_input":{"subject":"secret task","description":"d"},"tool_response":{"task":{"id":"4","subject":"secret task"}}}`,
-			`{"tool_input":{},"tool_name":"TaskCreate","tool_response":{"task":{"id":"4"}}}`},
+			`{"tool_input":{},"tool_name":"TaskCreate","tool_response":{"task":{"id":` + h("4") + `}}}`},
 		{"task update",
 			`{"tool_name":"TaskUpdate","tool_input":{"taskId":"4","status":"completed","subject":"secret"},"tool_response":{"success":false,"taskId":"4","error":"secret detail"}}`,
-			`{"tool_input":{"status":"completed","taskId":"4"},"tool_name":"TaskUpdate","tool_response":{"error":{},"success":false,"taskId":"4"}}`},
-		{"todos in a string",
-			`{"tool_name":"TodoWrite","tool_input":{"merge":true,"todos":"[{\"id\":\"t1\",\"content\":\"secret\",\"status\":\"pending\"}]"}}`,
-			`{"tool_input":{"merge":true,"todos":[{"id":"t1","status":"pending"}]},"tool_name":"TodoWrite"}`},
+			`{"tool_input":{"status":"completed","taskId":` + h("4") + `},"tool_name":"TaskUpdate","tool_response":{"error":{},"success":false,"taskId":` + h("4") + `}}`},
+		{"status change cut to from and to",
+			`{"tool_name":"TaskUpdate","tool_input":{"taskId":"4"},"tool_response":{"success":true,"statusChange":{"from":"pending","to":"completed","note":"secret","by":{"x":"secret"}}}}`,
+			`{"tool_input":{"taskId":` + h("4") + `},"tool_name":"TaskUpdate","tool_response":{"statusChange":{"from":"pending","to":"completed"},"success":true}}`},
+		{"todos in a string, slug id hashed",
+			`{"tool_name":"TodoWrite","tool_input":{"merge":true,"todos":"[{\"id\":\"fix-login-race-in-auth\",\"content\":\"secret\",\"status\":\"pending\"}]"}}`,
+			`{"tool_input":{"merge":true,"todos":[{"id":` + h("fix-login-race-in-auth") + `,"status":"pending"}]},"tool_name":"TodoWrite"}`},
+		{"odd values dropped",
+			`{"tool_name":"TodoWrite","tool_input":{"merge":"secret","todos":[{"id":{"text":"secret"},"status":"completed"},{"id":"` + bigID + `","status":"` + strings.Repeat("s", 40) + `"},{"id":7,"status":["secret"]}]}}`,
+			`{"tool_input":{"todos":[{"status":"completed"},{},{"id":` + h("7") + `}]},"tool_name":"TodoWrite"}`},
 		{"codex plan",
 			`{"tool_name":"update_plan","tool_input":{"explanation":"secret","plan":[{"step":"secret","status":"in_progress"}]},"tool_response":"Plan updated"}`,
 			`{"tool_input":{"plan":[{"status":"in_progress"}]},"tool_name":"update_plan","tool_response":{}}`},
