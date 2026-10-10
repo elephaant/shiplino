@@ -28,25 +28,38 @@ Modern coding agents can run a small program at lifecycle moments (hooks).
 A local background service merges those events with the agents' own transcript files (exact token counts) and git (commits). It serves a live board at `http://localhost:4777`.
 Read more: [How it works](docs/how-it-works.md).
 
-## Planned features
+## Features
 
-- **Projects:** every repo becomes a project automatically, each with its **own board** and **automatic weekly sprints**. Many projects run at the same time, with an "All projects" overview.
-- **Kanban that moves itself:** Running → Waiting on you → Review → Done. Cards appear and move based on what agents actually do.
-- **Parallel agents and subagents:** each tracked live, nested under their parent, with cost and time rolled up.
-- **Timeline** of every prompt, tool call, command and file edit, plus **search** across all history.
-- **Cost and token tracking** per agent, model, project and sprint.
-- **Virtual office:** pixel characters that show what each agent is doing.
-- **Integrations:** GitHub PRs, Linear, Jira, Slack/Discord, webhooks, OpenTelemetry.
-- **Local-first and private:** nothing leaves your machine unless you turn on team sync.
+- **Live board per project:** every repo becomes a project automatically (git remote, worktrees, folders). Each has its own kanban, Running → Waiting on you → Review → Done, with automatic weekly sprints, and there's an "All projects" overview with a "Needs you" queue.
+- **Agents and subagents:** many sessions at once, subagents nested under their parent, live "now doing", and idle detection.
+- **Session detail:** a timeline of every prompt, tool call, command, file edit and subagent, plus per-file changes (diffs at the `full` capture level) and per-response token usage.
+- **Timeline:** a live Gantt of sessions and subagents (running, waiting on you, idle).
+- **Cost and tokens** per agent, model, project and day. The agent's own figures are used when it reports them, otherwise list prices, and the source of every number is shown.
+- **Insights:** spend, agent working time, time spent waiting on you, and code changed, compared with the previous period.
+- **Search** across all history (⌘K), and CSV/JSON export.
+- **Desktop notifications** when an agent waits on you, finishes a long turn or fails.
+- **Commits linked** to the sessions that made them.
+- **History backfill** from agents' own transcripts, so the board isn't empty on day one.
+- **Local-first and private:** secrets are redacted before anything is stored, with three capture levels. Nothing leaves your machine unless you turn on [cloud sync](docs/sync-protocol.md).
+- **Custom agents:** an HTTP ingest API and an OpenTelemetry receiver ([docs/ingest.md](docs/ingest.md)).
 
-## Supported agents (planned)
+## Planned
+
+- More agents: Cline, OpenCode
+- TypeScript and Python SDKs
+- Integrations: GitHub pull requests, Slack/Discord/webhooks, Linear and Jira
+- Budgets, alerts and a daily digest
+- VS Code / Cursor extension, an optional read-only MCP server, auto-update
+- **Virtual office:** pixel characters that show what each agent is doing
+
+## Supported agents
 
 | Agent | How |
 |-------|-----|
 | Claude Code, OpenAI Codex, Cursor, Gemini CLI | hooks + transcripts |
 | Windsurf (Cascade), editor and JetBrains plugin | hooks: prompts, turns, file reads and edits, commands, MCP calls. Windsurf's hooks carry no token counts, so no cost yet |
 | GitHub Copilot CLI | hooks (`~/.copilot/hooks/shiplino.json`; no token usage yet) |
-| Cline, OpenCode | hooks / plugins |
+| Cline, OpenCode | planned |
 | Aider, any CLI agent | `shiplino wrap -- <command>` + git (Aider: prompts, tokens, cost and edits from its chat history) |
 | Custom agents (Agent SDK, LangGraph, …) | HTTP, OTLP, SDKs |
 
@@ -85,9 +98,9 @@ pkg/                shared Go packages: event model, agent adapters, engine, pro
 internal/           local-only code: shim, spool, daemon, OS service, SQLite store, git watcher, API, notifications, integrations, sync client
 web/                React app (packages/ui = shared components, apps/local = app embedded in the binary)
 schema/             JSON Schema of the universal event format
-sdk/                TypeScript and Python SDKs for custom agents
-plugins/            Claude Code plugin, OpenCode plugin, VS Code extension
-assets/office/      virtual office maps and sprites
+sdk/                TypeScript and Python SDKs for custom agents (planned)
+plugins/            Claude Code plugin, OpenCode plugin, VS Code extension (planned)
+assets/office/      virtual office maps and sprites (planned)
 scripts/            install scripts
 testdata/, bench/   end-to-end fixtures and benchmarks
 docs/               user and contributor docs
@@ -95,12 +108,26 @@ docs/               user and contributor docs
 
 ## Development
 
-Requirements: Go 1.26+ (Node 20+ once the web app lands).
+Requirements: Go 1.26+ and Node 20+ (for the web app).
 
 ```bash
-make build     # builds ./bin/shiplino
+make build     # builds the web app and ./bin/shiplino
 make test      # runs tests
 make lint      # gofmt + go vet
+make bench     # full load test
+```
+
+## Commands
+
+```
+shiplino setup | uninstall [--purge]   connect agents, install the background service
+shiplino status | ls | open | doctor   what's running, recent sessions, the board, health checks
+shiplino search <words> | export       find anything; sessions as CSV or JSON
+shiplino backfill [--since 30d]        import history from before setup
+shiplino pause [--for 1h] | resume     stop and restart recording
+shiplino wrap -- <command>             record a CLI agent that has no hooks
+shiplino sync login | status | allow   opt-in team sync
+shiplino notify test                   show a sample notification
 ```
 
 ## Contributing

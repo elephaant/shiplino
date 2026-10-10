@@ -72,11 +72,17 @@ function describe(
     }
     case "file.read":
       return { icon: FileText, text: `Read ${rel(str(d, "path"))}` };
-    case "file.edit":
-      return {
-        icon: SquarePen,
-        text: `${str(d, "op") === "create" ? "Created" : "Edited"} ${rel(str(d, "path"))}  +${num(d, "lines_added")} −${num(d, "lines_removed")}`,
-      };
+    case "file.edit": {
+      const op = str(d, "op");
+      const verb = op === "create" ? "Created" : op === "delete" ? "Deleted" : "Edited";
+      // Some agents don't report line counts (e.g. a delete): show none
+      // rather than a misleading "+0 −0".
+      const counts =
+        d?.lines_added == null && d?.lines_removed == null
+          ? ""
+          : `  +${num(d, "lines_added")} −${num(d, "lines_removed")}`;
+      return { icon: SquarePen, text: `${verb} ${rel(str(d, "path"))}${counts}` };
+    }
     case "shell.exec": {
       const code = d?.exit_code;
       return { icon: Terminal, text: str(d, "command"), tone: code === 0 ? "ok" : code == null ? undefined : "fail" };
