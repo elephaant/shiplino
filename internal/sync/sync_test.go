@@ -850,4 +850,3 @@ func TestSendsProjectRelativePaths(t *testing.T) {
 		t.Errorf("send_titles: %v", got.Data)
 	}
 }
-
