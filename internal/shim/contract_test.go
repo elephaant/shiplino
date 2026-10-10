@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/elephaant/shiplino/internal/spool"
+	"github.com/elephaant/shiplino/pkg/adapters/copilotcli"
 )
 
 var binPath string
@@ -197,6 +198,27 @@ func TestContractConcurrentProcesses(t *testing.T) {
 	}
 	if len(seen) != procs {
 		t.Fatalf("got %d distinct events, want %d", len(seen), procs)
+	}
+}
+
+// Every Copilot CLI event Shiplino registers, called the way Copilot calls
+// it (camelCase payload, event name only in --event), is silent, exits 0
+// and lands in the session's spool file.
+func TestContractCopilotCLIEvents(t *testing.T) {
+	home := t.TempDir()
+	for _, ev := range copilotcli.Events {
+		in := []byte(`{"sessionId":"cs-1","timestamp":1791626400000,"cwd":"/home/dev/app","toolName":"bash","toolArgs":"{\"command\":\"ls\"}"}`)
+		out, code := runHook(t, baseEnv(home), in, "--agent", copilotcli.Name, "--event", ev)
+		if out != "" || code != 0 {
+			t.Errorf("%s: exit=%d output=%q", ev, code, out)
+		}
+	}
+	b, err := os.ReadFile(spool.SessionFile(spool.Dir(home), copilotcli.Name, "cs-1"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n := strings.Count(string(b), "\n"); n != len(copilotcli.Events) {
+		t.Errorf("spool has %d lines, want %d", n, len(copilotcli.Events))
 	}
 }
 

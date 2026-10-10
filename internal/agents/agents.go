@@ -12,6 +12,7 @@ import (
 
 	"github.com/elephaant/shiplino/pkg/adapters/claudecode"
 	"github.com/elephaant/shiplino/pkg/adapters/codex"
+	"github.com/elephaant/shiplino/pkg/adapters/copilotcli"
 	"github.com/elephaant/shiplino/pkg/adapters/cursor"
 	"github.com/elephaant/shiplino/pkg/adapters/windsurf"
 )
@@ -98,6 +99,23 @@ var All = []Hooks{
 		},
 		Installed: windsurf.Installed,
 		Note:      windsurf.Note,
+	},
+	{
+		Name: "Copilot CLI", ID: copilotcli.Name,
+		Detect: func(ctx context.Context, home string) (bool, string, string) {
+			d := copilotcli.Detect(ctx, home)
+			return d.Installed, d.Version, d.HooksPath
+		},
+		Install: func(path, bin, _, backup string) (bool, int, error) {
+			r, err := copilotcli.Install(path, bin, backup)
+			return r.Changed, len(r.Events), err
+		},
+		Uninstall: func(path, backup string) (bool, error) {
+			r, err := copilotcli.Uninstall(path, backup)
+			return r.Changed, err
+		},
+		Installed: copilotcli.Installed,
+		Note:      copilotcli.RestartNote,
 	},
 }
 

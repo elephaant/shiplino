@@ -252,6 +252,8 @@ func AgentName(id string) string {
 		return "Codex"
 	case "cursor":
 		return "Cursor"
+	case "copilot-cli":
+		return "Copilot CLI"
 	}
 	return id
 }

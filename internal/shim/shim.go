@@ -45,11 +45,12 @@ func Run(args []string, stdin io.Reader) {
 			SessionID      string `json:"session_id"`
 			ConversationID string `json:"conversation_id"`
 			TrajectoryID   string `json:"trajectory_id"` // Windsurf
+			SessionIDCamel string `json:"sessionId"`     // Copilot CLI
 			HookEventName  string `json:"hook_event_name"`
 			ActionName     string `json:"agent_action_name"` // Windsurf
 		}
 		_ = json.Unmarshal(in, &probe)
-		session = firstNonEmpty(probe.SessionID, probe.ConversationID, probe.TrajectoryID)
+		session = firstNonEmpty(probe.SessionID, probe.ConversationID, probe.TrajectoryID, probe.SessionIDCamel)
 		if env.Event == "" {
 			env.Event = firstNonEmpty(probe.HookEventName, probe.ActionName)
 		}
@@ -125,7 +126,9 @@ var contentKeys = []string{"prompt", "tool_response", "last_assistant_message", 
 	"compact_summary", "message", "title", "error", "error_details", "session_title",
 	// Cursor
 	"tool_output", "output", "result_json", "text", "content", "edits", "attachments", "command",
-	"agent_message", "summary", "task", "description", "error_message", "user_email", "modified_files"}
+	"agent_message", "summary", "task", "description", "error_message", "user_email", "modified_files",
+	// Copilot CLI (camelCase payloads)
+	"toolResult", "response", "initialPrompt", "transformedPrompt", "customInstructions", "agentDescription"}
 
 // keepInput are tool_input fields allowed at minimal (file paths only).
 var keepInput = map[string]bool{"file_path": true, "notebook_path": true, "path": true}
@@ -144,23 +147,29 @@ func stripContent(in []byte) []byte {
 	for _, k := range contentKeys {
 		delete(m, k)
 	}
-	for key, keep := range map[string]map[string]bool{"tool_input": keepInput, "tool_info": keepInfo} {
+	// Tool arguments, as an object or a JSON string (Copilot's toolArgs):
+	// only the fields in each key's keep list stay.
+	for key, keep := range map[string]map[string]bool{"tool_input": keepInput, "toolArgs": keepInput, "tool_info": keepInfo} {
 		raw, ok := m[key]
 		if !ok {
 			continue
 		}
-		var ti map[string]json.RawMessage
-		if json.Unmarshal(raw, &ti) == nil {
-			for k := range ti {
-				if !keep[k] {
-					delete(ti, k)
-				}
-			}
-			b, _ := json.Marshal(ti)
-			m[key] = b
-		} else {
-			delete(m, key)
+		var s string
+		if json.Unmarshal(raw, &s) == nil {
+			raw = []byte(s)
 		}
+		var ti map[string]json.RawMessage
+		if json.Unmarshal(raw, &ti) != nil {
+			delete(m, key)
+			continue
+		}
+		for k := range ti {
+			if !keep[k] {
+				delete(ti, k)
+			}
+		}
+		b, _ := json.Marshal(ti)
+		m[key] = b
 	}
 	out, err := json.Marshal(m)
 	if err != nil {
