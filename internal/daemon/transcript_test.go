@@ -3,6 +3,7 @@ package daemon
 import (
 	"bufio"
 	"encoding/json"
+	"fmt"
 	"math"
 	"os"
 	"path/filepath"
@@ -100,6 +101,28 @@ func TestTranscriptTokensAndCost(t *testing.T) {
 	e.poll()
 	if s := e.session(sid); s.InputTokens != 1117 || s.OutputTokens != 771 || s.ReportedCostUSD != 0.25 {
 		t.Fatalf("after append+restart: in=%d out=%d", s.InputTokens, s.OutputTokens)
+	}
+}
+
+// A subagent file a hook names directly is also found next to its
+// session; it must still be read once per pass (run with -race).
+func TestSubagentTranscriptNamedTwiceIsReadOnce(t *testing.T) {
+	home := withHome(t)
+	e := newEnv(t)
+	main := writeTranscripts(t, home)
+	sub := filepath.Join(strings.TrimSuffix(main, ".jsonl"), "subagents", "agent-ag-7.jsonl")
+	e.hook(startHook(main))
+	e.d.addTranscript(sub, "claude-code")
+	for range 3 {
+		f, _ := os.OpenFile(sub, os.O_APPEND|os.O_WRONLY, 0o600)
+		for i := range 50 {
+			fmt.Fprintf(f, `{"type":"assistant","sessionId":"sess-0001","agentId":"ag-7","message":{"id":"msg_s%d","model":"claude-haiku-5-5","usage":{"input_tokens":1,"output_tokens":1}}}`+"\n", i)
+		}
+		f.Close()
+		e.poll()
+	}
+	if child := e.session(sid + "/sub:ag-7"); child.InputTokens != 1200+50 {
+		t.Fatalf("subagent input = %d", child.InputTokens)
 	}
 }
 
