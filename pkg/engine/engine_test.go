@@ -342,3 +342,38 @@ func TestFailureTally(t *testing.T) {
 		t.Errorf("tool errors: %d", s.ToolErrors)
 	}
 }
+
+// LinesSource is the least certain source of the counted edits, so a
+// total is never labeled as the agent's own when part of it was counted.
+func TestLinesSource(t *testing.T) {
+	edit := func(src string) map[string]any {
+		d := map[string]any{"path": "/work/demo/a.go", "lines_added": 1.0, "lines_removed": 0.0}
+		if src != "" {
+			d["lines_source"] = src
+		}
+		return d
+	}
+	for _, tc := range []struct {
+		name  string
+		edits []map[string]any
+		want  string
+	}{
+		{"no edits", nil, ""},
+		{"agent diff", []map[string]any{edit("agent")}, "agent"},
+		{"unlabeled counts pass through", []map[string]any{edit("")}, "agent"},
+		{"no counts", []map[string]any{{"path": "/work/demo/a.go", "op": "delete"}}, ""},
+		{"agent then counted", []map[string]any{edit("agent"), edit("computed")}, "computed"},
+		{"estimate wins", []map[string]any{edit("estimated"), edit("computed"), edit("agent")}, "estimated"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			e := New(nil, nil)
+			e.Apply(ev(0, model.KindSessionStart, nil))
+			for i, d := range tc.edits {
+				e.Apply(ev(i+1, model.KindFileEdit, d))
+			}
+			if got := e.Get(sid).LinesSource; got != tc.want {
+				t.Fatalf("lines_source = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}

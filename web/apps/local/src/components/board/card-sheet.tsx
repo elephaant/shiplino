@@ -1,6 +1,7 @@
 "use client";
 
-import { ExternalLink, PinOff, Trash2 } from "lucide-react";
+import { EvidenceBadge, type EvidenceInfo } from "@shiplino/ui/evidence";
+import { ExternalLink, GitCommitHorizontal, PinOff, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { AgentDot } from "@/components/common/agent-dot";
@@ -8,12 +9,16 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { api, type BoardCard } from "@/lib/api";
+import { commitEvidence, costEvidence, linesEvidence, statusEvidence, subagentEvidence } from "@/lib/evidence";
 import { agentName, formatCost, formatDuration } from "@/lib/format";
 
-function Stat({ label, value }: { label: string; value: React.ReactNode }) {
+function Stat({ label, value, evidence }: { label: string; value: React.ReactNode; evidence?: EvidenceInfo | null }) {
   return (
     <div className="flex flex-col gap-0.5">
-      <span className="text-xs text-muted-foreground">{label}</span>
+      <span className="flex items-center gap-1 text-xs text-muted-foreground">
+        {label}
+        {evidence && <EvidenceBadge {...evidence} />}
+      </span>
       <span className="font-mono text-sm tabular-nums">{value}</span>
     </div>
   );
@@ -41,7 +46,15 @@ export function CardSheet({
   };
   return (
     <Sheet open={card != null} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent className="w-full gap-0 sm:max-w-md">
+      <SheetContent
+        className="w-full gap-0 sm:max-w-md"
+        // Focus the sheet itself, not its first button: that's an evidence
+        // badge, and focusing it would pop its tooltip on every open.
+        onOpenAutoFocus={(e) => {
+          e.preventDefault();
+          (e.currentTarget as HTMLElement | null)?.focus();
+        }}
+      >
         {card && (
           <>
             <SheetHeader>
@@ -60,13 +73,15 @@ export function CardSheet({
                 <div className="grid grid-cols-3 gap-3">
                   <Stat label="Duration" value={formatDuration(card.duration_ms)} />
                   <Stat
-                    label={card.cost_source === "reported" ? "Cost (reported)" : "Cost"}
-                    value={formatCost(card.cost_usd)}
+                    label="Cost"
+                    value={card.usage === "none" ? "—" : formatCost(card.cost_usd)}
+                    evidence={card.usage === "none" || card.cost_usd > 0 ? costEvidence(card) : null}
                   />
                   <Stat label="Waited for you" value={formatDuration(card.waiting_ms ?? 0)} />
                   <Stat label="Files" value={card.files} />
                   <Stat
                     label="Lines"
+                    evidence={linesEvidence(card.lines_source)}
                     value={
                       <>
                         <span className="text-status-done">+{card.lines_added}</span>{" "}
@@ -82,6 +97,11 @@ export function CardSheet({
                   />
                 </div>
               )}
+              {card.status === "idle" && (
+                <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                  Went quiet <EvidenceBadge {...statusEvidence({ status: "idle" })} />
+                </p>
+              )}
               {card.now_doing && <p className="rounded-md bg-muted p-2 text-sm">{card.now_doing}</p>}
               {(card.subagents?.length ?? 0) > 0 && (
                 <div className="flex flex-col gap-1.5">
@@ -90,6 +110,7 @@ export function CardSheet({
                     <div key={s.id} className="flex items-center gap-2 text-sm">
                       <Badge variant="secondary">{s.status}</Badge>
                       <span className="font-medium">{s.type || "subagent"}</span>
+                      <EvidenceBadge compact {...subagentEvidence(s.id, card.agent)} />
                       <span className="truncate text-muted-foreground">{s.now_doing}</span>
                       <span className="ml-auto font-mono text-xs">{formatCost(s.cost_usd)}</span>
                     </div>
@@ -109,6 +130,21 @@ export function CardSheet({
                     <ExternalLink className="size-3.5" aria-hidden /> Pull request #{l.number}
                   </a>
                 ))}
+              {(card.links ?? []).some((l) => l.kind === "commit") && (
+                <div className="flex flex-col gap-1.5">
+                  <h3 className="text-xs font-medium text-muted-foreground">Commits</h3>
+                  {card.links
+                    ?.filter((l) => l.kind === "commit")
+                    .map((l) => (
+                      <div key={l.ref} className="flex min-w-0 items-center gap-2 text-sm">
+                        <GitCommitHorizontal className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+                        <span className="font-mono text-xs">{l.ref?.slice(0, 7)}</span>
+                        <span className="min-w-0 truncate">{l.message}</span>
+                        <EvidenceBadge className="ml-auto" {...commitEvidence(l.action)} />
+                      </div>
+                    ))}
+                </div>
+              )}
               {card.notes && <p className="whitespace-pre-wrap text-sm">{card.notes}</p>}
               <div className="flex flex-wrap gap-2">
                 {card.origin === "auto" && (

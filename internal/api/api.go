@@ -278,7 +278,18 @@ func (s *Server) getSession(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	writeJSON(w, http.StatusOK, sess)
+	// ProjectKind says how the project was found ("remote" | "git" | "dir"
+	// | "unsorted"), so the UI can show whether git confirmed it.
+	out := struct {
+		*engine.Session
+		ProjectKind string `json:"project_kind,omitempty"`
+	}{Session: sess}
+	if sess.ProjectID != "" {
+		if p, err := s.st.Project(r.Context(), sess.ProjectID); err == nil && p != nil {
+			out.ProjectKind = p.Kind
+		}
+	}
+	writeJSON(w, http.StatusOK, out)
 }
 
 func (s *Server) listEvents(w http.ResponseWriter, r *http.Request) {

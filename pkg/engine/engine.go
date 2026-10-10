@@ -50,6 +50,10 @@ type Session struct {
 	Files        []string `json:"files,omitempty"` // distinct paths edited, sorted
 	LinesAdded   int      `json:"lines_added"`
 	LinesRemoved int      `json:"lines_removed"`
+	// LinesSource is the least certain lines_source of the edits counted
+	// in LinesAdded/LinesRemoved: "agent" (the agent's own diff),
+	// "computed" or "estimated" (counted by Shiplino). See WeakerLines.
+	LinesSource string `json:"lines_source,omitempty"`
 
 	InputTokens      int64   `json:"input_tokens"`
 	OutputTokens     int64   `json:"output_tokens"`
@@ -183,7 +187,7 @@ func (s *Session) FilesChanged() int { return len(s.Files) }
 // Rev identifies the engine's folding rules. Bump it whenever Apply would
 // produce different sessions from the same events (a new field, a fix);
 // the daemon then rebuilds stored sessions from their events once.
-const Rev = 11
+const Rev = 12
 
 // Engine folds events into sessions. It is not safe for concurrent use;
 // the daemon feeds it from a single goroutine.
@@ -292,6 +296,13 @@ func (e *Engine) Apply(ev model.Event) []*Session {
 		}
 		s.LinesAdded += num(ev.Data, "lines_added")
 		s.LinesRemoved += num(ev.Data, "lines_removed")
+		if ev.Data["lines_added"] != nil || ev.Data["lines_removed"] != nil {
+			src := str(ev.Data, "lines_source")
+			if src == "" {
+				src = "agent" // counts passed through as the agent sent them
+			}
+			s.LinesSource = WeakerLines(s.LinesSource, src)
+		}
 
 	case model.KindWaitingStart:
 		if s.Status != StatusWaiting {
@@ -790,6 +801,18 @@ func addSorted(list []string, v string) []string {
 	copy(list[i+1:], list[i:])
 	list[i] = v
 	return list
+}
+
+// linesRank orders lines_source values from most to least certain.
+var linesRank = map[string]int{"agent": 1, "computed": 2, "estimated": 3}
+
+// WeakerLines returns the less certain of two lines_source values, so a
+// total is never shown as more certain than its weakest part.
+func WeakerLines(a, b string) string {
+	if linesRank[b] > linesRank[a] {
+		return b
+	}
+	return a
 }
 
 func setIfEmpty(dst *string, v string) {

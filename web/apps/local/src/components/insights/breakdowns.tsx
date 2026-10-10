@@ -1,9 +1,11 @@
+import { EvidenceBadge } from "@shiplino/ui/evidence";
 import { Info } from "lucide-react";
 import Link from "next/link";
 import { AgentDot } from "@/components/common/agent-dot";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { InsightRow, Insights } from "@/lib/api";
+import { costEvidence } from "@/lib/evidence";
 import { agentName, formatCost, formatDuration, formatTokens } from "@/lib/format";
 
 function Share({ value, max }: { value: number; max: number }) {
@@ -67,11 +69,16 @@ export function CostSources({ sources }: { sources: Record<string, number> }) {
         {(["reported", "computed", "unpriced", "none"] as const)
           .filter((k) => sources[k])
           .map((k) => (
-            <div key={k} className="flex gap-2">
+            <div key={k} className="flex items-center gap-2">
               <span className="w-10 shrink-0 text-right font-mono tabular-nums">{sources[k]}</span>
               <span className="text-muted-foreground">
                 session{sources[k] === 1 ? "" : "s"} {sourceText[k]}
               </span>
+              <EvidenceBadge
+                compact
+                className="ml-auto"
+                {...costEvidence({ cost_source: k, usage: k === "none" ? "none" : "tokens" })}
+              />
             </div>
           ))}
         <p className="pt-1 text-muted-foreground text-xs">

@@ -1,5 +1,6 @@
 "use client";
 
+import { EvidenceBadge } from "@shiplino/ui/evidence";
 import { cn } from "cn";
 import {
   FileText,
@@ -17,7 +18,8 @@ import { PlanProgress } from "@/components/common/plan-progress";
 import { PRBadge } from "@/components/common/pr-badge";
 import { Badge } from "@/components/ui/badge";
 import type { BoardCard } from "@/lib/api";
-import { formatCost, formatDuration, noUsageReason, waitingLabel } from "@/lib/format";
+import { commitEvidence, costEvidence, linesEvidence, statusEvidence } from "@/lib/evidence";
+import { formatCost, formatDuration, waitingLabel } from "@/lib/format";
 import { API_EQUIVALENT, onPlan, useLimits } from "@/lib/limits";
 import { isUnseen, useSeen } from "@/lib/seen";
 
@@ -53,6 +55,10 @@ export function CardView({ card, dragging, onOpen }: { card: BoardCard; dragging
     subs.length > 3 ? subs.filter((s) => s.status === "running" || s.status === "waiting").slice(0, 3) : subs;
   const prs = (card.links ?? []).filter((l) => l.kind === "pr");
   const commits = (card.links ?? []).filter((l) => l.kind === "commit");
+  // Dense cards badge the cost always, and other values only when Shiplino
+  // inferred them; the card sheet and session page show every source.
+  const lines = linesEvidence(card.lines_source);
+  const guessedCommit = commits.find((c) => c.action !== "exact");
   return (
     // The whole card is the control: the drag library won't start a drag
     // inside a <button>, so the card can't be one and can't contain one.
@@ -105,8 +111,9 @@ export function CardView({ card, dragging, onOpen }: { card: BoardCard; dragging
       )}
 
       {card.status === "idle" && (
-        <p className="text-muted-foreground text-xs" title="No activity for 30 minutes: the agent may have been closed">
+        <p className="flex items-center gap-1 text-muted-foreground text-xs">
           Went quiet: no activity for a while
+          <EvidenceBadge compact {...statusEvidence({ status: "idle" })} />
         </p>
       )}
 
@@ -149,25 +156,19 @@ export function CardView({ card, dragging, onOpen }: { card: BoardCard; dragging
       {card.origin === "auto" && (
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-xs tabular-nums text-muted-foreground">
           <span>{formatDuration(card.duration_ms)}</span>
-          {card.usage === "none" ? (
-            <Badge
-              variant="outline"
-              className="px-1.5 py-0 font-sans font-normal text-muted-foreground"
-              title={noUsageReason(card.agent)}
-            >
-              no cost data
-            </Badge>
-          ) : (
-            <span
-              title={`${card.cost_source === "reported" ? "Reported by the agent" : "Computed from tokens × list prices"}${onPlan(limits, card.agent) ? `. ${API_EQUIVALENT}` : ""}`}
-            >
-              {formatCost(card.cost_usd)}
-            </span>
-          )}
+          <span className="flex items-center gap-0.5">
+            {card.usage === "none" ? (
+              <span className="font-sans">no cost data</span>
+            ) : (
+              <span title={onPlan(limits, card.agent) ? API_EQUIVALENT : undefined}>{formatCost(card.cost_usd)}</span>
+            )}
+            {(card.usage === "none" || card.cost_usd > 0) && <EvidenceBadge compact {...costEvidence(card)} />}
+          </span>
           {card.files > 0 && (
-            <span>
+            <span className="flex items-center gap-0.5">
               {card.files}f <span className="text-status-done">+{card.lines_added}</span>{" "}
               <span className="text-status-failed">−{card.lines_removed}</span>
+              {lines?.evidence === "inferred" && <EvidenceBadge compact {...lines} />}
             </span>
           )}
           {prs.map((p) => (
@@ -180,6 +181,7 @@ export function CardView({ card, dragging, onOpen }: { card: BoardCard; dragging
             >
               <GitCommitHorizontal className="size-3" aria-hidden />
               {commits.length}
+              {guessedCommit && <EvidenceBadge compact {...commitEvidence(guessedCommit.action)} />}
             </span>
           )}
           <span className="ml-auto flex items-center gap-1">
