@@ -1,0 +1,86 @@
+name: npm
+
+# Publishes a release to npm: `shiplino` and its six platform packages.
+# The release workflow calls this after each release; run it by hand to
+# (re)publish an existing release. Without NPM_TOKEN (or trusted publishing,
+# see docs/releasing.md) it publishes nothing and succeeds.
+on:
+  workflow_call:
+    inputs:
+      tag:
+        type: string
+        required: true
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to publish, e.g. v0.1.0
+        required: true
+
+permissions:
+  contents: read
+  id-token: write # npm provenance and trusted publishing
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    outputs:
+      publish: ${{ steps.check.outputs.publish }}
+    steps:
+      - id: check
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          TRUSTED: ${{ vars.NPM_TRUSTED_PUBLISHING }}
+        run: |
+          if [ -n "$NPM_TOKEN" ] || [ "$TRUSTED" = "true" ]; then
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::NPM_TOKEN isn't set, so nothing was published to npm. See docs/releasing.md."
+          fi
+
+  publish:
+    needs: gate
+    if: needs.gate.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ inputs.tag }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+      - name: npm with trusted publishing support
+        run: npm install -g npm@11.12.1
+      - uses: sigstore/cosign-installer@v4.1.2
+      - name: Download the release and verify its signature
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download "$TAG" -R "$GITHUB_REPOSITORY" -D assets -p 'shiplino_*' -p 'checksums.txt*'
+          cosign verify-blob assets/checksums.txt \
+            --bundle assets/checksums.txt.sigstore.json \
+            --certificate-identity "https://github.com/$GITHUB_REPOSITORY/.github/workflows/release.yml@refs/tags/$TAG" \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com
+      - name: Build the packages (checks every archive against checksums.txt)
+        run: node packaging/npm/build.mjs --version "$TAG" --assets assets --out npm-out
+      - name: Publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          version="${TAG#v}"
+          # Prereleases go to "latest" until a stable version exists, so
+          # `npm i -g shiplino` installs something; after that, to "next".
+          dist=latest
+          case "$version" in *-*)
+            current="$(npm view shiplino dist-tags.latest 2>/dev/null || true)"
+            case "$current" in "" | *-*) ;; *) dist=next ;; esac
+          esac
+          # Platform packages first, so `shiplino` never points at missing ones.
+          for dir in npm-out/@shiplino/* npm-out/shiplino; do
+            name="$(node -p "require('./$dir/package.json').name")"
+            if npm view "$name@$version" version >/dev/null 2>&1; then
+              echo "$name@$version is already published"
+              continue
+            fi
+            npm publish "./$dir" --access public --provenance --tag "$dist"
+          done
