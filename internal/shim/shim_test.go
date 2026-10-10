@@ -59,6 +59,42 @@ func TestRunEventFlagWins(t *testing.T) {
 	}
 }
 
+func TestRunCopilotSessionID(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("SHIPLINO_HOME", home)
+	Run([]string{"--agent", "copilot-cli", "--event", "sessionStart"}, strings.NewReader(`{"sessionId":"cs-1","timestamp":1,"cwd":"/w"}`))
+	e := readLines(t, spool.SessionFile(spool.Dir(home), "copilot-cli", "cs-1"))[0]
+	if e.Event != "sessionStart" {
+		t.Fatalf("event = %q", e.Event)
+	}
+}
+
+func TestMinimalStripsCopilotContent(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("SHIPLINO_HOME", home)
+	os.WriteFile(filepath.Join(home, spool.MinimalMarker), nil, 0o600)
+	for _, p := range []string{
+		`{"sessionId":"c1","toolName":"bash","toolArgs":"{\"command\":\"cat notes.txt\",\"path\":\"/app/x.go\"}","toolResult":{"resultType":"success","textResultForLlm":"private output"}}`,
+		`{"sessionId":"c1","toolName":"edit","toolArgs":{"path":"/app/x.go","old_str":"secret plan","new_str":"x"}}`,
+		`{"sessionId":"c1","toolName":"apply_patch","toolArgs":"*** Begin Patch\n+secret plan"}`,
+		`{"sessionId":"c1","agentId":"a","response":"private output","initialPrompt":"secret plan"}`,
+	} {
+		Run([]string{"--agent", "copilot-cli"}, strings.NewReader(p))
+	}
+	raw, err := os.ReadFile(spool.SessionFile(spool.Dir(home), "copilot-cli", "c1"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, leaked := range []string{"secret plan", "cat notes.txt", "private output"} {
+		if strings.Contains(string(raw), leaked) {
+			t.Errorf("%q reached the spool at minimal level", leaked)
+		}
+	}
+	if !strings.Contains(string(raw), `/app/x.go`) {
+		t.Errorf("file path dropped: %s", raw)
+	}
+}
+
 func TestRunLargePayloadGoesToBlob(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("SHIPLINO_HOME", home)

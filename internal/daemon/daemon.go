@@ -32,6 +32,7 @@ import (
 
 	_ "github.com/elephaant/shiplino/pkg/adapters/claudecode" // registers the adapter
 	_ "github.com/elephaant/shiplino/pkg/adapters/codex"      // registers the adapter
+	_ "github.com/elephaant/shiplino/pkg/adapters/copilotcli" // registers the adapter
 	_ "github.com/elephaant/shiplino/pkg/adapters/cursor"     // registers the adapter
 	_ "github.com/elephaant/shiplino/pkg/adapters/windsurf"   // registers the adapter
 )

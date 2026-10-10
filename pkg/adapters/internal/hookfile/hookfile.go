@@ -88,13 +88,11 @@ func Installed(path, agent string) (bool, string, error) {
 	}
 	for _, m := range h.Members {
 		for _, g := range AsList(m.Value) {
-			if IsOurs(g, agent) { // flat layout
-				cmd, _ := Field(g, "command").(string)
+			if cmd, ok := ourCmd(g, agent); ok { // flat layout
 				return true, cmd, nil
 			}
 			for _, hk := range AsList(Field(g, "hooks")) {
-				if IsOurs(hk, agent) {
-					cmd, _ := Field(hk, "command").(string)
+				if cmd, ok := ourCmd(hk, agent); ok {
 					return true, cmd, nil
 				}
 			}
@@ -209,17 +207,34 @@ func removeOurs(hooks *configfile.Object, agent string) {
 
 // IsOurs recognizes our handlers by command, in exec form
 // (command=…/shiplino, args=[hook, --agent, <agent>]) or shell form.
+// Per-shell fields (bash, powershell: Copilot CLI) count too.
 func IsOurs(h any, agent string) bool {
+	_, ok := ourCmd(h, agent)
+	return ok
+}
+
+// ourCmd returns the handler's command that runs our hook, if any.
+func ourCmd(h any, agent string) (string, bool) {
+	re := ourCommand(agent)
 	cmd, _ := Field(h, "command").(string)
+	full := cmd
 	if args := AsList(Field(h, "args")); len(args) > 0 {
 		var parts []string
 		for _, a := range args {
 			s, _ := a.(string)
 			parts = append(parts, s)
 		}
-		cmd += " " + strings.Join(parts, " ")
+		full += " " + strings.Join(parts, " ")
 	}
-	return ourCommand(agent).MatchString(cmd)
+	if re.MatchString(full) {
+		return cmd, true
+	}
+	for _, k := range []string{"bash", "powershell"} {
+		if s, _ := Field(h, k).(string); re.MatchString(s) {
+			return s, true
+		}
+	}
+	return "", false
 }
 
 // ourCommand matches `…shiplino[.exe] hook … --agent <agent>` in exec or
@@ -242,6 +257,12 @@ func Field(v any, key string) any {
 func AsList(v any) []any {
 	l, _ := v.([]any)
 	return l
+}
+
+// PowerShellQuote quotes a path for a PowerShell command line. Run it
+// with the call operator: & 'C:\path\shiplino.exe' hook …
+func PowerShellQuote(p string) string {
+	return "'" + strings.ReplaceAll(p, "'", "''") + "'"
 }
 
 // ShellQuote quotes a binary path for configs whose command is run by a
