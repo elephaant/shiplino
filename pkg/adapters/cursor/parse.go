@@ -186,12 +186,9 @@ type builder struct {
 func newBuilder(p *payload, meta adapters.HookMeta, conv string) builder {
 	b := builder{p: p, meta: meta, sid: model.SessionID(Name, conv)}
 	b.actor = b.sid
-	// A subagent's transcript sits under its parent's folder.
-	parts := strings.Split(strings.ReplaceAll(p.TranscriptPath, `\`, "/"), "/")
-	if n := len(parts); n >= 4 && parts[n-2] == "subagents" && parts[n-4] == "agent-transcripts" {
-		parent := parts[n-3]
+	if parent, sub, ok := subagentPath(p.TranscriptPath); ok {
 		b.sid = model.SessionID(Name, parent)
-		b.actor = b.sid + "/sub:" + strings.TrimSuffix(parts[n-1], ".jsonl")
+		b.actor = b.sid + "/sub:" + sub
 		b.subagent = true
 	}
 	b.cwd = p.CWD
