@@ -43,7 +43,7 @@ Read more: [How it works](docs/how-it-works.md).
 
 | Agent | How |
 |-------|-----|
-| Claude Code, OpenAI Codex, Cursor, Gemini CLI | hooks + transcripts (Cursor: hooks only, for now) |
+| Claude Code, OpenAI Codex, Cursor, Gemini CLI | hooks + transcripts |
 | Windsurf (Cascade) | hooks: prompts, turns, file reads and edits, commands, MCP calls. Windsurf's hooks carry no token counts, so no cost yet |
 | GitHub Copilot CLI | hooks (`~/.copilot/hooks/shiplino.json`; no token usage yet) |
 | Cline, OpenCode | hooks / plugins |

@@ -1,0 +1,900 @@
+[
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-08-06T05:11:00.001Z",
+    "received_at": "2026-08-06T06:00:00Z",
+    "kind": "turn.start",
+    "agent": {
+      "name": "cursor"
+    },
+    "collector": "transcript",
+    "session_id": "cursor:cv-7",
+    "actor_id": "cursor:cv-7",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "prompt": "fix the cart total rounding",
+      "prompt_chars": 27,
+      "transcript_path": "testdata/2026.09/projects/home-dev-shop/agent-transcripts/cv-7/cv-7.jsonl"
+    },
+    "dedup_key": "cursor:cv-7:t0:turn"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-08-06T05:11:00.002Z",
+    "received_at": "2026-08-06T06:00:00Z",
+    "kind": "tool.start",
+    "agent": {
+      "name": "cursor"
+    },
+    "collector": "transcript",
+    "session_id": "cursor:cv-7",
+    "actor_id": "cursor:cv-7",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "input_summary": "/home/dev/shop/src/cart.ts",
+      "tool": "read",
+      "tool_call_id": "cv-7@254.1",
+      "tool_raw": "Read"
+    },
+    "dedup_key": "cursor:cv-7:t254:tool1:start"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-08-06T05:11:00.002Z",
+    "received_at": "2026-08-06T06:00:00Z",
+    "kind": "tool.end",
+    "agent": {
+      "name": "cursor"
+    },
+    "collector": "transcript",
+    "session_id": "cursor:cv-7",
+    "actor_id": "cursor:cv-7",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "ok": true,
+      "tool": "read",
+      "tool_call_id": "cv-7@254.1"
+    },
+    "dedup_key": "cursor:cv-7:t254:tool1:end"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-08-06T05:11:00.002Z",
+    "received_at": "2026-08-06T06:00:00Z",
+    "kind": "tool.start",
+    "agent": {
+      "name": "cursor"
+    },
+    "collector": "transcript",
+    "session_id": "cursor:cv-7",
+    "actor_id": "cursor:cv-7",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "input_summary": "npm test",
+      "tool": "shell",
+      "tool_call_id": "cv-7@254.2",
+      "tool_raw": "Shell"
+    },
+    "dedup_key": "cursor:cv-7:t254:tool2:start"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-08-06T05:11:00.002Z",
+    "received_at": "2026-08-06T06:00:00Z",
+    "kind": "tool.end",
+    "agent": {
+      "name": "cursor"
+    },
+    "collector": "transcript",
+    "session_id": "cursor:cv-7",
+    "actor_id": "cursor:cv-7",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "ok": true,
+      "tool": "shell",
+      "tool_call_id": "cv-7@254.2"
+    },
+    "dedup_key": "cursor:cv-7:t254:tool2:end"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-08-06T05:11:00.002Z",
+    "received_at": "2026-08-06T06:00:00Z",
+    "kind": "shell.exec",
+    "agent": {
+      "name": "cursor"
+    },
+    "collector": "transcript",
+    "session_id": "cursor:cv-7",
+    "actor_id": "cursor:cv-7",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "command": "npm test",
+      "cwd": "/home/dev/shop/web",
+      "tool_call_id": "cv-7@254.2"
+    },
+    "dedup_key": "cursor:cv-7:t254:tool2:shell"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-08-06T05:11:00.003Z",
+    "received_at": "2026-08-06T06:00:00Z",
+    "kind": "tool.start",
+    "agent": {
+      "name": "cursor"
+    },
+    "collector": "transcript",
+    "session_id": "cursor:cv-7",
+    "actor_id": "cursor:cv-7",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "input_summary": "/home/dev/shop/src/cart.ts",
+      "tool": "edit",
+      "tool_call_id": "cv-7@564.0",
+      "tool_raw": "StrReplace"
+    },
+    "dedup_key": "cursor:cv-7:t564:tool0:start"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-08-06T05:11:00.003Z",
+    "received_at": "2026-08-06T06:00:00Z",
+    "kind": "tool.end",
+    "agent": {
+      "name": "cursor"
+    },
+    "collector": "transcript",
+    "session_id": "cursor:cv-7",
+    "actor_id": "cursor:cv-7",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "ok": true,
+      "tool": "edit",
+      "tool_call_id": "cv-7@564.0"
+    },
+    "dedup_key": "cursor:cv-7:t564:tool0:end"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-08-06T05:11:00.003Z",
+    "received_at": "2026-08-06T06:00:00Z",
+    "kind": "file.edit",
+    "agent": {
+      "name": "cursor"
+    },
+    "collector": "transcript",
+    "session_id": "cursor:cv-7",
+    "actor_id": "cursor:cv-7",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "lines_added": 2,
+      "lines_removed": 1,
+      "lines_source": "computed",
+      "op": "modify",
+      "path": "/home/dev/shop/src/cart.ts"
+    },
+    "dedup_key": "cursor:cv-7:t564:tool0:file0"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-08-06T05:11:00.004Z",
+    "received_at": "2026-08-06T06:00:00Z",
+    "kind": "tool.start",
+    "agent": {
+      "name": "cursor"
+    },
+    "collector": "transcript",
+    "session_id": "cursor:cv-7",
+    "actor_id": "cursor:cv-7",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "input_summary": "src/round.ts",
+      "tool": "write",
+      "tool_call_id": "cv-7@844.0",
+      "tool_raw": "Write"
+    },
+    "dedup_key": "cursor:cv-7:t844:tool0:start"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-08-06T05:11:00.004Z",
+    "received_at": "2026-08-06T06:00:00Z",
+    "kind": "tool.end",
+    "agent": {
+      "name": "cursor"
+    },
+    "collector": "transcript",
+    "session_id": "cursor:cv-7",
+    "actor_id": "cursor:cv-7",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "ok": true,
+      "tool": "write",
+      "tool_call_id": "cv-7@844.0"
+    },
+    "dedup_key": "cursor:cv-7:t844:tool0:end"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-08-06T05:11:00.004Z",
+    "received_at": "2026-08-06T06:00:00Z",
+    "kind": "file.edit",
+    "agent": {
+      "name": "cursor"
+    },
+    "collector": "transcript",
+    "session_id": "cursor:cv-7",
+    "actor_id": "cursor:cv-7",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "lines_added": 2,
+      "lines_removed": 0,
+      "lines_source": "computed",
+      "op": "create",
+      "path": "/home/dev/shop/src/round.ts"
+    },
+    "dedup_key": "cursor:cv-7:t844:tool0:file0"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-08-06T05:11:00.004Z",
+    "received_at": "2026-08-06T06:00:00Z",
+    "kind": "tool.start",
+    "agent": {
+      "name": "cursor"
+    },
+    "collector": "transcript",
+    "session_id": "cursor:cv-7",
+    "actor_id": "cursor:cv-7",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "input_summary": "/home/dev/shop/src/util.ts",
+      "tool": "edit",
+      "tool_call_id": "cv-7@844.1",
+      "tool_raw": "ApplyPatch"
+    },
+    "dedup_key": "cursor:cv-7:t844:tool1:start"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-08-06T05:11:00.004Z",
+    "received_at": "2026-08-06T06:00:00Z",
+    "kind": "tool.end",
+    "agent": {
+      "name": "cursor"
+    },
+    "collector": "transcript",
+    "session_id": "cursor:cv-7",
+    "actor_id": "cursor:cv-7",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "ok": true,
+      "tool": "edit",
+      "tool_call_id": "cv-7@844.1"
+    },
+    "dedup_key": "cursor:cv-7:t844:tool1:end"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-08-06T05:11:00.004Z",
+    "received_at": "2026-08-06T06:00:00Z",
+    "kind": "file.edit",
+    "agent": {
+      "name": "cursor"
+    },
+    "collector": "transcript",
+    "session_id": "cursor:cv-7",
+    "actor_id": "cursor:cv-7",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "lines_added": 2,
+      "lines_removed": 1,
+      "lines_source": "computed",
+      "op": "modify",
+      "path": "/home/dev/shop/src/util.ts"
+    },
+    "dedup_key": "cursor:cv-7:t844:tool1:file0"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-08-06T05:11:00.004Z",
+    "received_at": "2026-08-06T06:00:00Z",
+    "kind": "file.edit",
+    "agent": {
+      "name": "cursor"
+    },
+    "collector": "transcript",
+    "session_id": "cursor:cv-7",
+    "actor_id": "cursor:cv-7",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "lines_added": 1,
+      "lines_removed": 0,
+      "lines_source": "computed",
+      "op": "create",
+      "path": "/home/dev/shop/src/money.ts"
+    },
+    "dedup_key": "cursor:cv-7:t844:tool1:file1"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-08-06T05:11:00.004Z",
+    "received_at": "2026-08-06T06:00:00Z",
+    "kind": "file.edit",
+    "agent": {
+      "name": "cursor"
+    },
+    "collector": "transcript",
+    "session_id": "cursor:cv-7",
+    "actor_id": "cursor:cv-7",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "op": "delete",
+      "path": "/home/dev/shop/src/legacy.ts"
+    },
+    "dedup_key": "cursor:cv-7:t844:tool1:file2"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-08-06T05:11:00.005Z",
+    "received_at": "2026-08-06T06:00:00Z",
+    "kind": "tool.start",
+    "agent": {
+      "name": "cursor"
+    },
+    "collector": "transcript",
+    "session_id": "cursor:cv-7",
+    "actor_id": "cursor:cv-7",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "input_summary": "CallMcpTool",
+      "tool": "mcp",
+      "tool_call_id": "cv-7@1299.0",
+      "tool_raw": "CallMcpTool"
+    },
+    "dedup_key": "cursor:cv-7:t1299:tool0:start"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-08-06T05:11:00.005Z",
+    "received_at": "2026-08-06T06:00:00Z",
+    "kind": "tool.end",
+    "agent": {
+      "name": "cursor"
+    },
+    "collector": "transcript",
+    "session_id": "cursor:cv-7",
+    "actor_id": "cursor:cv-7",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "ok": true,
+      "tool": "mcp",
+      "tool_call_id": "cv-7@1299.0"
+    },
+    "dedup_key": "cursor:cv-7:t1299:tool0:end"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-08-06T05:11:00.005Z",
+    "received_at": "2026-08-06T06:00:00Z",
+    "kind": "mcp.call",
+    "agent": {
+      "name": "cursor"
+    },
+    "collector": "transcript",
+    "session_id": "cursor:cv-7",
+    "actor_id": "cursor:cv-7",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "ok": true,
+      "server": "linear",
+      "tool": "get_issue"
+    },
+    "dedup_key": "cursor:cv-7:t1299:tool0:mcp"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-08-06T05:11:00.005Z",
+    "received_at": "2026-08-06T06:00:00Z",
+    "kind": "tool.start",
+    "agent": {
+      "name": "cursor"
+    },
+    "collector": "transcript",
+    "session_id": "cursor:cv-7",
+    "actor_id": "cursor:cv-7",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "input_summary": "Explore cart module",
+      "tool": "task",
+      "tool_call_id": "cv-7@1299.1",
+      "tool_raw": "Task"
+    },
+    "dedup_key": "cursor:cv-7:t1299:tool1:start"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-08-06T05:11:00.005Z",
+    "received_at": "2026-08-06T06:00:00Z",
+    "kind": "tool.end",
+    "agent": {
+      "name": "cursor"
+    },
+    "collector": "transcript",
+    "session_id": "cursor:cv-7",
+    "actor_id": "cursor:cv-7",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "ok": true,
+      "tool": "task",
+      "tool_call_id": "cv-7@1299.1"
+    },
+    "dedup_key": "cursor:cv-7:t1299:tool1:end"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-08-06T05:11:00.005Z",
+    "received_at": "2026-08-06T06:00:00Z",
+    "kind": "tool.start",
+    "agent": {
+      "name": "cursor"
+    },
+    "collector": "transcript",
+    "session_id": "cursor:cv-7",
+    "actor_id": "cursor:cv-7",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "input_summary": "src/old-cart.ts",
+      "tool": "edit",
+      "tool_call_id": "cv-7@1299.2",
+      "tool_raw": "Delete"
+    },
+    "dedup_key": "cursor:cv-7:t1299:tool2:start"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-08-06T05:11:00.005Z",
+    "received_at": "2026-08-06T06:00:00Z",
+    "kind": "tool.end",
+    "agent": {
+      "name": "cursor"
+    },
+    "collector": "transcript",
+    "session_id": "cursor:cv-7",
+    "actor_id": "cursor:cv-7",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "ok": true,
+      "tool": "edit",
+      "tool_call_id": "cv-7@1299.2"
+    },
+    "dedup_key": "cursor:cv-7:t1299:tool2:end"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-08-06T05:11:00.005Z",
+    "received_at": "2026-08-06T06:00:00Z",
+    "kind": "file.edit",
+    "agent": {
+      "name": "cursor"
+    },
+    "collector": "transcript",
+    "session_id": "cursor:cv-7",
+    "actor_id": "cursor:cv-7",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "op": "delete",
+      "path": "/home/dev/shop/src/old-cart.ts"
+    },
+    "dedup_key": "cursor:cv-7:t1299:tool2:file0"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-08-06T05:11:00.007Z",
+    "received_at": "2026-08-06T06:00:00Z",
+    "kind": "turn.end",
+    "agent": {
+      "name": "cursor"
+    },
+    "collector": "transcript",
+    "session_id": "cursor:cv-7",
+    "actor_id": "cursor:cv-7",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "status": "ok"
+    },
+    "dedup_key": "cursor:cv-7:t1779:turnend"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-08-06T05:11:00.008Z",
+    "received_at": "2026-08-06T06:00:00Z",
+    "kind": "turn.start",
+    "agent": {
+      "name": "cursor"
+    },
+    "collector": "transcript",
+    "session_id": "cursor:cv-7",
+    "actor_id": "cursor:cv-7",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "prompt": "run the linter",
+      "prompt_chars": 14,
+      "transcript_path": "testdata/2026.09/projects/home-dev-shop/agent-transcripts/cv-7/cv-7.jsonl"
+    },
+    "dedup_key": "cursor:cv-7:t1820:turn"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-08-06T05:11:00.009Z",
+    "received_at": "2026-08-06T06:00:00Z",
+    "kind": "tool.start",
+    "agent": {
+      "name": "cursor"
+    },
+    "collector": "transcript",
+    "session_id": "cursor:cv-7",
+    "actor_id": "cursor:cv-7",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "input_summary": "npm run lint",
+      "tool": "shell",
+      "tool_call_id": "cv-7@1996.0",
+      "tool_raw": "Shell"
+    },
+    "dedup_key": "cursor:cv-7:t1996:tool0:start"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-08-06T05:11:00.009Z",
+    "received_at": "2026-08-06T06:00:00Z",
+    "kind": "tool.end",
+    "agent": {
+      "name": "cursor"
+    },
+    "collector": "transcript",
+    "session_id": "cursor:cv-7",
+    "actor_id": "cursor:cv-7",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "ok": true,
+      "tool": "shell",
+      "tool_call_id": "cv-7@1996.0"
+    },
+    "dedup_key": "cursor:cv-7:t1996:tool0:end"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-08-06T05:11:00.009Z",
+    "received_at": "2026-08-06T06:00:00Z",
+    "kind": "shell.exec",
+    "agent": {
+      "name": "cursor"
+    },
+    "collector": "transcript",
+    "session_id": "cursor:cv-7",
+    "actor_id": "cursor:cv-7",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "command": "npm run lint",
+      "cwd": "/home/dev/shop",
+      "tool_call_id": "cv-7@1996.0"
+    },
+    "dedup_key": "cursor:cv-7:t1996:tool0:shell"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-08-06T05:11:00.01Z",
+    "received_at": "2026-08-06T06:00:00Z",
+    "kind": "turn.end",
+    "agent": {
+      "name": "cursor"
+    },
+    "collector": "transcript",
+    "session_id": "cursor:cv-7",
+    "actor_id": "cursor:cv-7",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "status": "interrupted"
+    },
+    "dedup_key": "cursor:cv-7:t2111:turnend"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-08-06T05:35:00.002Z",
+    "received_at": "2026-08-06T06:00:00Z",
+    "kind": "turn.start",
+    "agent": {
+      "name": "cursor"
+    },
+    "collector": "transcript",
+    "session_id": "cursor:cv-7",
+    "actor_id": "cursor:cv-7",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "prompt": "try again",
+      "prompt_chars": 9,
+      "transcript_path": "testdata/2026.09/projects/home-dev-shop/agent-transcripts/cv-7/cv-7.jsonl"
+    },
+    "dedup_key": "cursor:cv-7:t2283:turn"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-08-06T05:35:00.003Z",
+    "received_at": "2026-08-06T06:00:00Z",
+    "kind": "tool.start",
+    "agent": {
+      "name": "cursor"
+    },
+    "collector": "transcript",
+    "session_id": "cursor:cv-7",
+    "actor_id": "cursor:cv-7",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "input_summary": "CallDynamicTool",
+      "tool": "mcp",
+      "tool_call_id": "cv-7@2387.0",
+      "tool_raw": "CallDynamicTool"
+    },
+    "dedup_key": "cursor:cv-7:t2387:tool0:start"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-08-06T05:35:00.003Z",
+    "received_at": "2026-08-06T06:00:00Z",
+    "kind": "tool.end",
+    "agent": {
+      "name": "cursor"
+    },
+    "collector": "transcript",
+    "session_id": "cursor:cv-7",
+    "actor_id": "cursor:cv-7",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "ok": true,
+      "tool": "mcp",
+      "tool_call_id": "cv-7@2387.0"
+    },
+    "dedup_key": "cursor:cv-7:t2387:tool0:end"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-08-06T05:35:00.003Z",
+    "received_at": "2026-08-06T06:00:00Z",
+    "kind": "mcp.call",
+    "agent": {
+      "name": "cursor"
+    },
+    "collector": "transcript",
+    "session_id": "cursor:cv-7",
+    "actor_id": "cursor:cv-7",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "ok": true,
+      "server": "github",
+      "tool": "list_prs"
+    },
+    "dedup_key": "cursor:cv-7:t2387:tool0:mcp"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-08-06T05:35:00.004Z",
+    "received_at": "2026-08-06T06:00:00Z",
+    "kind": "turn.end",
+    "agent": {
+      "name": "cursor"
+    },
+    "collector": "transcript",
+    "session_id": "cursor:cv-7",
+    "actor_id": "cursor:cv-7",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "error": "Connection lost",
+      "status": "error"
+    },
+    "dedup_key": "cursor:cv-7:t2595:turnend"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-08-06T05:12:00.001Z",
+    "received_at": "2026-08-06T06:00:00Z",
+    "kind": "turn.start",
+    "agent": {
+      "name": "cursor"
+    },
+    "collector": "transcript",
+    "session_id": "cursor:cv-7",
+    "actor_id": "cursor:cv-7/sub:sa-3",
+    "parent_actor": "cursor:cv-7",
+    "actor_type": "subagent",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "prompt": "Find every caller of total()",
+      "prompt_chars": 28,
+      "transcript_path": "testdata/2026.09/projects/home-dev-shop/agent-transcripts/cv-7/subagents/sa-3.jsonl"
+    },
+    "dedup_key": "cursor:cv-7/sub:sa-3:t0:turn"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-08-06T05:12:00.002Z",
+    "received_at": "2026-08-06T06:00:00Z",
+    "kind": "tool.start",
+    "agent": {
+      "name": "cursor"
+    },
+    "collector": "transcript",
+    "session_id": "cursor:cv-7",
+    "actor_id": "cursor:cv-7/sub:sa-3",
+    "parent_actor": "cursor:cv-7",
+    "actor_type": "subagent",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "input_summary": "/home/dev/shop/src",
+      "tool": "search",
+      "tool_call_id": "sa-3@190.0",
+      "tool_raw": "Grep"
+    },
+    "dedup_key": "cursor:cv-7/sub:sa-3:t190:tool0:start"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-08-06T05:12:00.002Z",
+    "received_at": "2026-08-06T06:00:00Z",
+    "kind": "tool.end",
+    "agent": {
+      "name": "cursor"
+    },
+    "collector": "transcript",
+    "session_id": "cursor:cv-7",
+    "actor_id": "cursor:cv-7/sub:sa-3",
+    "parent_actor": "cursor:cv-7",
+    "actor_type": "subagent",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "ok": true,
+      "tool": "search",
+      "tool_call_id": "sa-3@190.0"
+    },
+    "dedup_key": "cursor:cv-7/sub:sa-3:t190:tool0:end"
+  },
+  {
+    "id": "",
+    "v": 1,
+    "ts": "2026-08-06T05:12:00.003Z",
+    "received_at": "2026-08-06T06:00:00Z",
+    "kind": "turn.end",
+    "agent": {
+      "name": "cursor"
+    },
+    "collector": "transcript",
+    "session_id": "cursor:cv-7",
+    "actor_id": "cursor:cv-7/sub:sa-3",
+    "parent_actor": "cursor:cv-7",
+    "actor_type": "subagent",
+    "project": {
+      "cwd": "/home/dev/shop"
+    },
+    "data": {
+      "status": "ok"
+    },
+    "dedup_key": "cursor:cv-7/sub:sa-3:t328:turnend"
+  }
+]

@@ -376,13 +376,17 @@ func (d *Daemon) Poll(ctx context.Context) error {
 				return ctx.Err()
 			}
 			src := "transcript:" + f
+			var mod time.Time
+			if fi, err := os.Stat(f); err == nil {
+				mod = fi.ModTime()
+			}
 			state, ok := d.tstate[src]
 			if !ok {
 				state = map[string]string{}
 				d.tstate[src] = state
-				d.warmup(f, d.offsets[src], agent, state)
+				d.warmup(f, d.offsets[src], agent, state, mod)
 			}
-			err := d.processFile(ctx, f, src, d.transcriptParser(agent, state))
+			err := d.processFile(ctx, f, src, d.transcriptParser(agent, f, mod, state))
 			if errors.Is(err, os.ErrNotExist) && f == path {
 				delete(d.transcripts, path)
 				break
@@ -492,7 +496,7 @@ func (d *Daemon) Backfill(since time.Time) int {
 // warmup replays a transcript up to off with Warmup set, so a parser that
 // keeps state across lines (current model, turn) resumes correctly. It
 // produces no events.
-func (d *Daemon) warmup(path string, off int64, agent string, state map[string]string) {
+func (d *Daemon) warmup(path string, off int64, agent string, state map[string]string, mod time.Time) {
 	if off <= 0 {
 		return
 	}
@@ -508,13 +512,13 @@ func (d *Daemon) warmup(path string, off int64, agent string, state map[string]s
 	defer f.Close()
 	sc := bufio.NewScanner(io.LimitReader(f, off))
 	sc.Buffer(make([]byte, 64<<10), int(maxRead))
-	meta := adapters.TranscriptMeta{ReceivedAt: time.Now(), User: d.user, State: state, Warmup: true}
+	meta := adapters.TranscriptMeta{ReceivedAt: time.Now(), User: d.user, Path: path, ModTime: mod, State: state, Warmup: true}
 	for sc.Scan() {
 		_, _ = tp.ParseTranscriptLine(sc.Bytes(), meta)
 	}
 }
 
-func (d *Daemon) transcriptParser(agent string, state map[string]string) lineParser {
+func (d *Daemon) transcriptParser(agent, path string, mod time.Time, state map[string]string) lineParser {
 	return func(line []byte, ref string) ([]model.Event, string) {
 		d.stats.Lines++
 		a, _ := adapters.Get(agent)
@@ -522,7 +526,7 @@ func (d *Daemon) transcriptParser(agent string, state map[string]string) linePar
 		if !ok {
 			return nil, ""
 		}
-		evs, err := tp.ParseTranscriptLine(line, adapters.TranscriptMeta{ReceivedAt: time.Now(), User: d.user, Ref: ref, State: state})
+		evs, err := tp.ParseTranscriptLine(line, adapters.TranscriptMeta{ReceivedAt: time.Now(), User: d.user, Ref: ref, Path: path, ModTime: mod, State: state})
 		if err != nil {
 			d.stats.Bad++
 		}

@@ -43,6 +43,11 @@ type TranscriptMeta struct {
 	ReceivedAt time.Time // fallback timestamp when the line has none
 	User       string
 	Ref        string // e.g. "transcript:/path/to/file.jsonl#1234"
+	// Path is the transcript file, for formats whose ids live in the path.
+	Path string
+	// ModTime is the file's modification time when it was read, a
+	// timestamp fallback for formats with few or no timestamps.
+	ModTime time.Time
 	// State is per-file memory the daemon keeps for the parser (e.g. the
 	// current model or turn), for formats that state things once.
 	State map[string]string

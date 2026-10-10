@@ -12,6 +12,8 @@ Modern coding agents (Claude Code, Codex, Cursor, Gemini CLI, Copilot CLI, Winds
 4. Everything is converted to one [event format](event-format.md) and stored in a local SQLite database.
 5. The board is served at `http://localhost:4777` and updates live.
 
+Sessions that ran without hooks (before setup, or with hooks turned off) are rebuilt from the agents' transcript files instead; `shiplino backfill` imports older history. When a session has hooks, its activity comes from the hooks only, so nothing is counted twice. Cursor's transcripts are coarser than its hooks: times are to the minute, there are no token counts or exit codes, every tool call counts as succeeded, and line counts are computed from the edits.
+
 ## Zero tokens
 
 The model never knows Shiplino exists:
