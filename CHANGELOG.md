@@ -19,9 +19,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - When an update changes how sessions are computed, the daemon rebuilds them from the stored events once at startup, so past sessions benefit too.
 - A running session with no activity for 30 minutes (2 hours while a tool such as a long build is still running) becomes idle and leaves the Running column: to Review if it changed files, otherwise to Done. Its next event brings it back.
 - Cards roll up their subagents: a card shows Waiting if any subagent waits on you (with what it's asking), Running if any still works, and counts subagents' files, lines and tool calls.
+- Codex sessions now show cost: OpenAI list prices for gpt-5.6-terra, gpt-5.6-luna, gpt-5.5 and gpt-5.3-codex, including long-context (over 272K prompt tokens), fast and flex rates.
 - `doctor` explains degraded modes and how to fix them: the board running on another port because 4777 was busy, and file notifications being unavailable.
 
 ### Changed
+- Model ids match a priced model only when followed by a date or a variant tag, so a different model such as `…-mini` is never priced as its larger sibling.
 - The web app's layout and default theme credit their inspiration, next-shadcn-admin-dashboard by Mohammed Arham Khan, in the README and `NOTICE`.
 - A session's model is the one that answered its latest response (sessions can switch models).
 - If the system's file-notification limit is used up by other programs (Linux inotify), the daemon keeps working by polling twice a second instead of stopping, and `doctor` shows the fix.

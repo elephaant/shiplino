@@ -5,6 +5,7 @@ package pricing
 
 import (
 	"math"
+	"strings"
 	"testing"
 )
 
@@ -109,13 +110,73 @@ func TestBundledTableIsSane(t *testing.T) {
 			t.Errorf("duplicate id %s", m.ID)
 		}
 		seen[m.ID] = true
-		// Published structure: 5m writes 1.25x input, 1h writes 2x input,
-		// output above input, reads cheaper than input.
-		if !near(m.CacheWrite5m, m.Input*1.25) || !near(m.CacheWrite1h, m.Input*2) || m.Output <= m.Input || m.CacheRead >= m.Input {
-			t.Errorf("%s: rates look wrong: %+v", m.ID, m.Rates)
+		if m.Output <= m.Input || m.CacheRead >= m.Input {
+			t.Errorf("%s: output must cost more than input, cache reads less: %+v", m.ID, m.Rates)
+		}
+		switch {
+		case strings.HasPrefix(m.ID, "claude-"):
+			// Anthropic: 5m writes 1.25x input, 1h writes 2x input.
+			if !near(m.CacheWrite5m, m.Input*1.25) || !near(m.CacheWrite1h, m.Input*2) {
+				t.Errorf("%s: cache write rates look wrong: %+v", m.ID, m.Rates)
+			}
+		case strings.HasPrefix(m.ID, "gpt-"):
+			// OpenAI: cached input is a tenth of input; writes (if billed)
+			// cost more than input; long context costs more.
+			if !near(m.CacheRead, m.Input/10) || m.CacheWrite5m != 0 && m.CacheWrite5m <= m.Input {
+				t.Errorf("%s: cache rates look wrong: %+v", m.ID, m.Rates)
+			}
+			if lc := m.LongContext; lc == nil && m.ID != "gpt-5.3-codex" || lc != nil && (lc.OverPromptTokens != 272000 || lc.Input <= m.Input) {
+				t.Errorf("%s: long context: %+v", m.ID, lc)
+			}
+		default:
+			t.Errorf("%s: unknown provider; add its structure check", m.ID)
 		}
 	}
 	if _, err := Parse([]byte(`{"models":[{"id":"x"}]}`)); err == nil {
 		t.Error("table with missing prices accepted")
+	}
+}
+
+func TestOpenAIRates(t *testing.T) {
+	// 100K uncached + 900K cached... is long context; keep it short here.
+	cost, ok := Default().Cost("gpt-5.6-terra", Usage{Input: 100_000, CacheRead: 100_000, Output: 10_000})
+	if !ok || !near(cost, 0.1*2+0.1*0.2+0.01*12) {
+		t.Fatalf("terra short: %v %v", cost, ok)
+	}
+	// Over 272K prompt tokens: long-context rates.
+	cost, _ = Default().Cost("gpt-5.6-terra", Usage{Input: 200_000, CacheRead: 100_000, Output: 10_000})
+	if !near(cost, 0.2*4+0.1*0.4+0.01*18) {
+		t.Fatalf("terra long: %v", cost)
+	}
+	fast, _ := Default().Cost("gpt-5.5", Usage{Input: 1000, Output: 1000, Speed: "fast"})
+	std, _ := Default().Cost("gpt-5.5", Usage{Input: 1000, Output: 1000})
+	flex, _ := Default().Cost("gpt-5.5", Usage{Input: 1000, Output: 1000, Speed: "flex"})
+	if !near(fast, std*2.5) || !near(flex, std*0.5) {
+		t.Fatalf("tiers: std %v fast %v flex %v", std, fast, flex)
+	}
+	if _, ok := Default().Cost("codex-auto-review", Usage{Input: 1}); ok {
+		t.Fatal("unlisted models must stay unpriced")
+	}
+}
+
+func TestLookupSuffixes(t *testing.T) {
+	for model, want := range map[string]string{
+		"claude-haiku-5-5-20251001":                   "claude-haiku-5-5",
+		"claude-opus-5-5[1m]":                         "claude-opus-5-5",
+		"us.anthropic.claude-haiku-5-5-20251001-v1:0": "claude-haiku-5-5",
+		"gpt-5.6-terra":                               "gpt-5.6-terra",
+		"gpt-5.6-terra-2026-09-01":                    "gpt-5.6-terra",
+		"gpt-5.6-terra-mini":                          "",
+		"gpt-5.5-pro":                                 "",
+	} {
+		m, ok := Default().Lookup(model)
+		if got := ""; ok {
+			got = m.ID
+			if got != want {
+				t.Errorf("Lookup(%q) = %q, want %q", model, got, want)
+			}
+		} else if want != "" {
+			t.Errorf("Lookup(%q) found nothing, want %q", model, want)
+		}
 	}
 }
