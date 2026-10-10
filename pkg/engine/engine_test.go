@@ -261,3 +261,33 @@ func TestActiveTime(t *testing.T) {
 		t.Fatalf("active = %d, want 90000 (40s measured + 50s the agent reported)", s.ActiveMS)
 	}
 }
+
+func TestMarkIdle(t *testing.T) {
+	e := New(nil, nil)
+	at := time.Date(2026, 10, 9, 10, 0, 0, 0, time.UTC)
+	ev := func(id string, kind model.Kind, ts time.Time) model.Event {
+		return model.Event{Kind: kind, TS: ts, SessionID: id, ActorID: id, Agent: model.Agent{Name: "a"}, Data: map[string]any{"tool": "shell"}}
+	}
+	e.Apply(ev("quiet", model.KindTurnStart, at))
+	e.Apply(ev("building", model.KindTurnStart, at))
+	e.Apply(ev("building", model.KindToolStart, at)) // a long build is in progress
+	e.Apply(ev("asking", model.KindWaitingStart, at))
+
+	if got := e.MarkIdle(at.Add(29 * time.Minute)); len(got) != 0 {
+		t.Fatalf("idle too early: %v", got)
+	}
+	got := e.MarkIdle(at.Add(31 * time.Minute))
+	if len(got) != 1 || got[0].ID != "quiet" || got[0].Status != StatusIdle {
+		t.Fatalf("31m: %+v", got)
+	}
+	if e.Get("asking").Status != StatusWaiting {
+		t.Fatal("a waiting session must stay waiting")
+	}
+	if got := e.MarkIdle(at.Add(2*time.Hour + time.Minute)); len(got) != 1 || got[0].ID != "building" {
+		t.Fatalf("in-flight tool: %+v", got)
+	}
+	e.Apply(ev("quiet", model.KindToolStart, at.Add(3*time.Hour)))
+	if s := e.Get("quiet"); s.Status != StatusRunning {
+		t.Fatalf("an event brings it back: %s", s.Status)
+	}
+}

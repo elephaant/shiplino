@@ -262,6 +262,8 @@ export interface BoardCard {
   lines_removed: number;
   links?: Link[];
   subagents?: SubagentRow[];
+  tool_calls: number;
+  active_ms: number;
   sprint: number;
   rolled_over_from?: number;
   notes?: string;

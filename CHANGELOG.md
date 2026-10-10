@@ -17,6 +17,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Settings page: pause and resume recording, which agents are connected (and how to connect the rest), capture level and data location, notification settings with a test button, daemon health, and data export. `GET /api/v1/settings`, `POST /api/v1/pause`, `/resume`, `/notify/test`.
 - Sessions record their active time: the time spent in turns, using the agent's own turn duration when it reports one, so idle time between prompts isn't counted.
 - When an update changes how sessions are computed, the daemon rebuilds them from the stored events once at startup, so past sessions benefit too.
+- A running session with no activity for 30 minutes (2 hours while a tool such as a long build is still running) becomes idle and leaves the Running column: to Review if it changed files, otherwise to Done. Its next event brings it back.
+- Cards roll up their subagents: a card shows Waiting if any subagent waits on you (with what it's asking), Running if any still works, and counts subagents' files, lines and tool calls.
 - `doctor` explains degraded modes and how to fix them: the board running on another port because 4777 was busy, and file notifications being unavailable.
 
 ### Changed

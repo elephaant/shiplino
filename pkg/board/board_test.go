@@ -130,3 +130,27 @@ func TestFilterSprint(t *testing.T) {
 		t.Fatalf("%v", got)
 	}
 }
+
+func TestRollUpAndIdle(t *testing.T) {
+	now := time.Date(2026, 10, 9, 12, 0, 0, 0, time.UTC)
+	root := &engine.Session{ID: "a:1", RootID: "a:1", Status: engine.StatusDone, StartedAt: now, LastEventAt: now, Files: []string{"x.go"}, LinesAdded: 3, ToolCalls: 2}
+	kid := &engine.Session{ID: "a:1/sub:k", RootID: "a:1", ParentID: "a:1", ActorType: "reviewer", Status: engine.StatusWaiting, NowDoing: "Approve: rm -rf build",
+		Files: []string{"x.go", "y.go"}, LinesAdded: 4, LinesRemoved: 1, ToolCalls: 5, StartedAt: now, LastEventAt: now}
+	idle := &engine.Session{ID: "a:2", RootID: "a:2", Status: engine.StatusIdle, StartedAt: now, LastEventAt: now}
+	idleWithWork := &engine.Session{ID: "a:3", RootID: "a:3", Status: engine.StatusIdle, Files: []string{"z"}, StartedAt: now, LastEventAt: now}
+	cards := Build([]*engine.Session{root, kid, idle, idleWithWork}, nil, Calendar{Loc: time.UTC}, now)
+	by := map[string]Card{}
+	for _, c := range cards {
+		by[c.ID] = c
+	}
+	c := by["a:1"]
+	if c.Column != Waiting || c.Status != engine.StatusWaiting || c.NowDoing != "reviewer: Approve: rm -rf build" {
+		t.Fatalf("waiting subagent should surface on its card: %+v", c)
+	}
+	if c.Files != 2 || c.LinesAdded != 7 || c.LinesRemoved != 1 || c.ToolCalls != 7 {
+		t.Fatalf("roll-up: files=%d +%d -%d tools=%d", c.Files, c.LinesAdded, c.LinesRemoved, c.ToolCalls)
+	}
+	if by["a:2"].Column != Done || by["a:3"].Column != Review {
+		t.Fatalf("idle columns: %s %s", by["a:2"].Column, by["a:3"].Column)
+	}
+}

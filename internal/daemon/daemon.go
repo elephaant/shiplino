@@ -43,6 +43,8 @@ const (
 	defaultReapAfter = 10 * time.Minute
 	// rescanEvery is the safety-net rescan when no file events arrive.
 	rescanEvery = 2 * time.Second
+	// idleCheckEvery is how often quiet running sessions are marked idle.
+	idleCheckEvery = time.Minute
 	// pollFallback is the poll interval when file notifications fail.
 	pollFallback = 500 * time.Millisecond
 	// transcriptRecent bounds which stored sessions' transcripts are
@@ -86,6 +88,7 @@ type Daemon struct {
 	// rebuilt by a warmup pass after a restart.
 	tstate       map[string]map[string]string
 	lastDiscover time.Time
+	lastIdle     time.Time
 	watchErr     string
 	projects     *resolver
 	redactor     *redact.Redactor
@@ -137,6 +140,7 @@ func (d *Daemon) rebuildIfStale(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	eng.MarkIdle(time.Now()) // idleness isn't an event: reapply it
 	sessions := eng.Sessions()
 	for _, s := range sessions {
 		if err := tx.PutSession(ctx, s); err != nil {
@@ -345,6 +349,11 @@ func (d *Daemon) Poll(ctx context.Context) error {
 	if err := d.checkCommits(ctx); err != nil {
 		errs = append(errs, fmt.Errorf("git: %w", err))
 	}
+	if time.Since(d.lastIdle) >= idleCheckEvery {
+		if err := d.checkIdle(ctx, time.Now()); err != nil {
+			errs = append(errs, fmt.Errorf("idle: %w", err))
+		}
+	}
 	if time.Since(d.lastDiscover) >= discoverEvery {
 		d.discover()
 	}
@@ -400,6 +409,34 @@ func (d *Daemon) addTranscript(path, agent string) {
 		return
 	}
 	d.transcripts[path] = agent
+}
+
+// checkIdle marks running sessions that have gone quiet as idle (the
+// agent was likely closed without telling us) and stores them. Called
+// with d.mu held.
+func (d *Daemon) checkIdle(ctx context.Context, now time.Time) error {
+	d.lastIdle = now
+	changed := d.eng.MarkIdle(now)
+	if len(changed) == 0 {
+		return nil
+	}
+	tx, err := d.st.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	for _, s := range changed {
+		if err := tx.PutSession(ctx, s); err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	if d.OnChange != nil {
+		d.OnChange(changed)
+	}
+	return nil
 }
 
 // discover registers transcripts that adapters can find on disk, for

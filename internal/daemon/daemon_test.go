@@ -313,3 +313,24 @@ func TestLock(t *testing.T) {
 	l2.Release()
 	_ = l
 }
+
+func TestIdleSessionsAreMarked(t *testing.T) {
+	e := newEnv(t)
+	var changed []*engine.Session
+	e.d.OnChange = func(l []*engine.Session) { changed = append(changed, l...) }
+	e.hook(`{"session_id":"s9","hook_event_name":"UserPromptSubmit","prompt":"go"}`)
+	e.poll()
+	if s := e.session("claude-code:s9"); s.Status != engine.StatusRunning {
+		t.Fatalf("status %s", s.Status)
+	}
+	changed = nil
+	e.d.mu.Lock()
+	err := e.d.checkIdle(ctx, time.Now().Add(engine.IdleAfter+time.Minute))
+	e.d.mu.Unlock()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s := e.session("claude-code:s9"); s.Status != engine.StatusIdle || len(changed) != 1 {
+		t.Fatalf("after 31m: %s, %d changes", s.Status, len(changed))
+	}
+}
