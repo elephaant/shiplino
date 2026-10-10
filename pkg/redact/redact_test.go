@@ -153,6 +153,7 @@ func TestEventMinimal(t *testing.T) {
 		ev(model.KindWaitingStart, map[string]any{"reason": "permission", "message": "Approve: rm -rf build"}),
 		ev(model.KindToolEnd, map[string]any{"ok": false, "error": "Exit code 1\nsecret output"}),
 		ev(model.KindTurnEnd, map[string]any{"status": "ok", "assistant_summary": "Here is the plan…"}),
+		ev(model.KindGitCommit, map[string]any{"sha": "abc123", "message": "secret plans"}),
 	}
 	for _, e := range cases {
 		Default.Event(e, Minimal)
@@ -177,6 +178,9 @@ func TestEventMinimal(t *testing.T) {
 	}
 	if _, ok := cases[6].Data["assistant_summary"]; ok || cases[6].Data["status"] != "ok" {
 		t.Errorf("turn.end: %v", cases[6].Data)
+	}
+	if _, ok := cases[7].Data["message"]; ok || cases[7].Data["sha"] != "abc123" {
+		t.Errorf("git.commit: %v", cases[7].Data)
 	}
 }
 

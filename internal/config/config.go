@@ -23,6 +23,7 @@ type Config struct {
 	CaptureLevel string    `toml:"capture_level"`
 	Redaction    Redaction `toml:"redaction"`
 	Notify       Notify    `toml:"notify"`
+	Sync         Sync      `toml:"sync"`
 }
 
 // Notify controls desktop notifications. Unset fields use the defaults
@@ -69,6 +70,9 @@ func Load(home string) (Config, error) {
 	}
 	if _, err := redact.New(c.Redaction.ExtraPatterns); err != nil {
 		return c, fmt.Errorf("%s: redaction.extra_patterns: %w", Path(home), err)
+	}
+	if err := validateSync(c.Sync); err != nil {
+		return c, fmt.Errorf("%s: %w", Path(home), err)
 	}
 	return c, nil
 }
@@ -126,6 +130,11 @@ waiting = true      # an agent is waiting on you (after 3s, so quick answers don
 finished = true     # a turn finished...
 min_turn = "30s"    # ...that ran at least this long
 failed = true       # a session failed
+
+` + syncHeader + `enabled = false
+capture_level = "minimal"
+projects = []
+exclude = []
 `
 
 // WriteDefault creates a commented config file if none exists.

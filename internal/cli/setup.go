@@ -34,6 +34,24 @@ type env struct {
 	version     string
 	svcRun      service.Runner                           // nil = real OS commands
 	notifySend  func(context.Context, notify.Note) error // nil = the OS notifier
+	openURL     func(string) error                       // nil = the default browser
+}
+
+// browse opens a URL in the user's browser.
+func (e *env) browse(url string) error {
+	if e.openURL != nil {
+		return e.openURL(url)
+	}
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "darwin":
+		cmd = exec.Command("open", url)
+	case "windows":
+		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", url)
+	default:
+		cmd = exec.Command("xdg-open", url)
+	}
+	return cmd.Start()
 }
 
 func (e *env) send(ctx context.Context, n notify.Note) error {

@@ -4,3 +4,4 @@
 - [Event format](event-format.md): the universal event every adapter produces
 - [Adding an agent adapter](adding-an-adapter.md): contributor guide
 - [How cost is calculated](cost.md): sources, formula, accuracy and limits
+- [Sync protocol](sync-protocol.md): opt-in cloud sync, exactly what is sent and how to audit it

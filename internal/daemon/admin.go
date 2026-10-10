@@ -15,6 +15,7 @@ import (
 	"github.com/elephaant/shiplino/internal/config"
 	"github.com/elephaant/shiplino/internal/notify"
 	"github.com/elephaant/shiplino/internal/spool"
+	cloudsync "github.com/elephaant/shiplino/internal/sync"
 )
 
 // admin backs the settings page (api.Admin).
@@ -25,6 +26,7 @@ type admin struct {
 	version string
 	port    int
 	send    func(context.Context, notify.Note) error
+	sync    *cloudsync.Uploader // nil in tests
 }
 
 // SettingsView is what GET /api/v1/settings returns.
@@ -41,6 +43,7 @@ type SettingsView struct {
 	Notify       NotifyView      `json:"notify"`
 	Agents       []agents.Status `json:"agents"`
 	Health       Health          `json:"health"`
+	Sync         *cloudsync.View `json:"sync,omitempty"`
 }
 
 // NotifyView is the notification part of SettingsView.
@@ -74,6 +77,10 @@ func (a *admin) Settings(ctx context.Context) any {
 	v.Home, v.ConfigPath = tilde(v.Home, userHome), tilde(v.ConfigPath, userHome)
 	for i := range v.Agents {
 		v.Agents[i].HooksPath = tilde(v.Agents[i].HooksPath, userHome)
+	}
+	if a.sync != nil {
+		sv := a.sync.View(ctx)
+		v.Sync = &sv
 	}
 	v.Paused, v.PausedUntil = spool.PausedUntil(a.home, time.Now())
 	for _, f := range []string{"shiplino.db", "shiplino.db-wal"} {

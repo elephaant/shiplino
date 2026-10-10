@@ -189,6 +189,30 @@ export interface Settings {
     paused: boolean;
     watch_error?: string;
   };
+  sync?: SyncState;
+}
+
+/** Cloud sync state. It never contains tokens. */
+export interface SyncState {
+  enabled: boolean;
+  endpoint: string;
+  signed_in: boolean;
+  account?: string;
+  workspace_id?: string;
+  workspace_name?: string;
+  credential_store?: "keychain" | "file";
+  credential_note?: string;
+  capture_level: string;
+  capture_level_capped?: boolean;
+  projects: string[];
+  exclude: string[];
+  last_upload?: string;
+  uploaded: number;
+  backlog: number;
+  last_error?: string;
+  last_error_at?: string;
+  next_retry?: string;
+  needs_login?: boolean;
 }
 
 export interface Overview {
