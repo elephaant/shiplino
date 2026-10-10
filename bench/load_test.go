@@ -13,6 +13,7 @@
 package bench
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"flag"
@@ -131,6 +132,18 @@ func (t *tracker) left() int {
 	return n
 }
 
+// oldest describes one event not seen yet, for failure messages.
+func (t *tracker) oldest() (id string, at time.Time, n int) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	for k, q := range t.pending {
+		if len(q) > 0 {
+			return k, q[0], len(q)
+		}
+	}
+	return "", time.Time{}, 0
+}
+
 func (t *tracker) durations() []time.Duration {
 	t.mu.Lock()
 	defer t.mu.Unlock()
@@ -162,6 +175,25 @@ type rig struct {
 	mu      sync.Mutex
 	commits []time.Duration
 	events  int
+	logs    syncBuffer // the daemon's log, shown when a test fails
+}
+
+// syncBuffer is a bytes.Buffer safe for concurrent writes.
+type syncBuffer struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (b *syncBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.Write(p)
+}
+
+func (b *syncBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.String()
 }
 
 func newRig(t testing.TB, onChange func([]*engine.Session)) *rig {
@@ -172,7 +204,7 @@ func newRig(t testing.TB, onChange func([]*engine.Session)) *rig {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { st.Close() })
-	d, err := daemon.New(context.Background(), r.home, st, nil)
+	d, err := daemon.New(context.Background(), r.home, st, log.New(&r.logs, "", log.Lmicroseconds))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -245,15 +277,16 @@ func (r *rig) get(t testing.TB, path string) []byte {
 	return b
 }
 
-func waitFor(t testing.TB, what string, timeout time.Duration, cond func() bool) {
-	t.Helper()
+// waitFor polls cond until it holds (true) or timeout passes (false).
+func waitFor(timeout time.Duration, cond func() bool) bool {
 	deadline := time.Now().Add(timeout)
 	for !cond() {
 		if time.Now().After(deadline) {
-			t.Fatalf("timed out waiting for %s", what)
+			return false
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
+	return true
 }
 
 func payload(session, cwd, event, extra string) string {
@@ -346,10 +379,26 @@ func TestLoad(t *testing.T) {
 	sent := lines.Load()
 	writeTime := time.Since(start)
 
-	waitFor(t, "the daemon to read every line", 60*time.Second, func() bool { return r.d.Stats().Lines >= sent })
+	if !waitFor(60*time.Second, func() bool { return r.d.Stats().Lines >= sent }) {
+		t.Fatalf("read %d of %d lines; daemon log:\n%s", r.d.Stats().Lines, sent, r.logs.String())
+	}
 	drained := time.Since(start)
-	waitFor(t, "every event to reach OnChange", 10*time.Second, func() bool { return byChange.left() == 0 })
-	waitFor(t, "every event to reach the UI", 10*time.Second, func() bool { return byUI.left() == 0 })
+	explain := func(tr *tracker) {
+		id, at, n := tr.oldest()
+		s, err := r.st.Session(context.Background(), id)
+		var last time.Time
+		if s != nil {
+			last = s.LastEventAt
+		}
+		t.Fatalf("%d events not seen; %s has %d, the first sent at %d, stored last_event_at %d (%v); stats %+v\ndaemon log:\n%s",
+			tr.left(), id, n, at.UnixNano(), last.UnixNano(), err, r.d.Stats(), r.logs.String())
+	}
+	if !waitFor(10*time.Second, func() bool { return byChange.left() == 0 }) {
+		explain(byChange)
+	}
+	if !waitFor(10*time.Second, func() bool { return byUI.left() == 0 }) {
+		explain(byUI)
+	}
 
 	// Correctness: nothing lost, nothing counted twice.
 	st := r.d.Stats()
