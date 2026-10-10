@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/elephaant/shiplino/pkg/adapters/internal/configfile"
@@ -48,6 +49,45 @@ func Detect(ctx context.Context, home string) Detection {
 		}
 	}
 	return d
+}
+
+// NoteJetBrains is shown after a fresh install for the JetBrains plugin.
+const NoteJetBrains = "Windsurf (JetBrains): restart the IDE so the Windsurf plugin loads the new hooks."
+
+// DetectJetBrains looks for the Windsurf JetBrains plugin, whose hooks
+// live in ~/.codeium/hooks.json. It counts as found when that file exists
+// or a JetBrains IDE has a Windsurf/Codeium plugin folder. ~/.codeium on
+// its own isn't enough: the Windsurf editor creates it too.
+func DetectJetBrains(home string) Detection {
+	d := Detection{HooksPath: filepath.Join(home, ".codeium", "hooks.json")}
+	if _, err := os.Stat(d.HooksPath); err == nil {
+		d.Installed = true
+		return d
+	}
+	for _, root := range jetBrainsRoots(home) {
+		// Linux keeps plugins directly in the product folder, macOS and
+		// Windows in its plugins/ subfolder.
+		for _, pat := range []string{filepath.Join(root, "*", "*"), filepath.Join(root, "*", "plugins", "*")} {
+			dirs, _ := filepath.Glob(pat)
+			for _, p := range dirs {
+				name := strings.ToLower(filepath.Base(p))
+				if strings.Contains(name, "codeium") || strings.Contains(name, "windsurf") {
+					d.Installed = true
+					return d
+				}
+			}
+		}
+	}
+	return d
+}
+
+// jetBrainsRoots are where JetBrains IDEs keep per-product folders.
+func jetBrainsRoots(home string) []string {
+	return []string{
+		filepath.Join(home, ".local", "share", "JetBrains"),                // Linux
+		filepath.Join(home, "Library", "Application Support", "JetBrains"), // macOS
+		filepath.Join(home, "AppData", "Roaming", "JetBrains"),             // Windows
+	}
 }
 
 // Install registers `"<bin>" hook --agent windsurf` for Events in the

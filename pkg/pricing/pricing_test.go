@@ -7,6 +7,7 @@ import (
 	"math"
 	"strings"
 	"testing"
+	"time"
 )
 
 func near(a, b float64) bool { return math.Abs(a-b) < 1e-9 }
@@ -110,39 +111,105 @@ func TestBundledTableIsSane(t *testing.T) {
 			t.Errorf("duplicate id %s", m.ID)
 		}
 		seen[m.ID] = true
-		if m.Output <= m.Input || m.CacheRead >= m.Input {
-			t.Errorf("%s: output must cost more than input, cache reads less: %+v", m.ID, m.Rates)
-		}
-		switch {
-		case strings.HasPrefix(m.ID, "claude-"):
-			// Anthropic: 5m writes 1.25x input, 1h writes 2x input.
-			if !near(m.CacheWrite5m, m.Input*1.25) || !near(m.CacheWrite1h, m.Input*2) {
-				t.Errorf("%s: cache write rates look wrong: %+v", m.ID, m.Rates)
+		checkRates(t, m.ID, "", m.Rates, m.LongContext)
+		for _, d := range m.Schedule {
+			checkRates(t, m.ID, d.From, d.Rates, d.LongContext)
+			if d.Input < m.Input {
+				t.Errorf("%s from %s: a price cut? check the source", m.ID, d.From)
 			}
-		case strings.HasPrefix(m.ID, "gpt-"):
-			// OpenAI: cached input is a tenth of input; writes (if billed)
-			// cost more than input; long context costs more.
-			if !near(m.CacheRead, m.Input/10) || m.CacheWrite5m != 0 && m.CacheWrite5m <= m.Input {
-				t.Errorf("%s: cache rates look wrong: %+v", m.ID, m.Rates)
-			}
-			if lc := m.LongContext; lc == nil && m.ID != "gpt-5.3-codex" || lc != nil && (lc.OverPromptTokens != 272000 || lc.Input <= m.Input) {
-				t.Errorf("%s: long context: %+v", m.ID, lc)
-			}
-		case strings.HasPrefix(m.ID, "gemini-"):
-			// Google: cached input is a tenth of input; long context is a
-			// prompt over 200K tokens and costs more.
-			if !near(m.CacheRead, m.Input/10) || m.CacheWrite5m != 0 {
-				t.Errorf("%s: cache rates look wrong: %+v", m.ID, m.Rates)
-			}
-			if lc := m.LongContext; lc != nil && (lc.OverPromptTokens != 200000 || lc.Input <= m.Input || lc.Output <= m.Output) {
-				t.Errorf("%s: long context: %+v", m.ID, lc)
-			}
-		default:
-			t.Errorf("%s: unknown provider; add its structure check", m.ID)
 		}
 	}
 	if _, err := Parse([]byte(`{"models":[{"id":"x"}]}`)); err == nil {
 		t.Error("table with missing prices accepted")
+	}
+}
+
+// checkRates applies each provider's price structure to one set of rates
+// (a model's own, or a dated entry's).
+func checkRates(t *testing.T, id, from string, r Rates, lc *LongContext) {
+	t.Helper()
+	name := id
+	if from != "" {
+		name += " from " + from
+	}
+	if r.Output <= r.Input || r.CacheRead >= r.Input {
+		t.Errorf("%s: output must cost more than input, cache reads less: %+v", name, r)
+	}
+	switch {
+	case strings.HasPrefix(id, "claude-"):
+		// Anthropic: 5m writes 1.25x input, 1h writes 2x input.
+		if !near(r.CacheWrite5m, r.Input*1.25) || !near(r.CacheWrite1h, r.Input*2) {
+			t.Errorf("%s: cache write rates look wrong: %+v", name, r)
+		}
+	case strings.HasPrefix(id, "gpt-"):
+		// OpenAI: cached input is a tenth of input; writes (if billed)
+		// cost more than input; long context costs more.
+		if !near(r.CacheRead, r.Input/10) || r.CacheWrite5m != 0 && r.CacheWrite5m <= r.Input {
+			t.Errorf("%s: cache rates look wrong: %+v", name, r)
+		}
+		if lc == nil && id != "gpt-5.3-codex" || lc != nil && (lc.OverPromptTokens != 272000 || lc.Input <= r.Input) {
+			t.Errorf("%s: long context: %+v", name, lc)
+		}
+	case strings.HasPrefix(id, "gemini-"):
+		// Google: cached input is a tenth of input; long context is a
+		// prompt over 200K tokens and costs more.
+		if !near(r.CacheRead, r.Input/10) || r.CacheWrite5m != 0 {
+			t.Errorf("%s: cache rates look wrong: %+v", name, r)
+		}
+		if lc != nil && (lc.OverPromptTokens != 200000 || lc.Input <= r.Input || lc.Output <= r.Output) {
+			t.Errorf("%s: long context: %+v", name, lc)
+		}
+	default:
+		t.Errorf("%s: unknown provider; add its structure check", name)
+	}
+}
+
+func TestDatedPrices(t *testing.T) {
+	// gemini-3.8-flash: $0.75 in / $3.75 out / $0.075 cached through
+	// 2026-12-31, then $1.50 / $7.50 / $0.15.
+	u := Usage{Input: 1_000_000, Output: 1_000_000, CacheRead: 1_000_000}
+	for at, want := range map[string]float64{
+		"2026-10-10T12:00:00Z":      4.575,
+		"2026-12-31T23:59:59Z":      4.575,
+		"2027-01-01T00:00:00Z":      9.15,
+		"2027-06-01T00:00:00Z":      9.15,
+		"2026-12-31T20:00:00-05:00": 9.15, // 01:00 UTC on the 1st
+	} {
+		u.At, _ = time.Parse(time.RFC3339, at)
+		if got, ok := Default().Cost("gemini-3.8-flash", u); !ok || !near(got, want) {
+			t.Errorf("at %s: %v, want %v", at, got, want)
+		}
+	}
+	// No time means now.
+	u.At = time.Time{}
+	now := u
+	now.At = time.Now()
+	want, _ := Default().Cost("gemini-3.8-flash", now)
+	if got, _ := Default().Cost("gemini-3.8-flash", u); !near(got, want) {
+		t.Errorf("zero At: %v, want %v", got, want)
+	}
+
+	tab, err := Parse([]byte(`{"models":[{"id":"m","input":1,"output":2,"schedule":[
+		{"from":"2027-01-01","input":2,"output":4},{"from":"2028-01-01","input":3,"output":6}]}]}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for at, want := range map[string]float64{"2026-06-01": 3, "2027-06-01": 6, "2029-01-01": 9} {
+		ts, _ := time.Parse(time.DateOnly, at)
+		if got, _ := tab.Cost("m", Usage{Input: 1e6, Output: 1e6, At: ts}); !near(got, want) {
+			t.Errorf("two steps at %s: %v, want %v", at, got, want)
+		}
+	}
+	for name, bad := range map[string]string{
+		"bad date":     `{"models":[{"id":"m","input":1,"output":2,"schedule":[{"from":"Jan 2027","input":2,"output":4}]}]}`,
+		"no prices":    `{"models":[{"id":"m","input":1,"output":2,"schedule":[{"from":"2027-01-01"}]}]}`,
+		"out of order": `{"models":[{"id":"m","input":1,"output":2,"schedule":[{"from":"2028-01-01","input":2,"output":4},{"from":"2027-01-01","input":3,"output":6}]}]}`,
+		"lost long context": `{"models":[{"id":"m","input":1,"output":2,"long_context":{"over_prompt_tokens":10,"input":2,"output":4},
+			"schedule":[{"from":"2027-01-01","input":2,"output":4}]}]}`,
+	} {
+		if _, err := Parse([]byte(bad)); err == nil {
+			t.Errorf("%s: accepted", name)
+		}
 	}
 }
 

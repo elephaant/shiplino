@@ -2,7 +2,7 @@
   "checked": "2026-10-10",
   "source": "https://platform.claude.com/docs/en/about-claude/pricing",
   "unit": "USD per million tokens, standard (global) pricing",
-  "notes": "fast_multiplier: fast-mode rates are this multiple of standard, with cache multipliers applied on top. us_geo_multiplier: applies to every token category when inference_geo is \"us\" (Claude 4.6 and later). OpenAI (checked 2026-10-10): input_tokens include cached tokens, so callers pass uncached input separately; long context is a prompt over 272K tokens; fast mode (priority) and flex/batch are multiples of standard. Gemini (checked 2026-10-10, page last updated 2026-10-09): paid-tier Standard text rates; thinking tokens bill as output; input includes cached tokens, so callers pass uncached input separately; long context is a prompt over 200K tokens; context-cache storage (per hour) isn't counted. Google lists higher Gemini 3.6/3.8 Flash rates from 2027-01-01.",
+  "notes": "fast_multiplier: fast-mode rates are this multiple of standard, with cache multipliers applied on top. us_geo_multiplier: applies to every token category when inference_geo is \"us\" (Claude 4.6 and later). OpenAI (checked 2026-10-10): input_tokens include cached tokens, so callers pass uncached input separately; long context is a prompt over 272K tokens; fast mode (priority) and flex/batch are multiples of standard. Gemini (checked 2026-10-10, page last updated 2026-10-09): paid-tier Standard text rates; thinking tokens bill as output; input includes cached tokens, so callers pass uncached input separately; long context is a prompt over 200K tokens; context-cache storage (per hour) isn't counted. schedule: announced price changes; each entry's rates apply from its date (00:00 UTC) on, the model's own rates before. Gemini 3.6/3.8 Flash rates from 2027-01-01 checked 2026-10-10 on the Gemini API pricing page (last updated 2026-10-09).",
   "fees": {
     "web_search_per_1k": 10
   },
@@ -248,13 +248,29 @@
       "id": "gemini-3.8-flash",
       "input": 0.75,
       "output": 3.75,
-      "cache_read": 0.075
+      "cache_read": 0.075,
+      "schedule": [
+        {
+          "from": "2027-01-01",
+          "input": 1.5,
+          "output": 7.5,
+          "cache_read": 0.15
+        }
+      ]
     },
     {
       "id": "gemini-3.6-flash",
       "input": 0.75,
       "output": 3.75,
-      "cache_read": 0.075
+      "cache_read": 0.075,
+      "schedule": [
+        {
+          "from": "2027-01-01",
+          "input": 1.5,
+          "output": 7.5,
+          "cache_read": 0.15
+        }
+      ]
     },
     {
       "id": "gemini-3.5-flash-lite",

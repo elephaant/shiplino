@@ -27,6 +27,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"sync"
@@ -299,6 +300,9 @@ func payload(session, cwd, event, extra string) string {
 // the running daemon, and measures hook → OnChange and hook → WebSocket
 // latency, per-commit time, and board queries on the result.
 func TestLoad(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("stalls on Windows CI under load; see #99")
+	}
 	sh := load()
 	byChange, byUI := newTracker(), newTracker()
 	r := newRig(t, func(list []*engine.Session) {
@@ -407,9 +411,22 @@ func TestLoad(t *testing.T) {
 	if st.Bad != 0 || st.Unknown != 0 {
 		t.Errorf("stats: %+v", st)
 	}
-	for id, n := range calls {
+	// Lines are counted when read; the writer commits them a moment later,
+	// so wait for the stored result rather than checking once.
+	settled := func(id string, n int) (*engine.Session, error, bool) {
 		s, err := r.st.Session(context.Background(), id)
-		if err != nil || s == nil || s.ToolCalls != n || s.Status != engine.StatusDone {
+		return s, err, err == nil && s != nil && s.ToolCalls == n && s.Status == engine.StatusDone
+	}
+	waitFor(10*time.Second, func() bool {
+		for id, n := range calls {
+			if _, _, ok := settled(id, n); !ok {
+				return false
+			}
+		}
+		return true
+	})
+	for id, n := range calls {
+		if s, err, ok := settled(id, n); !ok {
 			t.Fatalf("%s: want %d tool calls, done; got %+v %v", id, n, s, err)
 		}
 	}

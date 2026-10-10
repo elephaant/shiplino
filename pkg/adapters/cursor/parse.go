@@ -292,7 +292,7 @@ func (b builder) usage(raw []byte) []model.Event {
 	}
 	data := map[string]any{"model": b.p.Model, "message_id": b.p.GenerationID, "input_tokens": in, "output_tokens": out,
 		"cache_read_tokens": cr, "cache_write_tokens": cw}
-	if cost, ok := pricing.Default().Cost(b.p.Model, pricing.Usage{Input: in, Output: out, CacheRead: cr, CacheWrite5m: cw}); ok {
+	if cost, ok := pricing.Default().Cost(b.p.Model, pricing.Usage{Input: in, Output: out, CacheRead: cr, CacheWrite5m: cw, At: b.meta.ReceivedAt}); ok {
 		data["cost_usd"], data["cost_source"] = cost, "computed"
 	} else {
 		data["cost_source"] = "unpriced"

@@ -310,7 +310,7 @@ export default function SettingsPage() {
               );
             }
             return (
-              <div key={a.id} className="flex flex-col gap-1 border-b py-3 last:border-0">
+              <div key={a.name} className="flex flex-col gap-1 border-b py-3 last:border-0">
                 <div className="flex items-center gap-2 text-sm">
                   <AgentDot agent={a.id} />
                   <span className="font-medium">{a.name}</span>
