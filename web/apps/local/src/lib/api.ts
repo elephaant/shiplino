@@ -207,8 +207,8 @@ export interface SyncState {
   workspace_name?: string;
   credential_store?: "keychain" | "file";
   credential_note?: string;
-  capture_level: string;
-  capture_level_capped?: boolean;
+  send_titles: boolean;
+  ignored?: string[];
   projects: string[];
   exclude: string[];
   last_upload?: string;

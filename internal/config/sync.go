@@ -11,8 +11,6 @@ import (
 	"strings"
 
 	"github.com/pelletier/go-toml/v2"
-
-	"github.com/elephaant/shiplino/pkg/redact"
 )
 
 // DefaultSyncEndpoint is the hosted sync service. Override it with
@@ -25,17 +23,33 @@ type Sync struct {
 	Enabled bool `toml:"enabled"`
 	// Endpoint is the sync service base URL ("" = DefaultSyncEndpoint).
 	Endpoint string `toml:"endpoint,omitempty"`
-	// CaptureLevel is what is sent ("" = minimal). It's capped at the
-	// local capture_level, since nothing more was ever stored.
-	CaptureLevel string `toml:"capture_level"`
+	// CaptureLevel is no longer used: sync sends metadata only, whatever
+	// it says. Kept so older config files still load.
+	CaptureLevel string `toml:"capture_level,omitempty"`
 	// Projects allows project ids or globs ("github.com/acme/*", "*").
 	// Empty means nothing syncs.
 	Projects []string `toml:"projects"`
 	// Exclude removes projects (ids or globs) the allow list matched.
 	Exclude []string `toml:"exclude"`
-	// SendUser sends the OS user name recorded with each event. Off by
-	// default, and never sent at the minimal level.
-	SendUser bool `toml:"send_user"`
+	// SendTitles also sends session titles (redacted, 120 characters).
+	// Off by default: a title can say what the work is about.
+	SendTitles bool `toml:"send_titles"`
+	// SendUser is no longer used: the OS user name is never sent. Kept so
+	// older config files still load.
+	SendUser bool `toml:"send_user,omitempty"`
+}
+
+// SyncIgnored lists [sync] settings that no longer have any effect, for
+// `sync status` and doctor.
+func (c Config) SyncIgnored() []string {
+	var out []string
+	if l := c.Sync.CaptureLevel; l != "" && l != "minimal" {
+		out = append(out, fmt.Sprintf("capture_level = %q is ignored: sync sends metadata only", l))
+	}
+	if c.Sync.SendUser {
+		out = append(out, "send_user is ignored: your OS user name is never sent")
+	}
+	return out
 }
 
 // SyncEndpoint returns the sync base URL without a trailing slash.
@@ -46,27 +60,7 @@ func (c Config) SyncEndpoint() string {
 	return strings.TrimRight(c.Sync.Endpoint, "/")
 }
 
-var levelRank = map[redact.Level]int{redact.Minimal: 0, redact.Standard: 1, redact.Full: 2}
-
-// SyncLevel returns the capture level applied before sending, and whether
-// the configured one was lowered to the local level.
-func (c Config) SyncLevel() (redact.Level, bool) {
-	l := redact.Minimal
-	if c.Sync.CaptureLevel != "" {
-		l, _ = redact.ParseLevel(c.Sync.CaptureLevel)
-	}
-	if local := c.Level(); levelRank[l] > levelRank[local] {
-		return local, true
-	}
-	return l, false
-}
-
 func validateSync(s Sync) error {
-	if s.CaptureLevel != "" {
-		if _, err := redact.ParseLevel(s.CaptureLevel); err != nil {
-			return fmt.Errorf("sync.capture_level: %w", err)
-		}
-	}
 	if s.Endpoint != "" {
 		if err := CheckEndpoint(s.Endpoint); err != nil {
 			return fmt.Errorf("sync.endpoint: %w", err)
@@ -100,9 +94,9 @@ const syncHeader = `[sync]
 # rewritten by ` + "`shiplino sync login|logout|allow|deny`" + `.
 # Nothing is sent until a project is allowed: projects lists project ids or
 # globs ("github.com/acme/*", "*" for everything); exclude removes matches.
-# capture_level (minimal by default) can't exceed the local capture_level.
-# At minimal, file paths are sent relative to the project root.
-# send_user also sends your OS user name (never at minimal).
+# Only metadata is sent: never prompts, replies, commands, tool output,
+# diffs or file contents, and file paths are relative to the project.
+# send_titles also sends session titles (off by default).
 # Sync settings apply within seconds, without a daemon restart.
 # Exactly what is sent: docs/sync-protocol.md, or ` + "`shiplino sync status --dry-run`" + `.
 `
@@ -123,9 +117,6 @@ func UpdateSync(home string, change func(*Sync)) error {
 		return err
 	}
 	change(&c.Sync)
-	if c.Sync.CaptureLevel == "" {
-		c.Sync.CaptureLevel = string(redact.Minimal)
-	}
 	if c.Sync.Projects == nil {
 		c.Sync.Projects = []string{}
 	}

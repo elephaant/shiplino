@@ -381,28 +381,26 @@ func TestUploadsOnlyAllowedProjectsStrippedAndRedacted(t *testing.T) {
 		t.Fatalf("state: %+v", st)
 	}
 
-	// At standard, prompts go, redacted again (also by the user's own rules).
-	fx2 := newFixture(t, "capture_level = \"full\"\n[redaction]\nextra_patterns = [\"ACME-[0-9]+\"]\n"+strings.Replace(syncOn, "[sync]", "[sync]\ncapture_level = \"standard\"", 1))
-	fx2.add(t, "github.com/acme/api", model.KindTurnStart, map[string]any{"prompt": "fix ACME-42 with " + gh + " " + strings.Repeat("x", 3000)})
+	// An old capture_level = "standard" is ignored: content never goes.
+	fx2 := newFixture(t, "capture_level = \"full\"\n"+strings.Replace(syncOn, "[sync]", "[sync]\ncapture_level = \"standard\"\nsend_user = true", 1))
+	fx2.add(t, "github.com/acme/api", model.KindTurnStart, map[string]any{"prompt": "fix the login bug", "prompt_chars": 17})
 	fx2.u.Step(ctx)
 	got = fx2.f.received()
 	if len(got) != 1 {
-		t.Fatalf("standard: %d events", len(got))
+		t.Fatalf("legacy level: %d events", len(got))
 	}
-	p := got[0]["data"].(map[string]any)["prompt"].(string)
-	if strings.Contains(p, gh) || strings.Contains(p, "ACME-42") || !strings.Contains(p, "«redacted:github_token»") || len([]rune(p)) > 2100 {
-		t.Fatalf("standard prompt not redacted/truncated: %.200s… (%d chars)", p, len([]rune(p)))
+	if d := got[0]["data"].(map[string]any); d["prompt"] != nil || d["prompt_chars"] != float64(17) || got[0]["user"] != nil {
+		t.Fatalf("legacy level sent content: %v", got[0])
 	}
 }
 
-func TestSyncLevelCappedAtLocalLevel(t *testing.T) {
-	c := config.Config{CaptureLevel: "minimal", Sync: config.Sync{CaptureLevel: "full"}}
-	if l, capped := c.SyncLevel(); l != "minimal" || !capped {
-		t.Fatalf("got %s capped=%v", l, capped)
+func TestSyncIgnoredSettings(t *testing.T) {
+	c := config.Config{Sync: config.Sync{CaptureLevel: "full", SendUser: true}}
+	if n := c.SyncIgnored(); len(n) != 2 {
+		t.Fatalf("notes: %v", n)
 	}
-	c = config.Config{Sync: config.Sync{}}
-	if l, capped := c.SyncLevel(); l != "minimal" || capped {
-		t.Fatalf("default: %s %v", l, capped)
+	if n := (config.Config{Sync: config.Sync{CaptureLevel: "minimal"}}).SyncIgnored(); len(n) != 0 {
+		t.Fatalf("minimal noted: %v", n)
 	}
 }
 
@@ -666,13 +664,16 @@ func TestResumesAfterCrashWithoutDuplicates(t *testing.T) {
 }
 
 func TestPrepareStopsAtBatchLimits(t *testing.T) {
-	scope := ScopeFor(config.Config{CaptureLevel: "full", Sync: config.Sync{CaptureLevel: "full", Projects: []string{"*"}}})
+	scope := ScopeFor(config.Config{CaptureLevel: "full", Sync: config.Sync{Projects: []string{"*"}}})
 	defer func(n int) { batchBytes = n }(batchBytes)
 	batchBytes = 64 << 10
-	big := strings.Repeat("y ", 4<<10) // 8 KiB per event, kept at full
+	var big []any // ~8 KiB of file paths per event
+	for range 16 {
+		big = append(big, strings.Repeat("y", 500))
+	}
 	var rows []store.SyncRow
 	for i := range 12 {
-		e := model.Event{ID: fmt.Sprint(i), V: 1, Kind: model.KindTurnStart, Data: map[string]any{"prompt": big}}
+		e := model.Event{ID: fmt.Sprint(i), V: 1, Kind: model.KindFileEdit, Data: map[string]any{"files": big}}
 		b, _ := json.Marshal(e)
 		rows = append(rows, store.SyncRow{RowID: int64(i + 1), Body: b, ProjectID: "p"})
 	}
@@ -782,12 +783,12 @@ func TestDescribeAndDryRun(t *testing.T) {
 	}
 }
 
-func TestMinimalSendsProjectRelativePaths(t *testing.T) {
+func TestSendsProjectRelativePaths(t *testing.T) {
 	ev := func(p *model.Project, data map[string]any) model.Event {
 		return model.Event{ID: "e1", V: 1, Kind: model.KindToolStart, User: "dev", Project: p, Data: data}
 	}
-	scope := func(level string, sendUser bool) Scope {
-		return ScopeFor(config.Config{CaptureLevel: "full", Sync: config.Sync{CaptureLevel: level, SendUser: sendUser, Projects: []string{"*"}}})
+	scope := func(_ string, sendUser bool) Scope {
+		return ScopeFor(config.Config{CaptureLevel: "full", Sync: config.Sync{SendUser: sendUser, Projects: []string{"*"}}})
 	}
 	repo := &model.Project{ID: "example.com/acme/api", CWD: "/home/dev/api/sub", RepoRoot: "/home/dev/api", Remote: "example.com/acme/api", Branch: "main", Head: "abc123"}
 	data := func() map[string]any {
@@ -801,7 +802,7 @@ func TestMinimalSendsProjectRelativePaths(t *testing.T) {
 
 	got := scope("minimal", true).Outgoing(ev(repo, data()))
 	if got.User != "" {
-		t.Errorf("user sent at minimal: %q", got.User)
+		t.Errorf("user sent: %q", got.User)
 	}
 	if p := got.Project; p.CWD != "" || p.RepoRoot != "" || p.ID != repo.ID || p.Branch != "main" || p.Remote != repo.Remote || p.Head != "abc123" {
 		t.Errorf("project: %+v", p)
@@ -810,8 +811,10 @@ func TestMinimalSendsProjectRelativePaths(t *testing.T) {
 		t.Fatal("the stored event was changed")
 	}
 	want := map[string]any{
-		"input_summary": "src/a.go", "path": "src/a.go", "file_path": "…/hosts", "cwd": ".",
-		"transcript_path": "…/s1.jsonl", "lines_added": 3,
+		"input_summary": "src/a.go", "path": "src/a.go", "file_path": "…/hosts", "lines_added": 3,
+	}
+	if got.Data["cwd"] != nil || got.Data["transcript_path"] != nil {
+		t.Errorf("local-only fields sent: %v", got.Data)
 	}
 	for k, v := range want {
 		if got.Data[k] != v {
@@ -833,18 +836,17 @@ func TestMinimalSendsProjectRelativePaths(t *testing.T) {
 		t.Errorf("dir project: %v %+v", got.Data, got.Project)
 	}
 
-	// Standard keeps paths; the user name goes only with send_user.
-	got = scope("standard", false).Outgoing(ev(repo, data()))
-	if got.User != "" || got.Data["path"] != "/home/dev/api/src/a.go" || got.Project.CWD != repo.CWD {
-		t.Errorf("standard: user %q, %v, %+v", got.User, got.Data["path"], got.Project)
+	// Titles go only with send_titles, redacted and capped.
+	start := func() model.Event {
+		return model.Event{ID: "e2", V: 1, Kind: model.KindSessionStart, Project: repo,
+			Data: map[string]any{"title": "Fix login " + strings.Repeat("x", 200), "title_source": "prompt", "prompt": "fix login"}}
 	}
-	if got = scope("standard", true).Outgoing(ev(repo, data())); got.User != "dev" {
-		t.Errorf("send_user ignored: %q", got.User)
+	if got = scope("", false).Outgoing(start()); got.Data["title"] != nil || got.Data["prompt"] != nil {
+		t.Errorf("title sent without send_titles: %v", got.Data)
 	}
-}
-
-func TestRelPathWindows(t *testing.T) {
-	if got := relPath(`C:\Users\dev\api`, `D:\other\file.go`); got != "…/file.go" {
-		t.Errorf("got %q", got)
+	s := ScopeFor(config.Config{CaptureLevel: "full", Sync: config.Sync{SendTitles: true, Projects: []string{"*"}}})
+	got = s.Outgoing(start())
+	if title, _ := got.Data["title"].(string); !strings.HasPrefix(title, "Fix login") || len([]rune(title)) > 121 || got.Data["title_source"] != "prompt" || got.Data["prompt"] != nil {
+		t.Errorf("send_titles: %v", got.Data)
 	}
 }

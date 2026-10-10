@@ -29,50 +29,63 @@ shiplino sync logout                   # delete the credentials and turn sync of
 [sync]
 enabled = false                         # set by `sync login` / `sync logout`
 endpoint = "https://api.shiplino.com"   # optional; https only (plain http works for localhost)
-capture_level = "minimal"               # minimal (default), standard or full
 projects = []                           # allow list: project ids or globs; empty = nothing is sent
 exclude = []                            # project ids or globs removed from the allow list
-send_user = false                       # also send your OS user name (standard and full only)
+send_titles = false                     # also send session titles (redacted, 120 characters)
 ```
 
 - **Project ids** are the ones the board shows: `github.com/acme/api` for a repo with a remote, `local:/path/to/repo` for a repo without one, `dir:/path` for other folders, and `unsorted`. In globs, `*` matches anything (including `/`) and `?` one character: `github.com/acme/*` allows every repo of that owner, and `*` allows everything, including events with no known project.
-- **`send_user`** sends the OS user name recorded with each event. It's off by default and never applies at `minimal`.
-- **`capture_level`** can't be higher than the local `capture_level`: Shiplino never stored more than that. A higher setting is lowered, and `shiplino sync status` says so.
+- **`send_titles`** also sends session titles. They're off by default because a title can say what the work is about. The service drops titles too unless the workspace allows them.
+- Older settings `capture_level` and `send_user` are ignored (sync is metadata only, and the OS user name is never sent); `shiplino sync status` says so.
 - When you allow more projects, the client reads your history again from the start, so the new projects' past sessions are uploaded too. The server ignores events it already has.
 
 ## What is sent
 
-Events in the [universal event format](event-format.md), one JSON object per event. Before each event is sent, the client:
+**Metadata only. Conversations never leave your machine.** Prompts, the agent's replies, shell commands, tool input and output, error text, diffs, commit messages and file contents are never sent, at any setting. Your full history stays in your local Shiplino and in the agents' own files.
+
+Events go in the [universal event format](event-format.md), one JSON object per event. Before each event is sent, the client:
 
 1. drops it unless its project is allowed and not excluded (the project is the event's own, or its session's),
-2. applies the **sync** capture level (the same rules as the local capture levels, below),
-3. runs the redaction rules again (built-in rules plus your `[redaction] extra_patterns`), so rules added after an event was recorded still apply,
-4. removes `raw` (a pointer into local files) and, unless `send_user = true` (never at `minimal`), the OS `user` name,
-5. at `minimal`, makes local paths project-relative (below).
+2. makes local paths project-relative (below) and drops the project's local folders (`cwd`, `repo_root`),
+3. keeps only the **metadata fields** listed below and drops every other `data` field, including fields added in later versions until they're reviewed,
+4. checks values: fields other than paths, the waiting text and a pull request URL must be a short token (letters, digits and `_.:/@+-`, up to 128 characters) or they're dropped, so free text can't travel in a field like `status`; a URL must be a plain `https://host/path` with no query,
+5. runs the redaction rules again (built-in rules plus your `[redaction] extra_patterns`) on what's left and on the envelope ids, and caps each string at 512 characters,
+6. replaces `dedup_key` with a hash of it (keys can contain a path or a title fingerprint), reduces `project.remote` to `host/owner/repo` (no credentials), and keeps `agent.version`, `agent.surface`, `project.branch` and `project.head` only when they're tokens,
+7. removes `raw` (a pointer into local files) and the OS `user` name.
 
-| Capture level | Event fields sent |
-|---------------|-------------------|
-| `minimal` (default) | `id`, `v`, `ts`, `received_at`, `kind`, `agent`, `collector`, `machine_id`, `session_id`, `actor_id`, `parent_actor`, `actor_type`, `turn_id`, `project` (`id`, `remote`, `branch`, `head`; no `cwd` or `repo_root`), `dedup_key`, and the `data` fields that aren't content: tool names, project-relative file paths, line counts, exit codes, durations, statuses, models, token counts and cost, git SHAs, branches and PR numbers. A waiting event's message becomes a generic "Waiting for your approval". Never `user`. |
-| `standard` | Everything `minimal` sends, plus `project.cwd` and `project.repo_root`, file paths as recorded (absolute), and prompts (truncated to 2,000 characters), shell commands, session titles, short tool summaries, the agent's final message (500 characters), tool errors (500 characters) and commit messages, all redacted. `user` only with `send_user = true`. |
-| `full` | Everything stored locally at `full`, including file edit diffs (`patch`), still redacted. `user` only with `send_user = true`. |
+The sync service applies the same filter again when it receives events, so an older or modified client can't make it store more.
 
-**Paths at `minimal`.** The data fields `path`, `file_path`, `cwd`, `transcript_path`, `files[]` and a file tool's `input_summary` are made relative to the event's project root. That root is `project.repo_root`, else the folder in a `local:` or `dir:` project id, else the working directory. For example, `/home/alex/code/api/src/auth.go` becomes `src/auth.go` and the root itself becomes `.`. A path outside the project keeps only its base name with a `…/` prefix: `/home/alex/.agent/sessions/s1.jsonl` becomes `…/s1.jsonl`. Paths that were already relative are left as they are. The project id itself is sent as it is, and for repos without a remote (`local:…`) and plain folders (`dir:…`) that id contains the folder's absolute path.
+| Sent | Fields |
+|------|--------|
+| Envelope | `id`, `v`, `ts`, `received_at`, `kind`, `agent`, `collector`, `machine_id`, `session_id`, `actor_id`, `parent_actor`, `actor_type`, `turn_id`, `dedup_key`, `project` (`id`, `remote`, `branch`, `head`; no local folders) |
+| Tools, agents and models | `tool`, `tool_raw`, `tool_call_id`, `agent_type`, `agent_id`, `attribution`, `child_session_id`, `model`, `speed`, `inference_geo`, `message_id`, `request_id`, `agent_version`, `wrapped`, `card_id` |
+| Tokens and cost | `input_tokens`, `output_tokens`, `cache_read_tokens`, `cache_write_tokens`, `cache_write_1h_tokens`, `reasoning_tokens`, `web_searches`, `tokens`, `tokens_rounded`, `tokens_source`, `prompt_chars`, `cost_usd`, `cost_source`, `total_cost_usd`, `message_cost_usd`, `report`, `process`, `correction`, `model_usage` (numbers only) |
+| Outcomes and timing | `ok`, `exit_code`, `duration_ms`, `status`, `reason`, `signal`, `interrupted`, `stop_reason`, `recoverable`, `permission_mode`, `source`, `trigger` |
+| Files | `path`, `file_path`, `files`, `file_paths`, `paths` (project-relative), `lines_added`, `lines_removed`, `lines_source`, `files_changed`, `patch_omitted`, and a file tool's `input_summary` (its path) |
+| Git | `sha`, `branch`, `to`, `number`, `state`, `action`, `head`, and a pull request's `url` |
+| Plan progress | `plan_total`, `plan_done` (counts, not the items) |
+| Waiting | `message`, replaced by a generic text such as "Waiting for your approval" |
+| Titles | `title`, `title_source` of session events, only with `send_titles = true` |
+
+The list is `syncKeys` in [`pkg/redact/sync.go`](../pkg/redact/sync.go).
+
+**Paths.** The data fields `path`, `file_path`, the lists `files`, `file_paths` and `paths`, and a file tool's `input_summary` (each path, when it lists several) are made relative to the event's project root. That root is `project.repo_root`, else the folder in a `local:` or `dir:` project id, else the working directory. For example, `/home/alex/code/api/src/auth.go` becomes `src/auth.go` and the root itself becomes `.`. A path outside the project keeps only its base name with a `…/` prefix: `/home/alex/.ssh/config` becomes `…/config`. Paths that were already relative are left as they are. The project id itself is sent as it is, and for repos without a remote (`local:…`) and plain folders (`dir:…`) that id contains the folder's absolute path.
 
 The sign-in request carries the hostname as `device_name`. Each upload also carries a `device_id` (a random id created once and kept in `~/.shiplino/device_id`) and a `device_name` (the computer's hostname).
 
 ### Never sent
 
+- Prompts, the agent's replies and summaries, shell commands, tool input and output, error text, diffs, commit messages, notification text, todo item text and file contents.
+- Session titles, unless you set `send_titles = true` and the workspace allows them.
+- Your OS user name, git author names and absolute local paths other than the project id.
 - Anything from a project that isn't allowed, or that's excluded.
 - Anything while sync is off, signed out or paused by an error that needs you to sign in again.
-- Secrets that the redaction rules recognize (they're replaced by `«redacted:<kind>»` locally and again before sending).
-- File contents. Shiplino never stores them, only paths.
-- At `minimal`: absolute local paths other than the project id (see above), and your OS user name.
 - Raw hook payloads and transcripts, and the `raw` pointer to them.
 - Your local API token, the Settings page cookie, and the sync tokens themselves (except as the `Authorization` header to the sync endpoint).
 
 ## How to audit it
 
-- `shiplino sync status --dry-run` prints the next batch exactly as the client would send it (after filtering, the capture level and redaction) and sends nothing.
+- `shiplino sync status --dry-run` prints the next batch exactly as the client would send it (after filtering and redaction) and sends nothing.
 - The code that builds each event is `Scope.Outgoing` and `Scope.Prepare` in [`internal/sync/scope.go`](../internal/sync/scope.go); the HTTP calls are all in [`internal/sync/protocol.go`](../internal/sync/protocol.go).
 - Point the client at your own server with `shiplino sync login --endpoint http://localhost:8080` and log what arrives.
 
