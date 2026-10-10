@@ -33,6 +33,7 @@ import (
 	_ "github.com/elephaant/shiplino/pkg/adapters/claudecode" // registers the adapter
 	_ "github.com/elephaant/shiplino/pkg/adapters/codex"      // registers the adapter
 	_ "github.com/elephaant/shiplino/pkg/adapters/cursor"     // registers the adapter
+	_ "github.com/elephaant/shiplino/pkg/adapters/windsurf"   // registers the adapter
 )
 
 const (
@@ -210,6 +211,12 @@ type Health struct {
 	// WatchError is set when file notifications are unavailable and the
 	// daemon polls instead (slower to react, a little more CPU).
 	WatchError string `json:"watch_error,omitempty"`
+}
+
+// noCWD reports whether the session doesn't know its folder yet.
+func (d *Daemon) noCWD(sessionID string) bool {
+	s := d.eng.Get(sessionID)
+	return s == nil || s.CWD == ""
 }
 
 // Health returns counters plus the current spool backlog.
@@ -706,7 +713,9 @@ func (d *Daemon) commit(ctx context.Context, events []model.Event, cur store.Cur
 			continue
 		}
 		d.projects.annotate(&e)
-		if e.Project != nil && e.Project.CWD != "" && e.Project.RepoRoot != "" && (e.Kind == model.KindSessionStart || e.Kind == model.KindTurnStart) {
+		// Watch on a session or turn start, or on the first event with a
+		// folder for agents whose starts carry none (Windsurf).
+		if e.Project != nil && e.Project.CWD != "" && e.Project.RepoRoot != "" && (e.Kind == model.KindSessionStart || e.Kind == model.KindTurnStart || d.noCWD(e.SessionID)) {
 			d.git.Watch(e.Project.CWD)
 		}
 		isNew, err := tx.InsertEvent(ctx, e)

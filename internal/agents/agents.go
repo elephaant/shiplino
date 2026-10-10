@@ -13,6 +13,7 @@ import (
 	"github.com/elephaant/shiplino/pkg/adapters/claudecode"
 	"github.com/elephaant/shiplino/pkg/adapters/codex"
 	"github.com/elephaant/shiplino/pkg/adapters/cursor"
+	"github.com/elephaant/shiplino/pkg/adapters/windsurf"
 )
 
 // Hooks is one agent whose hooks Shiplino manages.
@@ -80,6 +81,23 @@ var All = []Hooks{
 			return r.Changed, err
 		},
 		Installed: cursor.Installed,
+	},
+	{
+		Name: "Windsurf", ID: windsurf.Name,
+		Detect: func(ctx context.Context, home string) (bool, string, string) {
+			d := windsurf.Detect(ctx, home)
+			return d.Installed, d.Version, d.HooksPath
+		},
+		Install: func(path, bin, _, backup string) (bool, int, error) {
+			r, err := windsurf.Install(path, bin, backup)
+			return r.Changed, len(r.Events), err
+		},
+		Uninstall: func(path, backup string) (bool, error) {
+			r, err := windsurf.Uninstall(path, backup)
+			return r.Changed, err
+		},
+		Installed: windsurf.Installed,
+		Note:      windsurf.Note,
 	},
 }
 

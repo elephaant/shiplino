@@ -144,6 +144,21 @@ func TestContractHostileEnvironments(t *testing.T) {
 	}
 }
 
+// Every Windsurf event Shiplino registers, through the real binary.
+// Exit code 2 from a pre hook would block Cascade.
+func TestContractWindsurfEvents(t *testing.T) {
+	home := t.TempDir()
+	for _, ev := range []string{"pre_user_prompt", "post_cascade_response", "post_read_code", "post_write_code", "post_run_command", "post_mcp_tool_use"} {
+		in := []byte(`{"agent_action_name":"` + ev + `","trajectory_id":"t1","execution_id":"e1","timestamp":"2026-10-10T10:00:00Z","model_name":"Unknown","tool_info":{"file_path":"/app/x.go","user_prompt":"hi","command_line":"ls","cwd":"/app"}}`)
+		if out, code := runHook(t, baseEnv(home), in, "--agent", "windsurf"); out != "" || code != 0 {
+			t.Errorf("%s: exit=%d output=%q", ev, code, out)
+		}
+	}
+	if lines, err := os.ReadFile(spool.SessionFile(spool.Dir(home), "windsurf", "t1")); err != nil || strings.Count(string(lines), "\n") != 6 {
+		t.Errorf("spool: %v\n%s", err, lines)
+	}
+}
+
 // Many hook processes for one session at once must produce one valid line each.
 func TestContractConcurrentProcesses(t *testing.T) {
 	home := t.TempDir()

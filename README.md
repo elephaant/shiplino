@@ -44,7 +44,8 @@ Read more: [How it works](docs/how-it-works.md).
 | Agent | How |
 |-------|-----|
 | Claude Code, OpenAI Codex, Cursor | hooks + transcripts (Cursor: hooks only, for now) |
-| Gemini CLI, GitHub Copilot CLI, Windsurf, Cline, OpenCode | hooks / plugins |
+| Windsurf (Cascade) | hooks: prompts, turns, file reads and edits, commands, MCP calls. Windsurf's hooks carry no token counts, so no cost yet |
+| Gemini CLI, GitHub Copilot CLI, Cline, OpenCode | hooks / plugins |
 | Aider, any CLI agent | logs, git, `shiplino wrap` |
 | Custom agents (Agent SDK, LangGraph, …) | HTTP, OTLP, SDKs |
 

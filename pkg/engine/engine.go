@@ -162,6 +162,8 @@ func (e *Engine) Apply(ev model.Event) []*Session {
 	if ev.Project != nil {
 		// A session stays in the project it started in (doc: edge cases).
 		setIfEmpty(&s.ProjectID, ev.Project.ID)
+		// Agents without session start hooks (Windsurf) name a folder later.
+		setIfEmpty(&s.CWD, ev.Project.CWD)
 		if ev.Project.Branch != "" {
 			s.Branch = ev.Project.Branch
 		}
