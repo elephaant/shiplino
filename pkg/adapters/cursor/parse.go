@@ -140,13 +140,18 @@ func (Adapter) ParseHook(raw []byte, meta adapters.HookMeta) ([]model.Event, err
 			return nil, nil
 		}
 		added, removed := 0, 0
+		pairs := make([][2]string, 0, len(p.Edits))
 		for _, ed := range p.Edits {
 			a, r := lineDiff(ed.Old, ed.New)
 			added, removed = added+a, removed+r
+			pairs = append(pairs, [2]string{ed.Old, ed.New})
 		}
 		d := map[string]any{"path": joinPath(b.cwd, p.FilePath), "op": "modify"}
 		if len(p.Edits) > 0 {
 			d["lines_added"], d["lines_removed"], d["lines_source"] = added, removed, "computed"
+		}
+		if patch := adapters.SnippetPatch(pairs...); patch != "" {
+			d["patch"], d["patch_source"] = patch, "computed"
 		}
 		return b.one(model.KindFileEdit, d), nil
 	case "afterMCPExecution":

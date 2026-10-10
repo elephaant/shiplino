@@ -32,9 +32,11 @@ endpoint = "https://api.shiplino.com"   # optional; https only (plain http works
 capture_level = "minimal"               # minimal (default), standard or full
 projects = []                           # allow list: project ids or globs; empty = nothing is sent
 exclude = []                            # project ids or globs removed from the allow list
+send_user = false                       # also send your OS user name (standard and full only)
 ```
 
 - **Project ids** are the ones the board shows: `github.com/acme/api` for a repo with a remote, `local:/path/to/repo` for a repo without one, `dir:/path` for other folders, and `unsorted`. In globs, `*` matches anything (including `/`) and `?` one character: `github.com/acme/*` allows every repo of that owner, and `*` allows everything, including events with no known project.
+- **`send_user`** sends the OS user name recorded with each event. It's off by default and never applies at `minimal`.
 - **`capture_level`** can't be higher than the local `capture_level`: Shiplino never stored more than that. A higher setting is lowered, and `shiplino sync status` says so.
 - When you allow more projects, the client reads your history again from the start, so the new projects' past sessions are uploaded too. The server ignores events it already has.
 
@@ -45,13 +47,16 @@ Events in the [universal event format](event-format.md), one JSON object per eve
 1. drops it unless its project is allowed and not excluded (the project is the event's own, or its session's),
 2. applies the **sync** capture level (the same rules as the local capture levels, below),
 3. runs the redaction rules again (built-in rules plus your `[redaction] extra_patterns`), so rules added after an event was recorded still apply,
-4. removes `raw` (a pointer into local files).
+4. removes `raw` (a pointer into local files) and, unless `send_user = true` (never at `minimal`), the OS `user` name,
+5. at `minimal`, makes local paths project-relative (below).
 
 | Capture level | Event fields sent |
 |---------------|-------------------|
-| `minimal` (default) | `id`, `v`, `ts`, `received_at`, `kind`, `agent`, `collector`, `machine_id`, `user`, `session_id`, `actor_id`, `parent_actor`, `actor_type`, `turn_id`, `project` (`id`, `cwd`, `repo_root`, `remote`, `branch`, `head`), `dedup_key`, and the `data` fields that aren't content: tool names, file paths, line counts, exit codes, durations, statuses, models, token counts and cost, git SHAs, branches and PR numbers. A waiting event's message becomes a generic "Waiting for your approval". |
-| `standard` | Also prompts (truncated to 2,000 characters), shell commands, session titles, short tool summaries, the agent's final message (500 characters), tool errors (500 characters) and commit messages. All redacted. |
-| `full` | Everything stored locally at `full`, still redacted. |
+| `minimal` (default) | `id`, `v`, `ts`, `received_at`, `kind`, `agent`, `collector`, `machine_id`, `session_id`, `actor_id`, `parent_actor`, `actor_type`, `turn_id`, `project` (`id`, `remote`, `branch`, `head`; no `cwd` or `repo_root`), `dedup_key`, and the `data` fields that aren't content: tool names, project-relative file paths, line counts, exit codes, durations, statuses, models, token counts and cost, git SHAs, branches and PR numbers. A waiting event's message becomes a generic "Waiting for your approval". Never `user`. |
+| `standard` | Everything `minimal` sends, plus `project.cwd` and `project.repo_root`, file paths as recorded (absolute), and prompts (truncated to 2,000 characters), shell commands, session titles, short tool summaries, the agent's final message (500 characters), tool errors (500 characters) and commit messages, all redacted. `user` only with `send_user = true`. |
+| `full` | Everything stored locally at `full`, including file edit diffs (`patch`), still redacted. `user` only with `send_user = true`. |
+
+**Paths at `minimal`.** The data fields `path`, `file_path`, `cwd`, `transcript_path`, `files[]` and a file tool's `input_summary` are made relative to the event's project root. That root is `project.repo_root`, else the folder in a `local:` or `dir:` project id, else the working directory. For example, `/home/alex/code/api/src/auth.go` becomes `src/auth.go` and the root itself becomes `.`. A path outside the project keeps only its base name with a `…/` prefix: `/home/alex/.agent/sessions/s1.jsonl` becomes `…/s1.jsonl`. Paths that were already relative are left as they are. The project id itself is sent as it is, and for repos without a remote (`local:…`) and plain folders (`dir:…`) that id contains the folder's absolute path.
 
 The sign-in request carries the hostname as `device_name`. Each upload also carries a `device_id` (a random id created once and kept in `~/.shiplino/device_id`) and a `device_name` (the computer's hostname).
 
@@ -61,6 +66,7 @@ The sign-in request carries the hostname as `device_name`. Each upload also carr
 - Anything while sync is off, signed out or paused by an error that needs you to sign in again.
 - Secrets that the redaction rules recognize (they're replaced by `«redacted:<kind>»` locally and again before sending).
 - File contents. Shiplino never stores them, only paths.
+- At `minimal`: absolute local paths other than the project id (see above), and your OS user name.
 - Raw hook payloads and transcripts, and the `raw` pointer to them.
 - Your local API token, the Settings page cookie, and the sync tokens themselves (except as the `Authorization` header to the sync endpoint).
 

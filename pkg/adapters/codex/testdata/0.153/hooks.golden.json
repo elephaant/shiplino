@@ -183,6 +183,8 @@
       "lines_removed": 0,
       "lines_source": "agent",
       "op": "create",
+      "patch": "@@ @@\n+export const ok = true\n+export const at = 1\n",
+      "patch_source": "agent",
       "path": "/home/dev/demo/src/health.ts"
     },
     "dedup_key": "codex:th-1:call_2:file0"
@@ -208,6 +210,8 @@
       "lines_removed": 1,
       "lines_source": "agent",
       "op": "modify",
+      "patch": "@@\n-old\n+new\n",
+      "patch_source": "agent",
       "path": "/home/dev/demo/src/app.ts"
     },
     "dedup_key": "codex:th-1:call_2:file1"

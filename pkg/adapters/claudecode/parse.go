@@ -80,7 +80,11 @@ type payload struct {
 type toolResponse struct {
 	Type            string `json:"type"` // Write: "create" | "update"
 	StructuredPatch []struct {
-		Lines []string `json:"lines"`
+		OldStart int      `json:"oldStart"`
+		OldLines int      `json:"oldLines"`
+		NewStart int      `json:"newStart"`
+		NewLines int      `json:"newLines"`
+		Lines    []string `json:"lines"`
 	} `json:"structuredPatch"`
 	Interrupted  bool  `json:"interrupted"`
 	TimedOutMS   int64 `json:"timedOutAfterMs"`
@@ -116,6 +120,15 @@ func (r toolResponse) patchLines() (added, removed int, ok bool) {
 		}
 	}
 	return added, removed, true
+}
+
+// patch renders Claude Code's own diff as patch text ("" if none).
+func (r toolResponse) patch() string {
+	hunks := make([]adapters.Hunk, 0, len(r.StructuredPatch))
+	for _, h := range r.StructuredPatch {
+		hunks = append(hunks, adapters.Hunk{OldStart: h.OldStart, OldLines: h.OldLines, NewStart: h.NewStart, NewLines: h.NewLines, Lines: h.Lines})
+	}
+	return adapters.FormatHunks(hunks)
 }
 
 type toolInput struct {
@@ -320,11 +333,18 @@ func (b builder) toolEnd(ok bool, errMsg string) []model.Event {
 		end.Data["timed_out_ms"] = resp.TimedOutMS
 	}
 	// fileEdit prefers Claude Code's own diff; counting the strings in the
-	// tool input is only the fallback.
-	fileEdit := func(path, op string, added, removed int) map[string]any {
+	// tool input (and a patch built from them) is only the fallback.
+	fileEdit := func(path, op string, added, removed int, patch string) map[string]any {
 		d := map[string]any{"path": path, "op": op, "lines_added": added, "lines_removed": removed, "lines_source": "estimated"}
 		if a, r, ok := resp.patchLines(); ok {
 			d["lines_added"], d["lines_removed"], d["lines_source"] = a, r, "agent"
+			if p := resp.patch(); p != "" {
+				d["patch"], d["patch_source"] = p, "agent"
+				return d
+			}
+		}
+		if patch != "" {
+			d["patch"], d["patch_source"] = patch, "computed"
 		}
 		return d
 	}
@@ -371,23 +391,29 @@ func (b builder) toolEnd(ok bool, errMsg string) []model.Event {
 			derived(model.KindFileRead, "file", map[string]any{"path": path})
 		}
 	case tool == "Edit":
-		derived(model.KindFileEdit, "file", fileEdit(in.FilePath, "modify", lines(in.NewString), lines(in.OldString)))
+		derived(model.KindFileEdit, "file", fileEdit(in.FilePath, "modify", lines(in.NewString), lines(in.OldString),
+			adapters.SnippetPatch([2]string{in.OldString, in.NewString})))
 	case tool == "MultiEdit":
 		added, removed := 0, 0
+		pairs := make([][2]string, 0, len(in.Edits))
 		for _, ed := range in.Edits {
 			added += lines(ed.NewString)
 			removed += lines(ed.OldString)
+			pairs = append(pairs, [2]string{ed.OldString, ed.NewString})
 		}
-		derived(model.KindFileEdit, "file", fileEdit(in.FilePath, "modify", added, removed))
+		derived(model.KindFileEdit, "file", fileEdit(in.FilePath, "modify", added, removed, adapters.SnippetPatch(pairs...)))
 	case tool == "NotebookEdit":
 		derived(model.KindFileEdit, "file", map[string]any{"path": in.NotebookPath, "op": "modify"})
 	case tool == "Write":
 		if resp.Type == "create" {
 			// A new file: every line of its content was added (exact).
 			d := map[string]any{"path": in.FilePath, "op": "create", "lines_added": lines(in.Content), "lines_removed": 0, "lines_source": "agent"}
+			if p := adapters.NewFilePatch(in.Content); p != "" {
+				d["patch"], d["patch_source"] = p, "computed"
+			}
 			derived(model.KindFileEdit, "file", d)
 		} else {
-			derived(model.KindFileEdit, "file", fileEdit(in.FilePath, "modify", lines(in.Content), 0))
+			derived(model.KindFileEdit, "file", fileEdit(in.FilePath, "modify", lines(in.Content), 0, ""))
 		}
 	case strings.HasPrefix(tool, "mcp__"):
 		server, name := splitMCP(tool)

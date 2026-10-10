@@ -28,6 +28,7 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AgentDot } from "@/components/common/agent-dot";
 import { Empty } from "@/components/common/empty";
+import { DiffView } from "@/components/session/diff-view";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -258,7 +259,7 @@ function SessionPage() {
       <Tabs defaultValue="timeline">
         <TabsList>
           <TabsTrigger value="timeline">Timeline</TabsTrigger>
-          <TabsTrigger value="files">Files ({session.files?.length ?? 0})</TabsTrigger>
+          <TabsTrigger value="files">Changes ({session.files?.length ?? 0})</TabsTrigger>
           <TabsTrigger value="commands">Commands ({commands.length})</TabsTrigger>
           <TabsTrigger value="usage">Usage</TabsTrigger>
         </TabsList>
@@ -304,18 +305,12 @@ function SessionPage() {
         </TabsContent>
 
         <TabsContent value="files">
-          <Card className="py-2">
-            <CardContent className="flex flex-col px-4 font-mono text-xs">
-              {(session.files ?? []).map((f) => (
-                <span key={f} className="truncate py-1" title={f}>
-                  {rel(f)}
-                </span>
-              ))}
-              {!session.files?.length && (
-                <p className="py-2 font-sans text-sm text-muted-foreground">No files changed.</p>
-              )}
-            </CardContent>
-          </Card>
+          <DiffView
+            sessionId={session.id}
+            version={version}
+            rel={rel}
+            actorLabel={(a) => actors.get(a) ?? "subagent"}
+          />
         </TabsContent>
 
         <TabsContent value="commands">

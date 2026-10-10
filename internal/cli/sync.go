@@ -19,6 +19,7 @@ import (
 	"github.com/elephaant/shiplino/internal/store"
 	cloudsync "github.com/elephaant/shiplino/internal/sync"
 	"github.com/elephaant/shiplino/pkg/projects"
+	"github.com/elephaant/shiplino/pkg/redact"
 )
 
 const syncUsage = `usage:
@@ -187,7 +188,7 @@ func syncStatus(ctx context.Context, e *env, args []string) int {
 		out, _ := json.MarshalIndent(b, "", "  ")
 		fmt.Fprintln(e.out, string(out))
 		level, _ := cfg.SyncLevel()
-		fmt.Fprintf(e.errOut, "Dry run: the next batch has %d event%s (capture level %s). Nothing was sent.\n", len(b.Events), plural(len(b.Events)), level)
+		fmt.Fprintf(e.errOut, "Dry run: the next batch has %d event%s (capture level %s; %s). Nothing was sent.\n", len(b.Events), plural(len(b.Events)), level, pathsNote(cfg))
 		return 0
 	}
 
@@ -223,7 +224,7 @@ func syncStatus(ctx context.Context, e *env, args []string) int {
 	if v.LevelCapped {
 		level += fmt.Sprintf(" (lowered from %s to match the local capture_level)", cfg.Sync.CaptureLevel)
 	}
-	fmt.Fprintf(e.out, "  %-14s %s\n", "Capture level", level)
+	fmt.Fprintf(e.out, "  %-14s %s (%s)\n", "Capture level", level, pathsNote(cfg))
 	if len(v.Projects) == 0 {
 		fmt.Fprintf(e.out, "  %-14s none allowed, so nothing is sent (`shiplino sync allow <project>`)\n", "Projects")
 	} else {
@@ -381,4 +382,16 @@ func syncChecks(e *env) []check {
 		}
 	}
 	return out
+}
+
+// pathsNote says how paths and the user name are sent at the sync level.
+func pathsNote(cfg config.Config) string {
+	level, _ := cfg.SyncLevel()
+	if level == redact.Minimal {
+		return "paths relative to the project, no user name"
+	}
+	if cfg.Sync.SendUser {
+		return "full paths and your user name"
+	}
+	return "full paths, no user name"
 }

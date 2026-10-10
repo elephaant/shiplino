@@ -44,7 +44,7 @@ function Mono({ children }: { children: ReactNode }) {
 const levels: Record<string, string> = {
   minimal: "Timing, tool names, file paths, exit codes, tokens and cost. No prompts, commands or outputs.",
   standard: "Also prompts (truncated), commands and short summaries.",
-  full: "Everything Shiplino captures, including tool output (capped).",
+  full: "Everything Shiplino captures, including tool output and file edit diffs (capped).",
 };
 
 function formatBytes(n: number): string {
@@ -329,7 +329,7 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
-      <Card className="gap-3">
+      <Card id="privacy" className="scroll-mt-16 gap-3">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Shield className="size-4" aria-hidden /> Privacy
