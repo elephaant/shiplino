@@ -179,6 +179,34 @@ type rig struct {
 	logs    syncBuffer // the daemon's log, shown when a test fails
 }
 
+// diagnose describes a stuck daemon: counters, each spool file's size
+// against its stored cursor, the daemon's log and every goroutine.
+func (r *rig) diagnose() string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "stats %+v\n", r.d.Stats())
+	// The store may be what's stuck: don't wait on it for long.
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	cursors, err := r.st.Cursors(ctx)
+	if err != nil {
+		fmt.Fprintf(&b, "cursors: %v\n", err)
+	}
+	files, _ := filepath.Glob(filepath.Join(r.home, "spool", "*", "*"))
+	for _, f := range files {
+		rel, _ := filepath.Rel(filepath.Join(r.home, "spool"), f)
+		fi, err := os.Stat(f)
+		if err != nil {
+			fmt.Fprintf(&b, "  %s: %v\n", rel, err)
+			continue
+		}
+		fmt.Fprintf(&b, "  %s: size %d, cursor %d\n", rel, fi.Size(), cursors["spool/"+filepath.ToSlash(rel)])
+	}
+	fmt.Fprintf(&b, "daemon log:\n%s\n", r.logs.String())
+	buf := make([]byte, 4<<20)
+	fmt.Fprintf(&b, "goroutines:\n%s", buf[:runtime.Stack(buf, true)])
+	return b.String()
+}
+
 // syncBuffer is a bytes.Buffer safe for concurrent writes.
 type syncBuffer struct {
 	mu  sync.Mutex
@@ -300,9 +328,6 @@ func payload(session, cwd, event, extra string) string {
 // the running daemon, and measures hook → OnChange and hook → WebSocket
 // latency, per-commit time, and board queries on the result.
 func TestLoad(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("stalls on Windows CI under load; see #99")
-	}
 	sh := load()
 	byChange, byUI := newTracker(), newTracker()
 	r := newRig(t, func(list []*engine.Session) {
@@ -386,7 +411,7 @@ func TestLoad(t *testing.T) {
 	writeTime := time.Since(start)
 
 	if !waitFor(60*time.Second, func() bool { return r.d.Stats().Lines >= sent }) {
-		t.Fatalf("read %d of %d lines; daemon log:\n%s", r.d.Stats().Lines, sent, r.logs.String())
+		t.Fatalf("read %d of %d lines\n%s", r.d.Stats().Lines, sent, r.diagnose())
 	}
 	drained := time.Since(start)
 	explain := func(tr *tracker) {
@@ -396,8 +421,8 @@ func TestLoad(t *testing.T) {
 		if s != nil {
 			last = s.LastEventAt
 		}
-		t.Fatalf("%d events not seen; %s has %d, the first sent at %d, stored last_event_at %d (%v); stats %+v\ndaemon log:\n%s",
-			tr.left(), id, n, at.UnixNano(), last.UnixNano(), err, r.d.Stats(), r.logs.String())
+		t.Fatalf("%d events not seen; %s has %d, the first sent at %d, stored last_event_at %d (%v)\n%s",
+			tr.left(), id, n, at.UnixNano(), last.UnixNano(), err, r.diagnose())
 	}
 	if !waitFor(10*time.Second, func() bool { return byChange.left() == 0 }) {
 		explain(byChange)
@@ -427,7 +452,7 @@ func TestLoad(t *testing.T) {
 	})
 	for id, n := range calls {
 		if s, err, ok := settled(id, n); !ok {
-			t.Fatalf("%s: want %d tool calls, done; got %+v %v", id, n, s, err)
+			t.Fatalf("%s: want %d tool calls, done; got %+v %v\n%s", id, n, s, err, r.diagnose())
 		}
 	}
 

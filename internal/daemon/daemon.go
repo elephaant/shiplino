@@ -265,8 +265,8 @@ func (d *Daemon) Run(ctx context.Context) error {
 	// Without file notifications (e.g. the system's inotify limit is used
 	// up by other programs) the daemon still works, by polling often.
 	every := rescanEvery
-	var events <-chan fsnotify.Event
-	var werrs <-chan error
+	changed := make(chan struct{}, 1) // a file changed since the last pass
+	newDirs := make(chan string, 64)  // created paths that may be folders to watch
 	w, err := fsnotify.NewWatcher()
 	if err != nil {
 		d.log.Printf("file notifications unavailable (%v); polling every %s", err, pollFallback)
@@ -277,7 +277,7 @@ func (d *Daemon) Run(ctx context.Context) error {
 	} else {
 		defer w.Close()
 		d.watchDirs(w)
-		events, werrs = w.Events, w.Errors
+		go d.drain(w, changed, newDirs)
 	}
 
 	tick := time.NewTicker(every)
@@ -293,23 +293,14 @@ func (d *Daemon) Run(ctx context.Context) error {
 		select {
 		case <-ctx.Done():
 			return nil
-		case ev, ok := <-events:
-			if !ok {
-				return nil
+		case path := <-newDirs:
+			if fi, err := os.Stat(path); err == nil && fi.IsDir() {
+				_ = w.Add(path)
 			}
-			if ev.Has(fsnotify.Create) {
-				if fi, err := os.Stat(ev.Name); err == nil && fi.IsDir() {
-					_ = w.Add(ev.Name)
-				}
-			}
+		case <-changed:
 			if debounce == nil {
 				debounce = time.After(20 * time.Millisecond)
 			}
-		case err, ok := <-werrs:
-			if !ok {
-				return nil
-			}
-			d.log.Printf("watch: %v", err)
 		case <-debounce:
 			debounce = nil
 			poll()
@@ -318,6 +309,39 @@ func (d *Daemon) Run(ctx context.Context) error {
 				d.watchDirs(w)
 			}
 			poll()
+		}
+	}
+}
+
+// drain reads the watcher's events and errors until it is closed, and
+// only signals Run. Run must not read them itself: on Windows,
+// Watcher.Add waits for the watcher's goroutine, which waits for its
+// events to be read, so Run calling Add would hang the daemon (#99).
+func (d *Daemon) drain(w *fsnotify.Watcher, changed chan<- struct{}, newDirs chan<- string) {
+	events, errs := w.Events, w.Errors
+	for events != nil || errs != nil {
+		select {
+		case ev, ok := <-events:
+			if !ok {
+				events = nil
+				continue
+			}
+			if ev.Has(fsnotify.Create) {
+				select {
+				case newDirs <- ev.Name:
+				default: // full: the next rescan adds new folders anyway
+				}
+			}
+			select {
+			case changed <- struct{}{}:
+			default: // a pass is already due
+			}
+		case err, ok := <-errs:
+			if !ok {
+				errs = nil
+				continue
+			}
+			d.log.Printf("watch: %v", err)
 		}
 	}
 }
