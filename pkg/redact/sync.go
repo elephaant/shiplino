@@ -32,7 +32,9 @@ var syncKeys = map[string]bool{
 	// outcomes and timing
 	"ok": true, "exit_code": true, "duration_ms": true, "status": true, "reason": true, "signal": true,
 	"interrupted": true, "stop_reason": true, "recoverable": true, "permission_mode": true, "source": true,
-	"trigger": true,
+	"trigger": true, "denied": true,
+	// a shell command's program name: a checked short token (see Program), never the command
+	"program": true,
 	// files (project-relative after localPaths) and line counts
 	"path": true, "file_path": true, "files": true, "file_paths": true, "paths": true, "lines_added": true,
 	"lines_removed": true, "lines_source": true, "files_changed": true, "patch_omitted": true,
